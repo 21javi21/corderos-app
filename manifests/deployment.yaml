@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: corderos-app
-        image: ghcr.io/21javi21/corderos-app:latest  
+        image: docker.io/kaligulix/21k-registry:corderos-app-latest
         imagePullPolicy: IfNotPresent
         resources:
           requests:
@@ -32,3 +32,5 @@ spec:
               key: DATABASE_URL
         ports:
         - containerPort: 8000
+      imagePullSecrets:
+      - name: regcred
