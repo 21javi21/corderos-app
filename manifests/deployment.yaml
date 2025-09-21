@@ -13,6 +13,8 @@ spec:
       labels:
         app: corderos-app
     spec:
+      imagePullSecrets:
+      - name: regcred
       containers:
       - name: corderos-app
         image: docker.io/kaligulix/21k-registry:corderos-app-latest
@@ -32,5 +34,3 @@ spec:
               key: DATABASE_URL
         ports:
         - containerPort: 8000
-      imagePullSecrets:
-      - name: regcred
