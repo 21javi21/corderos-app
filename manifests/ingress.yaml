@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: corderos-app
+  namespace: corderos
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt   # ⬅️ adjust if you use another issuer
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+      - corderos.kaligulix.com
+    secretName: corderos-app-tls
+  rules:
+  - host: corderos.kaligulix.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: corderos-app
+            port:
+              number: 80
