@@ -34,3 +34,7 @@ spec:
               key: DATABASE_URL
         ports:
         - containerPort: 8000
+        envFrom:
+        - secretRef:
+            name: corderos-app-ldap
+
