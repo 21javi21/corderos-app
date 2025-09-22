@@ -1,30 +1,21 @@
-from fastapi import FastAPI
-from app import auth_ldap   # make sure app/auth_ldap.py exists
+from fastapi import FastAPI, Request
+from app import auth_ldap
 from fastapi.responses import HTMLResponse
 from fastapi import APIRouter
+from fastapi.templating import Jinja2Templates
 
 app = FastAPI()
 router = APIRouter()
+
 app.include_router(auth_ldap.router)
+
+templates = Jinja2Templates(directory="app/templates")
 
 @app.get("/")
 def read_root():
     return {"message": "Corderos App is alive 🎉"}
 
-@router.get("/login", response_class=HTMLResponse)
-def login_page():
-    return """
-    <html>
-      <body>
-        <form action="/auth/login" method="post">
-          <label>Username:</label>
-          <input type="text" name="username">
-          <br>
-          <label>Password:</label>
-          <input type="password" name="password">
-          <br>
-          <input type="submit" value="Login">
-        </form>
-      </body>
-    </html>
-    """
+
+@app.get("/login", response_class=HTMLResponse)
+def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
