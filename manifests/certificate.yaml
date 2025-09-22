@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: corderos-app-tls
+  namespace: corderos
+spec:
+  secretName: corderos-app-tls
+  dnsNames:
+  - corderos.kaligulix.com
+  issuerRef:
+    name: letsencrypt
+    kind: ClusterIssuer
