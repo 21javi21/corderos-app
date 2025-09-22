@@ -4,7 +4,7 @@ metadata:
   name: corderos-app
   namespace: corderos
   annotations:
-    cert-manager.io/cluster-issuer: letsencrypt  
+    cert-manager.io/cluster-issuer: letsencrypt-prod  
 spec:
   ingressClassName: nginx
   tls:
