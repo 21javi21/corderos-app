@@ -21,10 +21,10 @@ spec:
         imagePullPolicy: IfNotPresent
         resources:
           requests:
-            memory: "256M"
+            memory: "256Mi"
             cpu: "200m"
           limits:
-            memory: "512M" 
+            memory: "512Mi"
             cpu: "400m"
         env:
         - name: DATABASE_URL
@@ -32,9 +32,24 @@ spec:
             secretKeyRef:
               name: corderos-app-db
               key: DATABASE_URL
-        ports:
-        - containerPort: 8000
         envFrom:
         - secretRef:
             name: corderos-app-ldap
-
+        ports:
+        - containerPort: 8000
+        livenessProbe:
+          httpGet:
+            path: /login
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /login
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
