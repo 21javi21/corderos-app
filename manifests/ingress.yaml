@@ -10,7 +10,7 @@ spec:
   tls:
   - hosts:
       - corderos.kaligulix.com
-    secretName: corderos-app-tls-bbvf9
+    secretName: corderos-app-tls
   rules:
   - host: corderos.kaligulix.com
     http:
