@@ -1,7 +1,8 @@
 import os
+import base64
+import hashlib
 from ldap3 import Server, Connection, ALL, SUBTREE
 from fastapi import Depends, HTTPException, Form, APIRouter, Body
-from ldap3.utils.hashed import hashed
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -11,6 +12,15 @@ LDAP_BIND_DN = os.getenv("LDAP_BIND_DN")
 LDAP_BIND_PASSWORD = os.getenv("LDAP_BIND_PASSWORD")
 LDAP_GROUP_DN = os.getenv("LDAP_GROUP_DN")
 
+
+def make_ssha(password: str) -> str:
+    """Genera un hash {SSHA} compatible con slappasswd."""
+    salt = os.urandom(4)
+    sha = hashlib.sha1(password.encode("utf-8"))
+    sha.update(salt)
+    return "{SSHA}" + base64.b64encode(sha.digest() + salt).decode("utf-8")
+
+
 def ldap_authenticate(username: str, password: str) -> bool:
     server = Server(LDAP_URI, get_info=ALL)
     try:
@@ -19,7 +29,7 @@ def ldap_authenticate(username: str, password: str) -> bool:
                 search_base=LDAP_BASE_DN,
                 search_filter=f"(|(uid={username})(cn={username}))",
                 search_scope=SUBTREE,
-                attributes=["cn", "uid", "mail"]  # pedir atributos válidos
+                attributes=["cn", "uid", "mail"],
             )
             print(f"Entries: {conn.entries}")
             if not conn.entries:
@@ -34,11 +44,13 @@ def ldap_authenticate(username: str, password: str) -> bool:
         print(f"❌ Exception: {e}")
         return False
 
+
 @router.post("/login")
 def login(username: str = Form(...), password: str = Form(...)):
     if not ldap_authenticate(username, password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     return {"message": f"Welcome {username}!"}
+
 
 @router.post("/add_user")
 def add_user(
@@ -46,7 +58,7 @@ def add_user(
     password: str = Form(...),
     cn: str = Form(...),
     sn: str = Form(...),
-    mail: str = Form(...)
+    mail: str = Form(...),
 ):
     server = Server(LDAP_URI, get_info=ALL)
     try:
@@ -54,7 +66,7 @@ def add_user(
             dn = f"uid={username},ou=Users,{LDAP_BASE_DN}"
 
             # Generar password hash (SSHA)
-            hashed_pw = hashed('SSHA', password)
+            hashed_pw = make_ssha(password)
 
             attrs = {
                 "objectClass": ["inetOrgPerson", "posixAccount"],
@@ -62,7 +74,7 @@ def add_user(
                 "sn": sn,
                 "uid": username,
                 "mail": mail,
-                "uidNumber": "2001",   # ⚠️ hardcoded por ahora
+                "uidNumber": "2001",  # ⚠️ hardcoded por ahora
                 "gidNumber": "2001",
                 "homeDirectory": f"/home/{username}",
                 "loginShell": "/bin/bash",
