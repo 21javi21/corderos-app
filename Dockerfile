@@ -11,6 +11,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 # Set environment to make sure Python/LDAP trust system certs
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
+# Install OS tools for LDAP debugging and editing
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    nano \
+    netcat-openbsd \
+    ldap-utils \
+    slapd \
+ && rm -rf /var/lib/apt/lists/*
+
 # Install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
