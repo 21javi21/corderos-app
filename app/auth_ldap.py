@@ -93,4 +93,33 @@ def add_user(
 
 @router.get("/panel", response_class=HTMLResponse)
 def show_panel(request: Request):
-    return templates.TemplateResponse("auth_panel.html", {"request": request})
+    return templates.TemplateResponse("user_panel.html", {"request": request})
+
+@router.get("/add_user_form", response_class=HTMLResponse)
+def add_user_form(request: Request):
+    return templates.TemplateResponse("add_user_form.html", {"request": request})
+
+@router.get("/list_users", response_class=HTMLResponse)
+def list_users(request: Request):
+    server = Server(LDAP_URI, get_info=ALL)
+    users = []
+    try:
+        with Connection(server, LDAP_BIND_DN, LDAP_BIND_PASSWORD, auto_bind=True) as conn:
+            conn.search(
+                search_base=LDAP_BASE_DN,
+                search_filter="(objectClass=inetOrgPerson)",
+                search_scope=SUBTREE,
+                attributes=["uid", "cn", "sn", "mail"]
+            )
+            for entry in conn.entries:
+                users.append({
+                    "uid": str(entry.uid) if "uid" in entry else "",
+                    "cn": str(entry.cn) if "cn" in entry else "",
+                    "sn": str(entry.sn) if "sn" in entry else "",
+                    "mail": str(entry.mail) if "mail" in entry else "",
+                })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return templates.TemplateResponse("list_users.html", {"request": request, "users": users})
+

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>List Users</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; }
+        h2 { color: #2c3e50; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+        th { background: #2c3e50; color: white; }
+    </style>
+</head>
+<body>
+    <h2>👥 Users in LDAP</h2>
+    <table>
+        <tr><th>UID</th><th>First Name</th><th>Last Name</th><th>Email</th></tr>
+        {% for user in users %}
+        <tr>
+            <td>{{ user.uid }}</td>
+            <td>{{ user.cn }}</td>
+            <td>{{ user.sn }}</td>
+            <td>{{ user.mail }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

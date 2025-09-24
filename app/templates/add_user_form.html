@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Corderos - User Panel</title>
+    <title>Add User</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 30px; }
         h2 { color: #2c3e50; }
@@ -17,19 +17,14 @@
     <form method="post" action="/auth/add_user">
         <label>Username</label>
         <input type="text" name="username" required>
-
         <label>Password</label>
         <input type="password" name="password" required>
-
         <label>First Name (cn)</label>
         <input type="text" name="cn" required>
-
         <label>Last Name (sn)</label>
         <input type="text" name="sn" required>
-
         <label>Email</label>
         <input type="email" name="mail" required>
-
         <button type="submit">Create User</button>
     </form>
 </body>
