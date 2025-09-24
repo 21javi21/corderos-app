@@ -126,6 +126,8 @@ def add_user(
                 return {"message": f"✅ User {username} created and added to 'users' group!"}
             else:
                 return {"error": conn.result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/panel", response_class=HTMLResponse)
 def show_panel(request: Request):
