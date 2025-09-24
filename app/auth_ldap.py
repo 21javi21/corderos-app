@@ -11,14 +11,13 @@ LDAP_BIND_PASSWORD = os.getenv("LDAP_BIND_PASSWORD")
 LDAP_GROUP_DN = os.getenv("LDAP_GROUP_DN")
 
 def ldap_authenticate(username: str, password: str) -> bool:
-    # Bind as service account
     server = Server(LDAP_URI, get_info=ALL)
     try:
         with Connection(server, LDAP_BIND_DN, LDAP_BIND_PASSWORD, auto_bind=True) as conn:
-            # Search for the user DN
+            # Search for the user DN (by uid or cn)
             conn.search(
-                search_base=LDAP_BASE_DN,
-                search_filter=f"(uid={username})",
+                search_base="dc=kaligulix,dc=com",
+                search_filter=f"(|(uid={username})(cn={username}))",
                 search_scope=SUBTREE,
                 attributes=["dn"]
             )
@@ -26,8 +25,8 @@ def ldap_authenticate(username: str, password: str) -> bool:
                 return False
             user_dn = conn.entries[0].entry_dn
 
-        # Now try binding as the user
-        with Connection(server, user_dn, password, auto_bind=True) as user_conn:
+        # Try binding as the user
+        with Connection(server, user_dn, password, auto_bind=True):
             return True
     except Exception:
         return False

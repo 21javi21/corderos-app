@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat-openbsd \
     ldap-utils \
     slapd \
+    curl \
  && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies
