@@ -15,6 +15,9 @@ LDAP_BIND_DN = os.getenv("LDAP_BIND_DN")
 LDAP_BIND_PASSWORD = os.getenv("LDAP_BIND_PASSWORD")
 LDAP_GROUP_DN = os.getenv("LDAP_GROUP_DN")
 
+@router.get("/dashboard", response_class=HTMLResponse)
+def dashboard(request: Request):
+    return templates.TemplateResponse("layout.html", {"request": request})
 
 def make_ssha(password: str) -> str:
     """Genera un hash {SSHA} compatible con slappasswd."""
