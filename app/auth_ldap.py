@@ -116,13 +116,16 @@ def add_user(
                 "loginShell": "/bin/bash",
                 "userPassword": hashed_pw,
             }
-
             if conn.add(dn, attributes=attrs):
-                return {"message": f"✅ User {username} created successfully!"}
+                # Añadir al grupo "users"
+                group_dn = f"cn=users,ou=Groups,{LDAP_BASE_DN}"
+                conn.modify(
+                    group_dn,
+                    {"member": [(MODIFY_ADD, [dn])]}
+                )
+                return {"message": f"✅ User {username} created and added to 'users' group!"}
             else:
                 return {"error": conn.result}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/panel", response_class=HTMLResponse)
 def show_panel(request: Request):
@@ -166,5 +169,27 @@ def delete_user(username: str = Form(...)):
                 return RedirectResponse(url="/auth/list_users", status_code=303)
             else:
                 return {"error": conn.result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/change_group")
+def change_group(username: str = Form(...), group: str = Form(...)):
+    server = Server(LDAP_URI, get_info=ALL)
+    user_dn = f"uid={username},ou=Users,{LDAP_BASE_DN}"
+
+    try:
+        with Connection(server, LDAP_BIND_DN, LDAP_BIND_PASSWORD, auto_bind=True) as conn:
+            # Quitar de users y admins (para evitar duplicados)
+            for grp in ["users", "admins"]:
+                conn.modify(
+                    f"cn={grp},ou=Groups,{LDAP_BASE_DN}",
+                    {"member": [(MODIFY_DELETE, [user_dn])]}
+                )
+            # Añadir al grupo elegido
+            conn.modify(
+                f"cn={group},ou=Groups,{LDAP_BASE_DN}",
+                {"member": [(MODIFY_ADD, [user_dn])]}
+            )
+            return RedirectResponse(url="/auth/list_users", status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -13,7 +13,14 @@
 <body>
     <h2>👥 Users in LDAP</h2>
     <table>
-        <tr><th>UID</th><th>First Name</th><th>Last Name</th><th>Email</th></tr>
+        <tr>
+            <th>UID</th>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>Email</th>
+            <th>Group</th>
+            <th>Actions</th>
+        </tr>
         {% for user in users %}
         <tr>
             <td>{{ user.uid }}</td>
@@ -21,13 +28,22 @@
             <td>{{ user.sn }}</td>
             <td>{{ user.mail }}</td>
             <td>
-                <form method="post" action="/auth/delete_user">
+                <form method="post" action="/auth/change_group" style="display:inline;">
                     <input type="hidden" name="username" value="{{ user.uid }}">
-                    <button type="submit">❌ Delete</button>
+                    <select name="group">
+                        <option value="users">users</option>
+                        <option value="admins">admins</option>
+                    </select>
+                    <button type="submit">Change</button>
+                </form>
+            </td>
+            <td>
+                <form method="post" action="/auth/delete_user" style="display:inline;">
+                    <input type="hidden" name="username" value="{{ user.uid }}">
+                    <button type="submit" onclick="return confirm('Are you sure you want to delete {{ user.uid }}?')">❌ Delete</button>
                 </form>
             </td>
         </tr>
         {% endfor %}
     </table>
-</body>
-</html>
+
