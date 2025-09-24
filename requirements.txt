@@ -8,3 +8,4 @@ bcrypt
 python-jose[cryptography]
 ldap3
 jinja2
+pycryptodome
