@@ -4,6 +4,13 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
+# Install CA certificates
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set environment to make sure Python/LDAP trust system certs
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+
 # Install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
