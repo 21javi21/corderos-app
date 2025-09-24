@@ -14,25 +14,19 @@ def ldap_authenticate(username: str, password: str) -> bool:
     server = Server(LDAP_URI, get_info=ALL)
     try:
         with Connection(server, LDAP_BIND_DN, LDAP_BIND_PASSWORD, auto_bind=True) as conn:
-            search_filter = f"(|(uid={username})(cn={username}))"
             conn.search(
-                search_base=LDAP_BASE_DN,  # usa env para confirmar
-                search_filter=search_filter,
+                search_base=LDAP_BASE_DN,
+                search_filter=f"(|(uid={username})(cn={username}))",
                 search_scope=SUBTREE,
-                attributes=["dn"]
+                attributes=["cn", "uid", "mail"]  # pedir atributos válidos
             )
-            print(f"Search base: {LDAP_BASE_DN}")
-            print(f"Search filter: {search_filter}")
             print(f"Entries: {conn.entries}")
-
             if not conn.entries:
-                print("❌ User not found in LDAP search")
                 return False
-
             user_dn = conn.entries[0].entry_dn
-            print(f"✅ Found DN: {user_dn}")
+            print(f"Found DN: {user_dn}")
 
-        with Connection(server, user_dn, password, auto_bind=True) as user_conn:
+        with Connection(server, user_dn, password, auto_bind=True):
             print("✅ User bind successful")
             return True
     except Exception as e:
