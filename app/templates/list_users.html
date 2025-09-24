@@ -20,6 +20,12 @@
             <td>{{ user.cn }}</td>
             <td>{{ user.sn }}</td>
             <td>{{ user.mail }}</td>
+            <td>
+                <form method="post" action="/auth/delete_user">
+                    <input type="hidden" name="username" value="{{ user.uid }}">
+                    <button type="submit">❌ Delete</button>
+                </form>
+            </td>
         </tr>
         {% endfor %}
     </table>

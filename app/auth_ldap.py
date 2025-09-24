@@ -3,7 +3,7 @@ import base64
 import hashlib
 from ldap3 import Server, Connection, ALL, SUBTREE
 from fastapi import Depends, HTTPException, Form, APIRouter, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 templates = Jinja2Templates(directory="app/templates")
@@ -47,13 +47,44 @@ def ldap_authenticate(username: str, password: str) -> bool:
         print(f"❌ Exception: {e}")
         return False
 
+def is_admin(conn, user_dn: str) -> bool:
+    # Chequear si user_dn está en grupo admins
+    conn.search(
+        search_base=LDAP_GROUP_DN,
+        search_filter=f"(member={user_dn})",
+        attributes=["cn"]
+    )
+    return len(conn.entries) > 0
+
+@router.get("/login", response_class=HTMLResponse)
+def login_form(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
 
 @router.post("/login")
 def login(username: str = Form(...), password: str = Form(...)):
-    if not ldap_authenticate(username, password):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    return {"message": f"Welcome {username}!"}
+    server = Server(LDAP_URI, get_info=ALL)
+    try:
+        with Connection(server, LDAP_BIND_DN, LDAP_BIND_PASSWORD, auto_bind=True) as conn:
+            # Buscar DN del usuario
+            conn.search(
+                search_base=LDAP_BASE_DN,
+                search_filter=f"(uid={username})",
+                attributes=["dn"]
+            )
+            if not conn.entries:
+                raise HTTPException(status_code=401, detail="Invalid user")
+            user_dn = conn.entries[0].entry_dn
 
+        # Probar login real
+        with Connection(server, user_dn, password, auto_bind=True):
+            # Bind correcto → ahora verificar si es admin
+            with Connection(server, LDAP_BIND_DN, LDAP_BIND_PASSWORD, auto_bind=True) as check_conn:
+                if is_admin(check_conn, user_dn):
+                    return templates.TemplateResponse("admin_dashboard.html", {"request": {}, "username": username})
+                else:
+                    return templates.TemplateResponse("user_dashboard.html", {"request": {}, "username": username})
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
 @router.post("/add_user")
 def add_user(
@@ -123,3 +154,15 @@ def list_users(request: Request):
 
     return templates.TemplateResponse("list_users.html", {"request": request, "users": users})
 
+@router.post("/delete_user")
+def delete_user(username: str = Form(...)):
+    server = Server(LDAP_URI, get_info=ALL)
+    try:
+        with Connection(server, LDAP_BIND_DN, LDAP_BIND_PASSWORD, auto_bind=True) as conn:
+            dn = f"uid={username},ou=Users,{LDAP_BASE_DN}"
+            if conn.delete(dn):
+                return RedirectResponse(url="/auth/list_users", status_code=303)
+            else:
+                return {"error": conn.result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
