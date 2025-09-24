@@ -14,21 +14,29 @@ def ldap_authenticate(username: str, password: str) -> bool:
     server = Server(LDAP_URI, get_info=ALL)
     try:
         with Connection(server, LDAP_BIND_DN, LDAP_BIND_PASSWORD, auto_bind=True) as conn:
-            # Search for the user DN (by uid or cn)
+            search_filter = f"(|(uid={username})(cn={username}))"
             conn.search(
-                search_base="dc=kaligulix,dc=com",
-                search_filter=f"(|(uid={username})(cn={username}))",
+                search_base=LDAP_BASE_DN,  # usa env para confirmar
+                search_filter=search_filter,
                 search_scope=SUBTREE,
                 attributes=["dn"]
             )
-            if not conn.entries:
-                return False
-            user_dn = conn.entries[0].entry_dn
+            print(f"Search base: {LDAP_BASE_DN}")
+            print(f"Search filter: {search_filter}")
+            print(f"Entries: {conn.entries}")
 
-        # Try binding as the user
-        with Connection(server, user_dn, password, auto_bind=True):
+            if not conn.entries:
+                print("❌ User not found in LDAP search")
+                return False
+
+            user_dn = conn.entries[0].entry_dn
+            print(f"✅ Found DN: {user_dn}")
+
+        with Connection(server, user_dn, password, auto_bind=True) as user_conn:
+            print("✅ User bind successful")
             return True
-    except Exception:
+    except Exception as e:
+        print(f"❌ Exception: {e}")
         return False
 
 @router.post("/login")
