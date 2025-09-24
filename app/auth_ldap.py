@@ -48,10 +48,10 @@ def ldap_authenticate(username: str, password: str) -> bool:
         return False
 
 def is_admin(conn, user_dn: str) -> bool:
-    # Chequear si user_dn está en grupo admins
+    # Busca si user_dn pertenece al grupo admins
     conn.search(
-        search_base=LDAP_GROUP_DN,
-        search_filter=f"(member={user_dn})",
+        search_base="ou=Groups,dc=kaligulix,dc=com",
+        search_filter=f"(&(objectClass=groupOfNames)(cn=admins)(member={user_dn}))",
         attributes=["cn"]
     )
     return len(conn.entries) > 0
@@ -60,32 +60,32 @@ def is_admin(conn, user_dn: str) -> bool:
 def login_form(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
-@router.post("/login")
-def login(username: str = Form(...), password: str = Form(...)):
+@router.post("/login", response_class=HTMLResponse)
+def login(request: Request, username: str = Form(...), password: str = Form(...)):
     server = Server(LDAP_URI, get_info=ALL)
     try:
         with Connection(server, LDAP_BIND_DN, LDAP_BIND_PASSWORD, auto_bind=True) as conn:
-            # Buscar DN del usuario
             conn.search(
                 search_base=LDAP_BASE_DN,
                 search_filter=f"(uid={username})",
                 search_scope=SUBTREE,
-                attributes=["cn", "sn", "mail", "uid"]  # atributos reales
+                attributes=["cn", "sn", "mail", "uid"]
             )
             if not conn.entries:
                 raise HTTPException(status_code=401, detail="Invalid user")
 
-            user_dn = conn.entries[0].entry_dn 
+            user_dn = conn.entries[0].entry_dn
 
-        # Probar login real
+        # Intento de login con usuario real
         with Connection(server, user_dn, password, auto_bind=True):
-            # Bind correcto → ahora verificar si es admin
             with Connection(server, LDAP_BIND_DN, LDAP_BIND_PASSWORD, auto_bind=True) as check_conn:
                 if is_admin(check_conn, user_dn):
-                    return templates.TemplateResponse("admin_dashboard.html", {"request": {}, "username": username})
+                    return templates.TemplateResponse("admin_dashboard.html", {"request": request, "username": username})
                 else:
-                    return templates.TemplateResponse("user_dashboard.html", {"request": {}, "username": username})
-    except Exception:
+                    return templates.TemplateResponse("user_dashboard.html", {"request": request, "username": username})
+
+    except Exception as e:
+        print(f"❌ Exception: {e}")
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
 @router.post("/add_user")
