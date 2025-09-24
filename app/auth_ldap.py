@@ -2,8 +2,11 @@ import os
 import base64
 import hashlib
 from ldap3 import Server, Connection, ALL, SUBTREE
-from fastapi import Depends, HTTPException, Form, APIRouter, Body
+from fastapi import Depends, HTTPException, Form, APIRouter, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 
+templates = Jinja2Templates(directory="app/templates")
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 LDAP_URI = os.getenv("LDAP_URI")
@@ -87,3 +90,7 @@ def add_user(
                 return {"error": conn.result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/panel", response_class=HTMLResponse)
+def show_panel(request: Request):
+    return templates.TemplateResponse("auth_panel.html", {"request": request})

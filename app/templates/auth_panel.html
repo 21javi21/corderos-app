@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Corderos - User Panel</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; }
+        h2 { color: #2c3e50; }
+        form { max-width: 400px; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
+        label { display: block; margin-top: 10px; }
+        input { width: 100%; padding: 8px; margin-top: 5px; }
+        button { margin-top: 15px; padding: 10px; background: #2c3e50; color: white; border: none; cursor: pointer; }
+        button:hover { background: #34495e; }
+    </style>
+</head>
+<body>
+    <h2>➕ Add New User</h2>
+    <form method="post" action="/auth/add_user">
+        <label>Username</label>
+        <input type="text" name="username" required>
+
+        <label>Password</label>
+        <input type="password" name="password" required>
+
+        <label>First Name (cn)</label>
+        <input type="text" name="cn" required>
+
+        <label>Last Name (sn)</label>
+        <input type="text" name="sn" required>
+
+        <label>Email</label>
+        <input type="email" name="mail" required>
+
+        <button type="submit">Create User</button>
+    </form>
+</body>
+</html>
