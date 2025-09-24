@@ -69,11 +69,13 @@ def login(username: str = Form(...), password: str = Form(...)):
             conn.search(
                 search_base=LDAP_BASE_DN,
                 search_filter=f"(uid={username})",
-                attributes=["dn"]
+                search_scope=SUBTREE,
+                attributes=["cn", "sn", "mail", "uid"]  # atributos reales
             )
             if not conn.entries:
                 raise HTTPException(status_code=401, detail="Invalid user")
-            user_dn = conn.entries[0].entry_dn
+
+            user_dn = conn.entries[0].entry_dn 
 
         # Probar login real
         with Connection(server, user_dn, password, auto_bind=True):
