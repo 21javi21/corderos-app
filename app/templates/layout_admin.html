@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      height: 100vh;
+    }
+    .sidebar {
+      width: 220px;
+      background: #2c3e50;
+      color: white;
+      padding: 20px;
+    }
+    .sidebar h2 {
+      font-size: 1.2em;
+      margin-bottom: 20px;
+    }
+    .sidebar a {
+      display: block;
+      color: white;
+      text-decoration: none;
+      margin: 10px 0;
+      padding: 8px;
+      border-radius: 5px;
+    }
+    .sidebar a:hover {
+      background: #34495e;
+    }
+    .content {
+      flex: 1;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <h2>⚙️ Admin Menu</h2>
+    <a href="/auth/panel" target="main_frame">User Panel</a>
+    <a href="/auth/add_user_form" target="main_frame">➕ Add User</a>
+    <a href="/auth/list_users" target="main_frame">👥 List Users</a>
+    <a href="/bets" target="main_frame">🐑 Corderos Betting</a>
+  </div>
+
+  <iframe name="main_frame" class="content"></iframe>
+</body>
+</html>

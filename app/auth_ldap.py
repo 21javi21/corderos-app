@@ -83,9 +83,9 @@ def login(request: Request, username: str = Form(...), password: str = Form(...)
         with Connection(server, user_dn, password, auto_bind=True):
             with Connection(server, LDAP_BIND_DN, LDAP_BIND_PASSWORD, auto_bind=True) as check_conn:
                 if is_admin(check_conn, user_dn):
-                    return templates.TemplateResponse("admin_dashboard.html", {"request": request, "username": username})
+                    return RedirectResponse(url="/auth/dashboard_admin", status_code=303)
                 else:
-                    return templates.TemplateResponse("user_dashboard.html", {"request": request, "username": username})
+                    return RedirectResponse(url="/auth/dashboard_user", status_code=303)
 
     except Exception as e:
         print(f"❌ Exception: {e}")
@@ -198,3 +198,11 @@ def change_group(username: str = Form(...), group: str = Form(...)):
             return RedirectResponse(url="/auth/list_users", status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/dashboard_admin", response_class=HTMLResponse)
+def dashboard_admin(request: Request):
+    return templates.TemplateResponse("layout_admin.html", {"request": request})
+
+@router.get("/dashboard_user", response_class=HTMLResponse)
+def dashboard_user(request: Request):
+    return templates.TemplateResponse("layout_user.html", {"request": request})

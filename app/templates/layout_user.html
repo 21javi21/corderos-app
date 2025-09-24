@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Corderos Betting</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      height: 100vh;
+    }
+    .sidebar {
+      width: 220px;
+      background: #2c3e50;
+      color: white;
+      padding: 20px;
+    }
+    .sidebar h2 {
+      font-size: 1.2em;
+      margin-bottom: 20px;
+    }
+    .sidebar a {
+      display: block;
+      color: white;
+      text-decoration: none;
+      margin: 10px 0;
+      padding: 8px;
+      border-radius: 5px;
+    }
+    .sidebar a:hover {
+      background: #34495e;
+    }
+    .content {
+      flex: 1;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <h2>🐑 Menu</h2>
+    <a href="/bets" target="main_frame">Corderos Betting</a>
+  </div>
+
+  <iframe name="main_frame" class="content"></iframe>
+</body>
+</html>
