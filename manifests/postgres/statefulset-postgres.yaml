@@ -35,10 +35,10 @@ spec:
           mountPath: /var/lib/postgresql/data
         - name: initdb
           mountPath: /docker-entrypoint-initdb.d
-      volumes:
-      - name: initdb
-        configMap:
-          name: postgres-initdb
+        volumes:
+        - name: initdb
+          configMap:
+            name: postgres-initdb
   volumeClaimTemplates:
   - metadata:
       name: postgres-data
