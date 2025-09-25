@@ -5,7 +5,7 @@ resources:
   - namespace.yaml
   - secret-db.yaml
   - secret-ldap.yaml
-  - postgres/kustomization.yaml
+  - postgres/
   - deployment.yaml
   - service.yaml
   - ingress.yaml
