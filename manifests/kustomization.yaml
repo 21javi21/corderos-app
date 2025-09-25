@@ -9,4 +9,4 @@ resources:
   - service.yaml
   - ingress.yaml
   - hpa.yaml
-  - postgres/
+  - postgres/kustomization.yaml
