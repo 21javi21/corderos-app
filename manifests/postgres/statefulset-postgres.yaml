@@ -47,15 +47,3 @@ spec:
       resources:
         requests:
           storage: 5Gi
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: postgres
-  namespace: corderos
-spec:
-  ports:
-  - port: 5432
-    targetPort: 5432
-  selector:
-    app: postgres
