@@ -4,6 +4,7 @@ namespace: corderos
 resources:
   - namespace.yaml
   - secret-ldap.yaml
+  - postgres/
   - deployment.yaml
   - service.yaml
   - ingress.yaml
