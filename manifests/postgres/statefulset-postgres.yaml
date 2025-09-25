@@ -4,7 +4,7 @@ metadata:
   name: postgres
   namespace: corderos
 spec:
-  serviceName: "postgres"
+  serviceName: postgres
   replicas: 1
   selector:
     matchLabels:
@@ -15,35 +15,39 @@ spec:
         app: postgres
     spec:
       containers:
-      - name: postgres
-        image: postgres:16
-        ports:
-        - containerPort: 5432
-          name: postgres
-        env:
-        - name: POSTGRES_USER
-          value: postgres
-        - name: POSTGRES_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: postgres-secret
-              key: password
-        - name: PGDATA
-          value: /var/lib/postgresql/data/pgdata
-        volumeMounts:
-        - name: postgres-data
-          mountPath: /var/lib/postgresql/data
-        - name: initdb
-          mountPath: /docker-entrypoint-initdb.d
-        volumes:
+        - name: postgres
+          image: postgres:16
+          env:
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: initdb
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+      volumes:
         - name: initdb
           configMap:
             name: postgres-initdb
+            # opcional: asegurar nombre de fichero dentro del mount
+            items:
+              - key: init.sql
+                path: init.sql
   volumeClaimTemplates:
-  - metadata:
-      name: postgres-data
-    spec:
-      accessModes: ["ReadWriteOnce"]
-      resources:
-        requests:
-          storage: 5Gi
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
