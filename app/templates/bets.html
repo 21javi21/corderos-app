@@ -31,6 +31,7 @@
         <th>Participantes</th>
         <th>Apostado</th>
         <th>Resultado</th>
+        <th>Acciones</th>
       </tr>
     </thead>
     <tbody>
@@ -43,18 +44,31 @@
         <td>{{ a.tipo }}</td>
         <td>{{ a.multiplica }}</td>
         <td>
-          {{ a.apostante1 or "-" }}<br/>
-          {{ a.apostante2 or "-" }}<br/>
-          {{ a.apostante3 or "-" }}
+          {% set parts = [a.apostante1, a.apostante2, a.apostante3] | select | list %}
+          {% if parts|length == 0 %}
+            -
+          {% else %}
+            {{ parts | join('<br/>') | safe }}
+          {% endif %}
         </td>
         <td>
-          {{ a.apostado1 or "-" }}<br/>
-          {{ a.apostado2 or "-" }}<br/>
-          {{ a.apostado3 or "-" }}
+          {% set bets = [a.apostado1, a.apostado2, a.apostado3] | select | list %}
+          {% if bets|length == 0 %}
+            -
+          {% else %}
+            {{ bets | join('<br/>') | safe }}
+          {% endif %}
         </td>
         <td>
           G: {{ a.ganador1 or "-" }}{% if a.ganador2 %}, {{ a.ganador2 }}{% endif %}<br/>
           P: {{ a.perdedor1 or "-" }}{% if a.perdedor2 %}, {{ a.perdedor2 }}{% endif %}
+        </td>
+        <td>
+          <form method="post"
+                action="/apuestas/{{ a.id }}/borrar"
+                onsubmit="return confirm('¿Borrar apuesta #{{ a.id }}?');">
+            <button type="submit">🗑️ Borrar</button>
+          </form>
         </td>
       </tr>
       {% endfor %}
@@ -63,5 +77,14 @@
   {% else %}
     <p>No hay apuestas todavía. Usa “Añadir apuesta”.</p>
   {% endif %}
+  <div style="margin-top:12px;">
+    {% if has_prev %}
+      <a href="/bets?page={{ page - 1 }}">« Anterior</a>
+    {% endif %}
+    <span style="margin:0 8px;">Página {{ page }}</span>
+    {% if has_next %}
+      <a href="/bets?page={{ page + 1 }}">Siguiente »</a>
+    {% endif %}
+  </div>
 </body>
 </html>

@@ -1,0 +1,14 @@
+# Expose PostgreSQL (TCP/5432) through NGINX Ingress Controller's stream (TCP) mode
+# Prereq: the NGINX Ingress Controller must have:
+#   --tcp-services-configmap=ingress-nginx/tcp-services
+# Then it will listen on port 5432 of the controller's Service (typically a LoadBalancer).
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tcp-services
+  namespace: ingress-nginx
+data:
+  # Format: "<external_port>": "<namespace/service_name>:<service_port>"
+  # Maps the controller's port 5432 to the corderos/postgres Service:5432
+  "5432": "corderos/postgres:5432"

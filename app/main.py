@@ -1,6 +1,6 @@
 import os
 from datetime import date
-from fastapi import FastAPI, Request, Form
+from fastapi import FastAPI, Request, Query, Form, Path
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 import psycopg2
@@ -67,8 +67,10 @@ def dashboard(request: Request):
     return templates.TemplateResponse("user_dashboard.html", {"request": request, "apuestas": apuestas})
 
 @app.get("/bets", response_class=HTMLResponse)
-def bets_home(request: Request):
-    # lista últimas 25 apuestas
+def bets_home(request: Request, page: int = Query(1, ge=1)):
+    limit = 25
+    offset = (page - 1) * limit
+
     conn = pool.getconn()
     try:
         with conn.cursor() as cur:
@@ -79,9 +81,13 @@ def bets_home(request: Request):
                        ganador1, ganador2, perdedor1, perdedor2
                 FROM apuestas
                 ORDER BY id DESC
-                LIMIT 25
-            """)
+                LIMIT %s OFFSET %s
+            """, (limit, offset))
             rows = cur.fetchall()
+
+            # para saber si hay siguiente página
+            cur.execute("SELECT COUNT(*) FROM apuestas")
+            total = cur.fetchone()[0]
     finally:
         pool.putconn(conn)
 
@@ -92,10 +98,16 @@ def bets_home(request: Request):
             "apostante1": r[6], "apostante2": r[7], "apostante3": r[8],
             "apostado1": r[9], "apostado2": r[10], "apostado3": r[11],
             "ganador1": r[12], "ganador2": r[13], "perdedor1": r[14], "perdedor2": r[15],
-        }
-        for r in rows
+        } for r in rows
     ]
-    return templates.TemplateResponse("bets.html", {"request": request, "apuestas": apuestas})
+
+    has_prev = page > 1
+    has_next = (page * limit) < total
+
+    return templates.TemplateResponse(
+        "bets.html",
+        {"request": request, "apuestas": apuestas, "page": page, "has_prev": has_prev, "has_next": has_next}
+    )
 
 
 @app.get("/apuestas/nueva", response_class=HTMLResponse)
@@ -149,4 +161,14 @@ def crear_apuesta(
     finally:
         pool.putconn(conn)
 
+    return RedirectResponse(url="/bets", status_code=303)
+
+@app.post("/apuestas/{apuesta_id}/borrar")
+def borrar_apuesta(apuesta_id: int = Path(...)):
+    conn = pool.getconn()
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute("DELETE FROM apuestas WHERE id = %s", (apuesta_id,))
+    finally:
+        pool.putconn(conn)
     return RedirectResponse(url="/bets", status_code=303)
