@@ -8,3 +8,4 @@ resources:
   - statefulset-postgres.yaml
   - service-postgres.yaml
   - initdb-configmap.yaml
+  - postgres-configmap.yaml
