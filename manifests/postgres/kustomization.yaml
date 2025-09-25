@@ -7,3 +7,4 @@ resources:
   - secret-postgres.yaml
   - statefulset-postgres.yaml
   - service-postgres.yaml
+  - initdb-configmap.yaml

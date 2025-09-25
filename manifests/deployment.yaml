@@ -29,8 +29,8 @@ spec:
         env:
         - name: DATABASE_URL
           valueFrom:
-            secretKeyRef:
-              name: corderos-app-db
+            configMapKeyRef:
+              name: corderos-app-config
               key: DATABASE_URL
         envFrom:
         - secretRef:

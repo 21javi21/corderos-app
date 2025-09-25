@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-initdb
+  namespace: corderos
+data:
+  init.sql: |
+    -- Crear base de datos
+    CREATE DATABASE corderos;
+
+    \c corderos;
+
+    -- Tabla de apuestas versión Corderos League
+    CREATE TABLE apuestas (
+        id SERIAL PRIMARY KEY,
+        apuesta VARCHAR(255) NOT NULL,        -- Descripción breve de la apuesta
+        creacion DATE NOT NULL,               -- Fecha de creación
+        categoria VARCHAR(100) NOT NULL,      -- Ej: fútbol, basket, politica
+        tipo VARCHAR(100) NOT NULL,           -- Ej: corta o larga
+        multiplica INT NOT NULL,              -- Cantidad de corderos que se juegan
+        apostante1 VARCHAR(100),              -- Quién apuesta
+        apostante2 VARCHAR(100),
+        apostante3 VARCHAR(100),
+        apostado1 VARCHAR(255),               -- Qué apostó
+        apostado2 VARCHAR(255),
+        apostado3 VARCHAR(255),
+        ganador1 VARCHAR(100),                -- Quién ganó
+        ganador2 VARCHAR(100),
+        perdedor1 VARCHAR(100),               -- Quién perdió
+        perdedor2 VARCHAR(100)
+    );
+
+    -- Usuario de la app
+    CREATE USER corderos_app WITH ENCRYPTED PASSWORD 'corderos_pass';
+    GRANT ALL PRIVILEGES ON DATABASE corderos TO corderos_app;
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO corderos_app;
