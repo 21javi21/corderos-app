@@ -3,7 +3,7 @@ kind: Kustomization
 namespace: corderos
 resources:
   - initdb-configmap.yaml
-  - postgres-configmap.yaml
   - secret-postgres.yaml
-  - service-postgres.yaml
   - statefulset-postgres.yaml
+  - service-postgres.yaml
+
