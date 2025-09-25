@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Nueva apuesta</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    form { max-width: 640px; }
+    fieldset { margin-bottom: 14px; }
+    label { display:block; margin-top:8px; }
+    input, select { width:100%; padding:8px; box-sizing:border-box; }
+    .actions { margin-top: 12px; }
+    .btn { display:inline-block; padding:8px 12px; background:#2c3e50; color:#fff; text-decoration:none; border:none; border-radius:4px; cursor:pointer; }
+    .btn:hover { background:#34495e; }
+    .link { margin-left: 8px; }
+  </style>
+</head>
+<body>
+  <h1 class="title">Nueva apuesta</h1>
+
+  <form method="post" action="/apuestas/nueva">
+    <fieldset>
+      <legend>Datos básicos</legend>
+      <label>Apuesta</label>
+      <input name="apuesta" type="text" required />
+
+      <label>Categoría</label>
+      <input name="categoria" type="text" placeholder="fútbol, basket, política..." required />
+
+      <label>Tipo</label>
+      <select name="tipo" required>
+        <option value="corta">corta</option>
+        <option value="larga">larga</option>
+      </select>
+
+      <label>Multiplica (corderos)</label>
+      <input name="multiplica" type="number" step="1" min="1" required />
+    </fieldset>
+
+    <fieldset>
+      <legend>Participantes (opcional)</legend>
+      <label>Apostante 1</label><input name="apostante1" type="text" />
+      <label>Apostante 2</label><input name="apostante2" type="text" />
+      <label>Apostante 3</label><input name="apostante3" type="text" />
+    </fieldset>
+
+    <fieldset>
+      <legend>Apostado (opcional)</legend>
+      <label>Apostado 1</label><input name="apostado1" type="text" />
+      <label>Apostado 2</label><input name="apostado2" type="text" />
+      <label>Apostado 3</label><input name="apostado3" type="text" />
+    </fieldset>
+
+    <fieldset>
+      <legend>Resultado (opcional)</legend>
+      <label>Ganador 1</label><input name="ganador1" type="text" />
+      <label>Ganador 2</label><input name="ganador2" type="text" />
+      <label>Perdedor 1</label><input name="perdedor1" type="text" />
+      <label>Perdedor 2</label><input name="perdedor2" type="text" />
+    </fieldset>
+
+    <div class="actions">
+      <button type="submit" class="btn">Guardar</button>
+      <a href="/bets" class="link">Cancelar</a>
+    </div>
+  </form>
+</body>
+</html>

@@ -27,6 +27,19 @@ spec:
             memory: "512Mi"
             cpu: "400m"
         env:
+        - name: DB_HOST
+          value: postgres
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: corderos
+        - name: DB_USER
+          value: postgres
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
         - name: DATABASE_URL
           valueFrom:
             configMapKeyRef:

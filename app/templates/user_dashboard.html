@@ -1,9 +1,69 @@
 <!DOCTYPE html>
 <html>
-<head><title>User Dashboard</title></head>
+<head>
+  <meta charset="utf-8" />
+  <title>Corderos League — Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 8px; vertical-align: top; }
+    th { background: #f4f4f4; }
+    .topbar { margin: 1rem 0; }
+    .topbar a { display:inline-block; padding:8px 10px; background:#2c3e50; color:#fff; text-decoration:none; border-radius:4px; }
+    .topbar a:hover { background:#34495e; }
+  </style>
+</head>
 <body>
-    <h2>🐑 Corderos Betting App</h2>
-    <p>Bienvenido {{ username }}!</p>
-    <a href="/bets">Entrar a la app</a>
+  <h1 class="title">Corderos League — Dashboard</h1>
+
+  <div class="topbar">
+    <a href="/apuestas/nueva">➕ Añadir apuesta</a>
+  </div>
+
+  {% if apuestas and apuestas|length > 0 %}
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Apuesta</th>
+          <th>Creación</th>
+          <th>Categoría</th>
+          <th>Tipo</th>
+          <th>Multiplica</th>
+          <th>Participantes</th>
+          <th>Apostado</th>
+          <th>Resultado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in apuestas %}
+        <tr>
+          <td>{{ a.id }}</td>
+          <td>{{ a.apuesta }}</td>
+          <td>{{ a.creacion }}</td>
+          <td>{{ a.categoria }}</td>
+          <td>{{ a.tipo }}</td>
+          <td>{{ a.multiplica }}</td>
+          <td>
+            {{ a.apostante1 or "-" }}<br/>
+            {{ a.apostante2 or "-" }}<br/>
+            {{ a.apostante3 or "-" }}
+          </td>
+          <td>
+            {{ a.apostado1 or "-" }}<br/>
+            {{ a.apostado2 or "-" }}<br/>
+            {{ a.apostado3 or "-" }}
+          </td>
+          <td>
+            G: {{ a.ganador1 or "-" }}{% if a.ganador2 %}, {{ a.ganador2 }}{% endif %}<br/>
+            P: {{ a.perdedor1 or "-" }}{% if a.perdedor2 %}, {{ a.perdedor2 }}{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No hay apuestas todavía.</p>
+  {% endif %}
 </body>
 </html>
