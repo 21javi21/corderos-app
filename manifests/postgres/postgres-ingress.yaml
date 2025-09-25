@@ -6,8 +6,8 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: tcp-services
-  namespace: ingress-nginx
+  name: postgres-ingress
+  namespace: corderos
 data:
   # Format: "<external_port>": "<namespace/service_name>:<service_port>"
   # Maps the controller's port 5432 to the corderos/postgres Service:5432
