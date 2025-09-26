@@ -8,5 +8,5 @@ spec:
   dnsNames:
   - postgres.kaligulix.com
   issuerRef:
-    name: letsencrypt
+    name: letsencrypt-prod
     kind: ClusterIssuer
