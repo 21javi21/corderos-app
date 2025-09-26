@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: postgres-db-tls
+  namespace: corderos
+spec:
+  secretName: postgres-db-tls
+  dnsNames:
+  - postgres.kaligulix.com
+  issuerRef:
+    name: letsencrypt
+    kind: ClusterIssuer

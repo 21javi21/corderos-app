@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: postgres-db
+  namespace: corderos
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod  
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+      - postgres.kaligulix.com
+    secretName: postgres-db-tls
+  rules:
+  - host: postgres.kaligulix.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: corderos-app
+            port:
+              number: 5432
