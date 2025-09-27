@@ -25,7 +25,11 @@
       <input name="apuesta" type="text" required />
 
       <label>Categoría</label>
-      <input name="categoria" type="text" placeholder="fútbol, basket, política..." required />
+      <select name="categoria" required>
+        {% for categoria in categorias %}
+          <option value="{{ categoria }}">{{ categoria }}</option>
+        {% endfor %}
+      </select>
 
       <label>Tipo</label>
       <select name="tipo" required>
@@ -34,14 +38,36 @@
       </select>
 
       <label>Multiplica (corderos)</label>
-      <input name="multiplica" type="number" step="1" min="1" required />
+      <select name="multiplica" required>
+        {% for opcion in multiplica_opciones %}
+          <option value="{{ opcion }}">{{ opcion }}</option>
+        {% endfor %}
+      </select>
     </fieldset>
 
     <fieldset>
       <legend>Participantes (opcional)</legend>
-      <label>Apostante 1</label><input name="apostante1" type="text" />
-      <label>Apostante 2</label><input name="apostante2" type="text" />
-      <label>Apostante 3</label><input name="apostante3" type="text" />
+      <label>Apostante 1</label>
+      <select name="apostante1">
+        <option value="">-- Selecciona --</option>
+        {% for usuario in usuarios %}
+          <option value="{{ usuario }}">{{ usuario }}</option>
+        {% endfor %}
+      </select>
+      <label>Apostante 2</label>
+      <select name="apostante2">
+        <option value="">-- Selecciona --</option>
+        {% for usuario in usuarios %}
+          <option value="{{ usuario }}">{{ usuario }}</option>
+        {% endfor %}
+      </select>
+      <label>Apostante 3</label>
+      <select name="apostante3">
+        <option value="">-- Selecciona --</option>
+        {% for usuario in usuarios %}
+          <option value="{{ usuario }}">{{ usuario }}</option>
+        {% endfor %}
+      </select>
     </fieldset>
 
     <fieldset>
@@ -53,10 +79,34 @@
 
     <fieldset>
       <legend>Resultado (opcional)</legend>
-      <label>Ganador 1</label><input name="ganador1" type="text" />
-      <label>Ganador 2</label><input name="ganador2" type="text" />
-      <label>Perdedor 1</label><input name="perdedor1" type="text" />
-      <label>Perdedor 2</label><input name="perdedor2" type="text" />
+      <label>Ganador 1</label>
+      <select name="ganador1">
+        <option value="">-- Selecciona --</option>
+        {% for usuario in usuarios %}
+          <option value="{{ usuario }}">{{ usuario }}</option>
+        {% endfor %}
+      </select>
+      <label>Ganador 2</label>
+      <select name="ganador2">
+        <option value="">-- Selecciona --</option>
+        {% for usuario in usuarios %}
+          <option value="{{ usuario }}">{{ usuario }}</option>
+        {% endfor %}
+      </select>
+      <label>Perdedor 1</label>
+      <select name="perdedor1">
+        <option value="">-- Selecciona --</option>
+        {% for usuario in usuarios %}
+          <option value="{{ usuario }}">{{ usuario }}</option>
+        {% endfor %}
+      </select>
+      <label>Perdedor 2</label>
+      <select name="perdedor2">
+        <option value="">-- Selecciona --</option>
+        {% for usuario in usuarios %}
+          <option value="{{ usuario }}">{{ usuario }}</option>
+        {% endfor %}
+      </select>
     </fieldset>
 
     <div class="actions">

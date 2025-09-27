@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Clasificación de corderos</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { margin-bottom: 16px; }
+    .topbar { margin-bottom: 12px; }
+    .topbar a { display: inline-block; padding: 8px 10px; background:#2c3e50; color:#fff; text-decoration:none; border-radius:4px; margin-right: 8px; }
+    .topbar a:hover { background:#34495e; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    th, td {
+      padding: 12px;
+      text-align: center;
+      border-bottom: 1px solid #e6e6e6;
+    }
+    th {
+      background: linear-gradient(120deg, #2c3e50, #34495e);
+      color: #fff;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-size: 0.85rem;
+    }
+    tbody tr:nth-child(even) { background: #f8fbff; }
+    tbody tr:hover { background: #eef5ff; }
+    .empty { color: #555; font-style: italic; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <a href="/bets">⬅️ Volver a apuestas</a>
+    <a href="/apuestas/nueva">➕ Añadir apuesta</a>
+  </div>
+  <h1>Clasificación</h1>
+
+  {% if clasificacion and clasificacion|length > 0 %}
+  <table>
+    <thead>
+      <tr>
+        <th>Posición</th>
+        <th>Nombre</th>
+        <th>Apostados</th>
+        <th>Ganados</th>
+        <th>Perdidos</th>
+        <th>Balance</th>
+        <th>Pendientes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for fila in clasificacion %}
+      <tr>
+        <td>{{ fila.posicion }}</td>
+        <td>{{ fila.nombre }}</td>
+        <td>{{ fila.apuestados }}</td>
+        <td>{{ fila.ganados }}</td>
+        <td>{{ fila.perdidos }}</td>
+        <td>{{ fila.balance }}</td>
+        <td>{{ fila.pendientes }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p class="empty">No hay datos de apuestas todavía.</p>
+  {% endif %}
+</body>
+</html>

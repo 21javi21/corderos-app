@@ -1,11 +1,24 @@
 import os
+from collections import defaultdict
 from datetime import date
+
 from fastapi import FastAPI, Request, Form, Path, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 import psycopg2
 from psycopg2.pool import SimpleConnectionPool
+
 from app import auth_ldap
+
+CATEGORIAS_PREDEFINIDAS = [
+    "Futbol",
+    "Basket",
+    "Tennis",
+    "Politica",
+    "Otros",
+]
+
+MULTIPLICA_OPCIONES = [1, 2, 3, 4, 5]
 
 app = FastAPI()
 templates = Jinja2Templates(directory="app/templates")
@@ -79,7 +92,16 @@ def bets_home(request: Request):
 
 @app.get("/apuestas/nueva", response_class=HTMLResponse)
 def nueva_apuesta_form(request: Request):
-    return templates.TemplateResponse("add_apuesta.html", {"request": request})
+    usuarios = auth_ldap.fetch_all_user_uids()
+    return templates.TemplateResponse(
+        "add_apuesta.html",
+        {
+            "request": request,
+            "usuarios": usuarios,
+            "categorias": CATEGORIAS_PREDEFINIDAS,
+            "multiplica_opciones": MULTIPLICA_OPCIONES,
+        },
+    )
 
 
 @app.post("/apuestas/nueva")
@@ -119,16 +141,124 @@ def crear_apuesta(
                     %s, %s, %s, %s
                 ) RETURNING id
             """, (
-                apuesta, date.today(), categoria, tipo, multiplica,
-                apostante1, apostante2, apostante3,
-                apostado1, apostado2, apostado3,
-                ganador1, ganador2, perdedor1, perdedor2
+                apuesta,
+                date.today(),
+                categoria,
+                tipo,
+                multiplica,
+                _empty_to_none(apostante1),
+                _empty_to_none(apostante2),
+                _empty_to_none(apostante3),
+                _empty_to_none(apostado1),
+                _empty_to_none(apostado2),
+                _empty_to_none(apostado3),
+                _empty_to_none(ganador1),
+                _empty_to_none(ganador2),
+                _empty_to_none(perdedor1),
+                _empty_to_none(perdedor2)
             ))
             _new_id = cur.fetchone()[0]
     finally:
         pool.putconn(conn)
 
     return RedirectResponse(url="/bets", status_code=303)
+
+
+@app.get("/clasificacion", response_class=HTMLResponse)
+def clasificacion(request: Request):
+    conn = pool.getconn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT multiplica,
+                       apostante1, apostante2, apostante3,
+                       ganador1, ganador2,
+                       perdedor1, perdedor2
+                FROM apuestas
+                """
+            )
+            rows = cur.fetchall()
+    finally:
+        pool.putconn(conn)
+
+    stats: dict[str, dict[str, int]] = defaultdict(
+        lambda: {
+            "apuestados": 0,
+            "ganados": 0,
+            "ganados_base": 0,
+            "perdidos": 0,
+        }
+    )
+
+    def _sum_player(value: str | None, bucket: str, amount: int = 1, base_bucket: str | None = None):
+        nombre = _empty_to_none(value)
+        if not nombre:
+            return
+        stats[nombre][bucket] += amount
+        if base_bucket:
+            stats[nombre][base_bucket] += 1
+
+    for row in rows:
+        multiplica = row[0] or 0
+        apostantes = row[1:4]
+        ganadores = row[4:6]
+        perdedores = row[6:8]
+
+        for apostante in apostantes:
+            nombre = _empty_to_none(apostante)
+            if not nombre:
+                continue
+            stats[nombre]["apuestados"] += 1
+
+        for ganador in ganadores:
+            _sum_player(ganador, "ganados", amount=multiplica, base_bucket="ganados_base")
+
+        for perdedor in perdedores:
+            _sum_player(perdedor, "perdidos")
+
+    usuarios_ldap = auth_ldap.fetch_all_user_uids()
+
+    for usuario in usuarios_ldap:
+        _ = stats[usuario]  # ensure presence
+
+    clasificacion_datos = []
+    for nombre, datos in stats.items():
+        ganados = datos["ganados"]
+        perdidos = datos["perdidos"]
+        balance = ganados - perdidos
+        pendientes = datos["apuestados"] - (datos["ganados_base"] + datos["perdidos"])
+        clasificacion_datos.append(
+            {
+                "nombre": nombre,
+                "apuestados": datos["apuestados"],
+                "ganados": ganados,
+                "perdidos": perdidos,
+                "balance": balance,
+                "pendientes": pendientes,
+            }
+        )
+
+    clasificacion_datos.sort(
+        key=lambda item: (
+            -item["balance"],
+            -item["ganados"],
+            item["perdidos"],
+            item["nombre"].lower(),
+        )
+    )
+
+    for idx, fila in enumerate(clasificacion_datos, start=1):
+        fila["posicion"] = idx
+
+    return templates.TemplateResponse(
+        "clasificacion.html",
+        {
+            "request": request,
+            "clasificacion": clasificacion_datos,
+            "usuarios": usuarios_ldap,
+        },
+    )
 
 @app.post("/apuestas/{apuesta_id}/borrar")
 def borrar_apuesta(apuesta_id: int = Path(...)):

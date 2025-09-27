@@ -15,6 +15,39 @@ LDAP_BIND_DN = os.getenv("LDAP_BIND_DN")
 LDAP_BIND_PASSWORD = os.getenv("LDAP_BIND_PASSWORD")
 LDAP_GROUP_DN = os.getenv("LDAP_GROUP_DN")
 
+
+def fetch_all_user_uids() -> list[str]:
+    """Return a sorted list of LDAP user identifiers.
+
+    This helper is imported by other modules (e.g. for dropdowns) so we keep
+    the dependency here to avoid repeating the LDAP connection boilerplate.
+    Failures are swallowed and reported as an empty list to keep the UI usable
+    even if LDAP is momentarily unavailable.
+    """
+
+    required_settings = [LDAP_URI, LDAP_BASE_DN, LDAP_BIND_DN, LDAP_BIND_PASSWORD]
+    if not all(required_settings):
+        return []
+
+    server = Server(LDAP_URI, get_info=ALL)
+    user_ids: list[str] = []
+
+    try:
+        with Connection(server, LDAP_BIND_DN, LDAP_BIND_PASSWORD, auto_bind=True) as conn:
+            conn.search(
+                search_base=LDAP_BASE_DN,
+                search_filter="(objectClass=inetOrgPerson)",
+                search_scope=SUBTREE,
+                attributes=["uid"],
+            )
+            for entry in conn.entries:
+                if "uid" in entry and str(entry.uid):
+                    user_ids.append(str(entry.uid))
+    except Exception as exc:  # pragma: no cover - defensive logging for ops
+        print(f"⚠️  Unable to fetch LDAP users: {exc}")
+
+    return sorted(set(user_ids))
+
 @router.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request):
     return templates.TemplateResponse("layout.html", {"request": request})
