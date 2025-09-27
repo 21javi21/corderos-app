@@ -2,6 +2,7 @@
 <html>
 <head>
   <title>Corderos — Apuestas</title>
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
     table {
@@ -97,7 +98,7 @@
   </div>
 
   {% if apuestas and apuestas|length > 0 %}
-  <table>
+  <table id="betsTable">
     <thead>
       <tr>
         <th>ID</th>
@@ -115,7 +116,7 @@
     <tbody>
       {% for a in apuestas %}
       <tr>
-        <td>{{ a.id }}</td>
+        <td>{{ loop.index }}</td>
         <td>{{ a.apuesta }}</td>
         <td>{{ a.creacion }}</td>
         <td>{{ a.categoria }}</td>
@@ -166,14 +167,32 @@
   {% else %}
     <p>No hay apuestas todavía. Usa “Añadir apuesta”.</p>
   {% endif %}
-  <div style="margin-top:12px;">
-    {% if has_prev %}
-      <a href="/bets?page={{ page - 1 }}">« Anterior</a>
-    {% endif %}
-    <span style="margin:0 8px;">Página {{ page }}</span>
-    {% if has_next %}
-      <a href="/bets?page={{ page + 1 }}">Siguiente »</a>
-    {% endif %}
-  </div>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+  <script>
+    $(document).ready(function() {
+      const tableElement = $('#betsTable');
+      if (!tableElement.length) {
+        return;
+      }
+
+      const table = tableElement.DataTable({
+        language: {
+          url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+        },
+        columnDefs: [
+          { targets: 0, orderable: false, searchable: false },
+          { targets: -1, orderable: false, searchable: false }
+        ]
+      });
+
+      table.on('order.dt search.dt', function() {
+        let i = 1;
+        table.column(0, { search: 'applied', order: 'applied' }).nodes().each(function(cell) {
+          cell.innerHTML = i++;
+        });
+      }).draw();
+    });
+  </script>
 </body>
 </html>
