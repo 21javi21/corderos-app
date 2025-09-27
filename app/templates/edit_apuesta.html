@@ -26,7 +26,11 @@
       <input name="apuesta" type="text" value="{{ apuesta.apuesta }}" required />
 
       <label>Categoría</label>
-      <input name="categoria" type="text" value="{{ apuesta.categoria }}" required />
+      <select name="categoria" required>
+        {% for categoria in categorias %}
+          <option value="{{ categoria }}" {% if apuesta.categoria == categoria %}selected{% endif %}>{{ categoria }}</option>
+        {% endfor %}
+      </select>
 
       <label>Tipo</label>
       <select name="tipo" required>
@@ -35,14 +39,36 @@
       </select>
 
       <label>Multiplica (corderos)</label>
-      <input name="multiplica" type="number" step="1" min="1" value="{{ apuesta.multiplica }}" required />
+      <select name="multiplica" required>
+        {% for opcion in multiplica_opciones %}
+          <option value="{{ opcion }}" {% if apuesta.multiplica == opcion %}selected{% endif %}>{{ opcion }}</option>
+        {% endfor %}
+      </select>
     </fieldset>
 
     <fieldset>
       <legend>Participantes (opcional)</legend>
-      <label>Apostante 1</label><input name="apostante1" type="text" value="{{ apuesta.apostante1 or '' }}" />
-      <label>Apostante 2</label><input name="apostante2" type="text" value="{{ apuesta.apostante2 or '' }}" />
-      <label>Apostante 3</label><input name="apostante3" type="text" value="{{ apuesta.apostante3 or '' }}" />
+      <label>Apostante 1</label>
+      <select name="apostante1">
+        <option value="">-- Selecciona --</option>
+        {% for usuario in usuarios %}
+          <option value="{{ usuario }}" {% if apuesta.apostante1 == usuario %}selected{% endif %}>{{ usuario }}</option>
+        {% endfor %}
+      </select>
+      <label>Apostante 2</label>
+      <select name="apostante2">
+        <option value="">-- Selecciona --</option>
+        {% for usuario in usuarios %}
+          <option value="{{ usuario }}" {% if apuesta.apostante2 == usuario %}selected{% endif %}>{{ usuario }}</option>
+        {% endfor %}
+      </select>
+      <label>Apostante 3</label>
+      <select name="apostante3">
+        <option value="">-- Selecciona --</option>
+        {% for usuario in usuarios %}
+          <option value="{{ usuario }}" {% if apuesta.apostante3 == usuario %}selected{% endif %}>{{ usuario }}</option>
+        {% endfor %}
+      </select>
     </fieldset>
 
     <fieldset>
@@ -54,10 +80,34 @@
 
     <fieldset>
       <legend>Resultado (opcional)</legend>
-      <label>Ganador 1</label><input name="ganador1" type="text" value="{{ apuesta.ganador1 or '' }}" />
-      <label>Ganador 2</label><input name="ganador2" type="text" value="{{ apuesta.ganador2 or '' }}" />
-      <label>Perdedor 1</label><input name="perdedor1" type="text" value="{{ apuesta.perdedor1 or '' }}" />
-      <label>Perdedor 2</label><input name="perdedor2" type="text" value="{{ apuesta.perdedor2 or '' }}" />
+      <label>Ganador 1</label>
+      <select name="ganador1">
+        <option value="">-- Selecciona --</option>
+        {% for usuario in usuarios %}
+          <option value="{{ usuario }}" {% if apuesta.ganador1 == usuario %}selected{% endif %}>{{ usuario }}</option>
+        {% endfor %}
+      </select>
+      <label>Ganador 2</label>
+      <select name="ganador2">
+        <option value="">-- Selecciona --</option>
+        {% for usuario in usuarios %}
+          <option value="{{ usuario }}" {% if apuesta.ganador2 == usuario %}selected{% endif %}>{{ usuario }}</option>
+        {% endfor %}
+      </select>
+      <label>Perdedor 1</label>
+      <select name="perdedor1">
+        <option value="">-- Selecciona --</option>
+        {% for usuario in usuarios %}
+          <option value="{{ usuario }}" {% if apuesta.perdedor1 == usuario %}selected{% endif %}>{{ usuario }}</option>
+        {% endfor %}
+      </select>
+      <label>Perdedor 2</label>
+      <select name="perdedor2">
+        <option value="">-- Selecciona --</option>
+        {% for usuario in usuarios %}
+          <option value="{{ usuario }}" {% if apuesta.perdedor2 == usuario %}selected{% endif %}>{{ usuario }}</option>
+        {% endfor %}
+      </select>
     </fieldset>
 
     <div class="actions">
