@@ -28,7 +28,7 @@
     }
     tbody tr:nth-child(even) { background: #f8fbff; }
     tbody tr:hover { background: #eef5ff; }
-    td:nth-child(2), td:nth-child(7), td:nth-child(8) {
+    td:nth-child(2) {
       text-align: left;
     }
     .topbar { margin-bottom: 12px; }
@@ -38,13 +38,18 @@
     .actions-cell {
       display:flex;
       flex-direction:column;
+      align-items:stretch;
       gap:8px;
+    }
+    .actions-cell form {
+      margin:0;
     }
     .actions-cell a,
     .actions-cell button {
       display:flex;
       justify-content:center;
       align-items:center;
+      width:100%;
       min-width:120px;
       padding:8px 12px;
       border-radius:6px;
