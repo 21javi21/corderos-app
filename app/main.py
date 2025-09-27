@@ -312,9 +312,17 @@ def editar_apuesta_form(request: Request, apuesta_id: int = Path(...)):
         "perdedor2": row[14],
     }
 
+    usuarios = auth_ldap.fetch_all_user_uids()
+
     return templates.TemplateResponse(
         "edit_apuesta.html",
-        {"request": request, "apuesta": apuesta},
+        {
+            "request": request,
+            "apuesta": apuesta,
+            "usuarios": usuarios,
+            "categorias": CATEGORIAS_PREDEFINIDAS,
+            "multiplica_opciones": MULTIPLICA_OPCIONES,
+        },
     )
 
 
