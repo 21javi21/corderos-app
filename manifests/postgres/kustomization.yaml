@@ -7,5 +7,4 @@ resources:
   - statefulset-postgres.yaml
   - service-postgres.yaml
   - postgres-certificate.yaml
-  - postgres-ingress.yaml
 

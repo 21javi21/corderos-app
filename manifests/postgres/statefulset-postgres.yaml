@@ -39,7 +39,6 @@ spec:
         - name: initdb
           configMap:
             name: postgres-initdb
-            # opcional: asegurar nombre de fichero dentro del mount
             items:
               - key: init.sql
                 path: init.sql
