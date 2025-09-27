@@ -1,6 +1,6 @@
 import os
 from datetime import date
-from fastapi import FastAPI, Request, Query, Form, Path
+from fastapi import FastAPI, Request, Query, Form, Path, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 import psycopg2
@@ -42,29 +42,7 @@ def login_page(request: Request):
 
 @app.get("/user_dashboard", response_class=HTMLResponse)
 def dashboard(request: Request):
-    with pool.connection() as conn, conn.cursor() as cur:
-        cur.execute("""
-            SELECT id, apuesta, creacion, categoria, tipo, multiplica,
-                   apostante1, apostante2, apostante3,
-                   apostado1, apostado2, apostado3,
-                   ganador1, ganador2, perdedor1, perdedor2
-            FROM apuestas
-            ORDER BY id DESC
-            LIMIT 25
-        """)
-        rows = cur.fetchall()
-
-    apuestas = [
-        {
-            "id": r[0], "apuesta": r[1], "creacion": r[2], "categoria": r[3], "tipo": r[4],
-            "multiplica": r[5],
-            "apostante1": r[6], "apostante2": r[7], "apostante3": r[8],
-            "apostado1": r[9], "apostado2": r[10], "apostado3": r[11],
-            "ganador1": r[12], "ganador2": r[13], "perdedor1": r[14], "perdedor2": r[15],
-        }
-        for r in rows
-    ]
-    return templates.TemplateResponse("user_dashboard.html", {"request": request, "apuestas": apuestas})
+    return templates.TemplateResponse("user_dashboard.html", {"request": request})
 
 @app.get("/bets", response_class=HTMLResponse)
 def bets_home(request: Request, page: int = Query(1, ge=1)):
@@ -171,4 +149,122 @@ def borrar_apuesta(apuesta_id: int = Path(...)):
             cur.execute("DELETE FROM apuestas WHERE id = %s", (apuesta_id,))
     finally:
         pool.putconn(conn)
+    return RedirectResponse(url="/bets", status_code=303)
+
+
+@app.get("/apuestas/{apuesta_id}/editar", response_class=HTMLResponse)
+def editar_apuesta_form(request: Request, apuesta_id: int = Path(...)):
+    conn = pool.getconn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, apuesta, categoria, tipo, multiplica,
+                       apostante1, apostante2, apostante3,
+                       apostado1, apostado2, apostado3,
+                       ganador1, ganador2, perdedor1, perdedor2
+                FROM apuestas
+                WHERE id = %s
+                """,
+                (apuesta_id,),
+            )
+            row = cur.fetchone()
+    finally:
+        pool.putconn(conn)
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Apuesta no encontrada")
+
+    apuesta = {
+        "id": row[0],
+        "apuesta": row[1],
+        "categoria": row[2],
+        "tipo": row[3],
+        "multiplica": row[4],
+        "apostante1": row[5],
+        "apostante2": row[6],
+        "apostante3": row[7],
+        "apostado1": row[8],
+        "apostado2": row[9],
+        "apostado3": row[10],
+        "ganador1": row[11],
+        "ganador2": row[12],
+        "perdedor1": row[13],
+        "perdedor2": row[14],
+    }
+
+    return templates.TemplateResponse(
+        "edit_apuesta.html",
+        {"request": request, "apuesta": apuesta},
+    )
+
+
+def _empty_to_none(value: str | None) -> str | None:
+    if value is None:
+        return None
+    value = value.strip()
+    return value or None
+
+
+@app.post("/apuestas/{apuesta_id}/editar")
+def actualizar_apuesta(
+    apuesta_id: int = Path(...),
+    apuesta: str = Form(...),
+    categoria: str = Form(...),
+    tipo: str = Form(...),
+    multiplica: int = Form(...),
+    apostante1: str | None = Form(None),
+    apostante2: str | None = Form(None),
+    apostante3: str | None = Form(None),
+    apostado1: str | None = Form(None),
+    apostado2: str | None = Form(None),
+    apostado3: str | None = Form(None),
+    ganador1: str | None = Form(None),
+    ganador2: str | None = Form(None),
+    perdedor1: str | None = Form(None),
+    perdedor2: str | None = Form(None),
+):
+    conn = pool.getconn()
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE apuestas SET
+                    apuesta = %s,
+                    categoria = %s,
+                    tipo = %s,
+                    multiplica = %s,
+                    apostante1 = %s,
+                    apostante2 = %s,
+                    apostante3 = %s,
+                    apostado1 = %s,
+                    apostado2 = %s,
+                    apostado3 = %s,
+                    ganador1 = %s,
+                    ganador2 = %s,
+                    perdedor1 = %s,
+                    perdedor2 = %s
+                WHERE id = %s
+                """,
+                (
+                    apuesta,
+                    categoria,
+                    tipo,
+                    multiplica,
+                    _empty_to_none(apostante1),
+                    _empty_to_none(apostante2),
+                    _empty_to_none(apostante3),
+                    _empty_to_none(apostado1),
+                    _empty_to_none(apostado2),
+                    _empty_to_none(apostado3),
+                    _empty_to_none(ganador1),
+                    _empty_to_none(ganador2),
+                    _empty_to_none(perdedor1),
+                    _empty_to_none(perdedor2),
+                    apuesta_id,
+                ),
+            )
+    finally:
+        pool.putconn(conn)
+
     return RedirectResponse(url="/bets", status_code=303)

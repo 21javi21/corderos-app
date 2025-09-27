@@ -2,82 +2,50 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Corderos League — Dashboard</title>
+  <title>Corderos App — Dashboard</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #ddd; padding: 8px; vertical-align: top; }
-    th { background: #f4f4f4; }
-    .topbar { margin: 1rem 0; }
-    .topbar a { display:inline-block; padding:8px 10px; background:#2c3e50; color:#fff; text-decoration:none; border-radius:4px; }
-    .topbar a:hover { background:#34495e; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      height: 100vh;
+    }
+    .sidebar {
+      width: 220px;
+      background: #2c3e50;
+      color: #fff;
+      padding: 24px 20px;
+      box-sizing: border-box;
+    }
+    .sidebar h2 {
+      font-size: 1.3em;
+      margin: 0 0 20px 0;
+    }
+    .sidebar a {
+      display: block;
+      color: #fff;
+      text-decoration: none;
+      margin: 12px 0;
+      padding: 10px 12px;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.08);
+      text-align: center;
+    }
+    .sidebar a:hover {
+      background: rgba(255,255,255,0.18);
+    }
+    .content {
+      flex: 1;
+      border: none;
+    }
   </style>
 </head>
 <body>
-  <h1 class="title">Corderos League — Dashboard</h1>
-
-  <div class="topbar">
-    <a href="/apuestas/nueva">➕ Añadir apuesta</a>
-  </div>
-
-  {% if apuestas and apuestas|length > 0 %}
-    <table>
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Apuesta</th>
-          <th>Creación</th>
-          <th>Categoría</th>
-          <th>Tipo</th>
-          <th>Multiplica</th>
-          <th>Participantes</th>
-          <th>Apostado</th>
-          <th>Resultado</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for a in apuestas %}
-        <tr>
-          <td>{{ a.id }}</td>
-          <td>{{ a.apuesta }}</td>
-          <td>{{ a.creacion }}</td>
-          <td>{{ a.categoria }}</td>
-          <td>{{ a.tipo }}</td>
-          <td>{{ a.multiplica }}</td>
-          <td>
-            {% set parts = [a.apostante1, a.apostante2, a.apostante3] | select | list %}
-            {% if parts|length == 0 %}
-              -
-            {% else %}
-              {{ parts | join('<br/>') | safe }}
-            {% endif %}
-          </td>
-          <td>
-            {% set bets = [a.apostado1, a.apostado2, a.apostado3] | select | list %}
-            {% if bets|length == 0 %}
-              -
-            {% else %}
-              {{ bets | join('<br/>') | safe }}
-            {% endif %}
-          </td>
-          <td>
-            G: {{ a.ganador1 or "-" }}{% if a.ganador2 %}, {{ a.ganador2 }}{% endif %}<br/>
-            P: {{ a.perdedor1 or "-" }}{% if a.perdedor2 %}, {{ a.perdedor2 }}{% endif %}
-          </td>
-          <td>
-            <form method="post"
-                  action="/apuestas/{{ a.id }}/borrar"
-                  onsubmit="return confirm('¿Borrar apuesta #{{ a.id }}?');">
-              <button type="submit">🗑️ Borrar</button>
-            </form>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <p>No hay apuestas todavía.</p>
-  {% endif %}
+  <aside class="sidebar">
+    <h2>🐑 Corderos</h2>
+    <a href="/bets" target="main_frame">Ver apuestas</a>
+    <a href="/apuestas/nueva" target="main_frame">➕ Añadir apuesta</a>
+  </aside>
+  <iframe name="main_frame" class="content" src="/bets"></iframe>
 </body>
 </html>
