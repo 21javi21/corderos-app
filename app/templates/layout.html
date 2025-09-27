@@ -32,6 +32,17 @@
     .sidebar a:hover {
       background: #34495e;
     }
+    .league-icons {
+      margin-top: 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+    }
+    .league-icons img {
+      width: 120px;
+      filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.4));
+    }
     .content {
       flex: 1;
       border: none;
@@ -47,6 +58,12 @@
     <a href="/auth/add_user_form" target="main_frame">Add User</a>
     <a href="/auth/list_users" target="main_frame">List Users</a>
     <a href="/bets" target="main_frame">Corderos Betting</a>
+    <div class="league-icons">
+      <img src="{{ request.url_for('static', path='la-liga.png') }}" alt="La Liga logo">
+      <img src="{{ request.url_for('static', path='premier.png') }}" alt="Premier League logo">
+      <img src="{{ request.url_for('static', path='champions.png') }}" alt="Champions League logo">
+      <img src="{{ request.url_for('static', path='nba.png') }}" alt="NBA logo">
+    </div>
   </div>
 
   <iframe name="main_frame" class="content"></iframe>
