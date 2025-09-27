@@ -4,33 +4,73 @@
   <title>Corderos — Apuestas</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #ddd; padding: 8px; vertical-align: top; }
-    th { background: #f4f4f4; }
+    table {
+      border-collapse: separate;
+      border-spacing: 0;
+      width: 100%;
+      background: #fff;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    th, td {
+      border-bottom: 1px solid #e6e6e6;
+      padding: 12px;
+      vertical-align: top;
+      text-align: center;
+    }
+    th {
+      background: linear-gradient(120deg, #2c3e50, #34495e);
+      color: #fff;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-size: 0.85rem;
+    }
+    tbody tr:nth-child(even) { background: #f8fbff; }
+    tbody tr:hover { background: #eef5ff; }
+    td:nth-child(2), td:nth-child(7), td:nth-child(8) {
+      text-align: left;
+    }
     .topbar { margin-bottom: 12px; }
     .topbar a { display: inline-block; padding: 8px 10px; background:#2c3e50; color:#fff; text-decoration:none; border-radius:4px; }
     .topbar a:hover { background:#34495e; }
     small { color:#666; }
-    .actions-cell { display:flex; flex-direction:column; gap:6px; }
-    .actions-cell a, .actions-cell button {
-      display:inline-block;
-      padding:6px 10px;
-      border-radius:4px;
+    .actions-cell {
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .actions-cell a,
+    .actions-cell button {
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      min-width:120px;
+      padding:8px 12px;
+      border-radius:6px;
       text-decoration:none;
       border:none;
       cursor:pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
     .actions-cell a {
       background:#2980b9;
       color:#fff;
-      text-align:center;
     }
-    .actions-cell a:hover { background:#1f6390; }
+    .actions-cell a:hover {
+      background:#1f6390;
+      transform: translateY(-1px);
+      box-shadow:0 6px 12px rgba(31, 99, 144, 0.25);
+    }
     .actions-cell button {
       background:#c0392b;
       color:#fff;
     }
-    .actions-cell button:hover { background:#992d22; }
+    .actions-cell button:hover {
+      background:#992d22;
+      transform: translateY(-1px);
+      box-shadow:0 6px 12px rgba(153, 45, 34, 0.25);
+    }
   </style>
 </head>
 <body>
