@@ -201,8 +201,8 @@ def change_group(username: str = Form(...), group: str = Form(...)):
 
 @router.get("/dashboard_admin", response_class=HTMLResponse)
 def dashboard_admin(request: Request):
-    return templates.TemplateResponse("layout_admin.html", {"request": request})
+    return templates.TemplateResponse("admin_dashboard.html", {"request": request})
 
 @router.get("/dashboard_user", response_class=HTMLResponse)
 def dashboard_user(request: Request):
-    return templates.TemplateResponse("layout_user.html", {"request": request})
+    return templates.TemplateResponse("user_dashboard.html", {"request": request})

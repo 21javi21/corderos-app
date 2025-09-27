@@ -1,11 +1,51 @@
 <!DOCTYPE html>
 <html>
-<head><title>Admin Dashboard</title></head>
+<head>
+  <title>Admin Dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      height: 100vh;
+    }
+    .sidebar {
+      width: 240px;
+      background: #2c3e50;
+      color: #fff;
+      padding: 24px 20px;
+      box-sizing: border-box;
+    }
+    .sidebar h2 {
+      font-size: 1.3em;
+      margin: 0 0 20px 0;
+    }
+    .sidebar a {
+      display: block;
+      color: #fff;
+      text-decoration: none;
+      margin: 12px 0;
+      padding: 8px 10px;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.08);
+    }
+    .sidebar a:hover {
+      background: rgba(255,255,255,0.18);
+    }
+    .content {
+      flex: 1;
+      border: none;
+    }
+  </style>
+</head>
 <body>
-    <h2>⚙️ Admin Dashboard</h2>
-    <ul>
-        <li><a href="/auth/panel">Administración de usuarios</a></li>
-        <li><a href="/bets">Corderos Betting App</a></li>
-    </ul>
+  <aside class="sidebar">
+    <h2>⚙️ Opciones de administrador</h2>
+    <a href="/auth/panel" target="main_frame">Panel de usuarios LDAP</a>
+    <a href="/auth/add_user_form" target="main_frame">➕ Añadir usuario</a>
+    <a href="/auth/list_users" target="main_frame">👥 Listado de usuarios</a>
+    <a href="/bets" target="main_frame">🐑 Corderos App</a>
+  </aside>
+  <iframe name="main_frame" class="content" src="/auth/panel"></iframe>
 </body>
 </html>
