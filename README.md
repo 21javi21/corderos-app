@@ -14,7 +14,7 @@ Local development setup for the FastAPI application that uses PostgreSQL.
    ```
 3. Export the connection string so the app can reach the database:
    ```bash
-   export DATABASE_URL="postgresql://corderos_app:corderos_pass@localhost:5432/corderos"
+   export DATABASE_URL="postgresql://corderos_app:corderos_pass@localhost:55432/corderos"
    ```
 4. Run the FastAPI server:
    ```bash
@@ -29,7 +29,7 @@ Local development setup for the FastAPI application that uses PostgreSQL.
 
 With the container running you can inspect the data directly:
 ```bash
-psql postgresql://corderos_app:corderos_pass@localhost:5432/corderos
+psql postgresql://corderos_app:corderos_pass@localhost:55432/corderos
 ```
 
 ## Troubleshooting
@@ -39,4 +39,4 @@ psql postgresql://corderos_app:corderos_pass@localhost:5432/corderos
   docker compose -f docker-compose.postgres.yml down -v
   docker compose -f docker-compose.postgres.yml up -d
   ```
-- Make sure port `5432` is free before starting the container.
+- Make sure port `55432` is free before starting the container.
