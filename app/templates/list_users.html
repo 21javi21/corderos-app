@@ -3,11 +3,71 @@
 <head>
     <title>List Users</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 30px; }
-        h2 { color: #2c3e50; }
-        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-        th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
-        th { background: #2c3e50; color: white; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            padding: 40px;
+            background: #0d1826;
+            color: #e6edf7;
+        }
+        h2 {
+            color: #f0f6ff;
+            margin-bottom: 24px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 10px;
+            background: #162433;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 12px 32px rgba(3, 10, 18, 0.55);
+        }
+        th, td {
+            border: 1px solid #223044;
+            padding: 14px 16px;
+            text-align: left;
+        }
+        th {
+            background: linear-gradient(135deg, #243447, #1f2d3c);
+            color: #f8fbff;
+            text-transform: uppercase;
+            font-size: 0.82rem;
+            letter-spacing: 0.08em;
+        }
+        tr:nth-child(even) {
+            background: rgba(15, 26, 39, 0.65);
+        }
+        tr:hover {
+            background: rgba(38, 56, 78, 0.6);
+        }
+        select,
+        button {
+            font-family: inherit;
+            font-size: 0.95rem;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #2e3d51;
+            background: #1e2c3c;
+            color: #f2f6ff;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        select {
+            min-width: 120px;
+        }
+        button:hover,
+        select:hover {
+            background: #2c3e50;
+            box-shadow: 0 8px 20px rgba(15, 23, 36, 0.55);
+            transform: translateY(-1px);
+        }
+        form {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
     </style>
 </head>
 <body>
@@ -28,22 +88,23 @@
             <td>{{ user.sn }}</td>
             <td>{{ user.mail }}</td>
             <td>
-                <form method="post" action="/auth/change_group" style="display:inline;">
+                <form method="post" action="/auth/change_group">
                     <input type="hidden" name="username" value="{{ user.uid }}">
                     <select name="group">
-                        <option value="users">users</option>
-                        <option value="admins">admins</option>
+                        <option value="users" {% if user.group is defined and user.group == 'users' %}selected{% endif %}>users</option>
+                        <option value="admins" {% if user.group is defined and user.group == 'admins' %}selected{% endif %}>admins</option>
                     </select>
                     <button type="submit">Change</button>
                 </form>
             </td>
             <td>
-                <form method="post" action="/auth/delete_user" style="display:inline;">
+                <form method="post" action="/auth/delete_user" onsubmit="return confirm('Are you sure you want to delete {{ user.uid }}?');">
                     <input type="hidden" name="username" value="{{ user.uid }}">
-                    <button type="submit" onclick="return confirm('Are you sure you want to delete {{ user.uid }}?')">❌ Delete</button>
+                    <button type="submit">❌ Delete</button>
                 </form>
             </td>
         </tr>
         {% endfor %}
     </table>
-
+</body>
+</html>

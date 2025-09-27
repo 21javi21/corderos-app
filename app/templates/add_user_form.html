@@ -3,18 +3,71 @@
 <head>
     <title>Add User</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 30px; }
-        h2 { color: #2c3e50; }
-        form { max-width: 400px; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
-        label { display: block; margin-top: 10px; }
-        input { width: 100%; padding: 8px; margin-top: 5px; }
-        button { margin-top: 15px; padding: 10px; background: #2c3e50; color: white; border: none; cursor: pointer; }
-        button:hover { background: #34495e; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0f1926 0%, #132236 50%, #0a1420 100%);
+            color: #e6edf7;
+        }
+        .card {
+            background: rgba(16, 25, 38, 0.95);
+            padding: 40px 44px;
+            border-radius: 16px;
+            box-shadow: 0 24px 50px rgba(5, 10, 18, 0.75);
+            width: 100%;
+            max-width: 420px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        h2 {
+            margin: 0 0 12px;
+            color: #f2f7ff;
+            text-align: center;
+        }
+        label {
+            font-size: 0.9rem;
+            color: #aebcd1;
+            letter-spacing: 0.03em;
+        }
+        input {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 8px;
+            border: 1px solid #28384c;
+            background: #0f1b2a;
+            color: #f7fbff;
+        }
+        input:focus {
+            outline: none;
+            border-color: #3a7bd5;
+            box-shadow: 0 0 0 3px rgba(58, 123, 213, 0.25);
+        }
+        button {
+            margin-top: 12px;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #2c3e50, #1f2d3c);
+            color: #f2f7ff;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 16px 30px rgba(8, 14, 24, 0.6);
+        }
     </style>
 </head>
 <body>
-    <h2>➕ Add New User</h2>
-    <form method="post" action="/auth/add_user">
+    <form class="card" method="post" action="/auth/add_user">
+        <h2>➕ Add New User</h2>
         <label>Username</label>
         <input type="text" name="username" required>
         <label>Password</label>
