@@ -1,6 +1,6 @@
 import os
 from datetime import date
-from fastapi import FastAPI, Request, Query, Form, Path, HTTPException
+from fastapi import FastAPI, Request, Form, Path, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 import psycopg2
@@ -45,10 +45,7 @@ def dashboard(request: Request):
     return templates.TemplateResponse("user_dashboard.html", {"request": request})
 
 @app.get("/bets", response_class=HTMLResponse)
-def bets_home(request: Request, page: int = Query(1, ge=1)):
-    limit = 25
-    offset = (page - 1) * limit
-
+def bets_home(request: Request):
     conn = pool.getconn()
     try:
         with conn.cursor() as cur:
@@ -59,13 +56,8 @@ def bets_home(request: Request, page: int = Query(1, ge=1)):
                        ganador1, ganador2, perdedor1, perdedor2
                 FROM apuestas
                 ORDER BY id DESC
-                LIMIT %s OFFSET %s
-            """, (limit, offset))
+            """)
             rows = cur.fetchall()
-
-            # para saber si hay siguiente página
-            cur.execute("SELECT COUNT(*) FROM apuestas")
-            total = cur.fetchone()[0]
     finally:
         pool.putconn(conn)
 
@@ -79,12 +71,9 @@ def bets_home(request: Request, page: int = Query(1, ge=1)):
         } for r in rows
     ]
 
-    has_prev = page > 1
-    has_next = (page * limit) < total
-
     return templates.TemplateResponse(
         "bets.html",
-        {"request": request, "apuestas": apuestas, "page": page, "has_prev": has_prev, "has_next": has_next}
+        {"request": request, "apuestas": apuestas}
     )
 
 
