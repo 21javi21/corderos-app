@@ -1,9 +1,72 @@
 <!DOCTYPE html>
 <html>
-<head><title>Login</title></head>
+<head>
+    <title>Login</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at top, #1b2940 0%, #0b1622 55%, #08111b 100%);
+            color: #e6edf7;
+        }
+        form {
+            background: rgba(17, 27, 39, 0.92);
+            padding: 36px 40px;
+            border-radius: 14px;
+            box-shadow: 0 20px 45px rgba(5, 12, 22, 0.75);
+            min-width: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        h2 {
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #f2f7ff;
+        }
+        label {
+            font-size: 0.9rem;
+            letter-spacing: 0.05em;
+            color: #a9b8cc;
+        }
+        input {
+            padding: 12px 14px;
+            border-radius: 8px;
+            border: 1px solid #253445;
+            background: #111c2a;
+            color: #f0f6ff;
+        }
+        input:focus {
+            outline: none;
+            border-color: #3a7bd5;
+            box-shadow: 0 0 0 3px rgba(58, 123, 213, 0.25);
+        }
+        button {
+            margin-top: 8px;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #2c3e50, #1f2d3c);
+            color: #f7fbff;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 24px rgba(10, 17, 28, 0.6);
+        }
+    </style>
+</head>
 <body>
-    <h2>🔑 Login</h2>
     <form method="post" action="/auth/login">
+        <h2>🔑 Login</h2>
         <label>Username</label>
         <input type="text" name="username" required>
         <label>Password</label>

@@ -4,16 +4,99 @@
   <meta charset="utf-8" />
   <title>Editar apuesta</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    form { max-width: 640px; }
-    fieldset { margin-bottom: 14px; }
-    label { display:block; margin-top:8px; }
-    input, select { width:100%; padding:8px; box-sizing:border-box; }
-    .actions { margin-top: 12px; display:flex; gap:8px; align-items:center; }
-    .btn { display:inline-block; padding:8px 12px; background:#2c3e50; color:#fff; text-decoration:none; border:none; border-radius:4px; cursor:pointer; }
-    .btn:hover { background:#34495e; }
-    .link { color:#2c3e50; text-decoration:none; }
-    .link:hover { text-decoration:underline; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      padding: 40px 32px 60px;
+      background: radial-gradient(circle at 80% 10%, rgba(61, 90, 128, 0.32) 0%, rgba(10, 18, 30, 0.94) 50%, #060c14 100%);
+      color: #e6edf7;
+    }
+    h1 {
+      margin-top: 0;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      color: #f0f6ff;
+    }
+    form {
+      max-width: 780px;
+      margin-top: 20px;
+      background: rgba(12, 21, 33, 0.95);
+      padding: 32px 36px;
+      border-radius: 18px;
+      box-shadow: 0 26px 60px rgba(4, 9, 18, 0.78);
+      backdrop-filter: blur(2px);
+    }
+    fieldset {
+      margin-bottom: 22px;
+      border: 1px solid rgba(52, 69, 90, 0.6);
+      border-radius: 12px;
+      padding: 18px 20px 20px;
+      background: rgba(14, 24, 36, 0.7);
+    }
+    legend {
+      padding: 0 12px;
+      color: #9fb4cf;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 0.82rem;
+    }
+    label {
+      display: block;
+      margin-top: 14px;
+      font-size: 0.95rem;
+      color: #c0cdde;
+    }
+    input,
+    select {
+      width: 100%;
+      padding: 10px 14px;
+      margin-top: 6px;
+      border-radius: 8px;
+      border: 1px solid #294056;
+      background: #0f1a29;
+      color: #f0f6ff;
+      box-sizing: border-box;
+    }
+    input:focus,
+    select:focus {
+      outline: none;
+      border-color: #3a7bd5;
+      box-shadow: 0 0 0 3px rgba(58, 123, 213, 0.25);
+    }
+    .actions {
+      margin-top: 24px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 18px;
+      background: linear-gradient(135deg, #2c3e50, #1f2d3c);
+      color: #f7fbff;
+      text-decoration: none;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      min-width: 180px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 28px rgba(7, 13, 24, 0.65);
+    }
+    .link {
+      color: #93b3ff;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .link:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
