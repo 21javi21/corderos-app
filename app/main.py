@@ -5,6 +5,7 @@ from datetime import date
 from fastapi import FastAPI, Request, Form, Path, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 import psycopg2
 from psycopg2.pool import SimpleConnectionPool
 
@@ -23,6 +24,7 @@ MULTIPLICA_OPCIONES = [1, 2, 3, 4, 5]
 app = FastAPI()
 templates = Jinja2Templates(directory="app/templates")
 app.include_router(auth_ldap.router)
+app.mount("/static", StaticFiles(directory="app/images"), name="static")
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 

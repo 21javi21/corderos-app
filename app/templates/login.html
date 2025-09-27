@@ -15,7 +15,7 @@
         }
         form {
             background: rgba(17, 27, 39, 0.92);
-            padding: 36px 40px;
+            padding: 36px 40px 32px;
             border-radius: 14px;
             box-shadow: 0 20px 45px rgba(5, 12, 22, 0.75);
             min-width: 320px;
@@ -62,6 +62,33 @@
             transform: translateY(-2px);
             box-shadow: 0 14px 24px rgba(10, 17, 28, 0.6);
         }
+        .league-strip {
+            margin-top: 6px;
+            padding-top: 18px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .league-strip p {
+            margin: 0 0 12px 0;
+            font-size: 0.85rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #8fa4c0;
+            text-align: center;
+        }
+        .league-logos {
+            display: flex;
+            justify-content: center;
+            gap: 18px;
+            flex-wrap: wrap;
+        }
+        .league-logos img {
+            height: 46px;
+            filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.35));
+            transition: transform 0.2s ease;
+        }
+        .league-logos img:hover {
+            transform: translateY(-4px) scale(1.03);
+        }
     </style>
 </head>
 <body>
@@ -72,6 +99,15 @@
         <label>Password</label>
         <input type="password" name="password" required>
         <button type="submit">Login</button>
+        <div class="league-strip">
+            <p>Ligas destacadas</p>
+            <div class="league-logos">
+                <img src="{{ request.url_for('static', path='la-liga.png') }}" alt="La Liga logo">
+                <img src="{{ request.url_for('static', path='premier.png') }}" alt="Premier League logo">
+                <img src="{{ request.url_for('static', path='champions.png') }}" alt="Champions League logo">
+                <img src="{{ request.url_for('static', path='nba.png') }}" alt="NBA logo">
+            </div>
+        </div>
     </form>
 </body>
 </html>
