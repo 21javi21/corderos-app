@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: corderos_pass
       POSTGRES_DB: corderos
     ports:
-      - "5432:5432"
+      - "55432:5432"
     volumes:
       - ./dev/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
       - postgres-data:/var/lib/postgresql/data
