@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:14
+    container_name: corderos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: corderos_app
+      POSTGRES_PASSWORD: corderos_pass
+      POSTGRES_DB: corderos
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./dev/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U corderos_app -d corderos"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+volumes:
+  postgres-data:
