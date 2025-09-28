@@ -8,7 +8,8 @@
             margin: 0;
             min-height: 100vh;
             padding: 40px;
-            background: #0d1826;
+            background: linear-gradient(160deg, rgba(5, 13, 24, 0.9) 0%, rgba(12, 24, 39, 0.94) 55%, rgba(4, 10, 18, 0.97) 100%),
+                url("{{ request.url_for('static', path='main_back.png') }}") center/cover fixed;
             color: #e6edf7;
         }
         h2 {
@@ -19,10 +20,11 @@
             border-collapse: collapse;
             width: 100%;
             margin-top: 10px;
-            background: #162433;
-            border-radius: 12px;
+            background: linear-gradient(180deg, rgba(12, 24, 38, 0.88) 0%, rgba(16, 29, 44, 0.9) 100%);
+            border-radius: 14px;
             overflow: hidden;
-            box-shadow: 0 12px 32px rgba(3, 10, 18, 0.55);
+            box-shadow: 0 26px 54px rgba(2, 6, 12, 0.68);
+            backdrop-filter: blur(2px);
         }
         th, td {
             border: 1px solid #223044;
@@ -47,9 +49,9 @@
             font-family: inherit;
             font-size: 0.95rem;
             padding: 8px 12px;
-            border-radius: 6px;
-            border: 1px solid #2e3d51;
-            background: #1e2c3c;
+            border-radius: 10px;
+            border: 1px solid rgba(70, 104, 146, 0.4);
+            background: linear-gradient(135deg, rgba(50, 86, 128, 0.95), rgba(37, 64, 98, 0.95));
             color: #f2f6ff;
             cursor: pointer;
             transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
@@ -59,8 +61,8 @@
         }
         button:hover,
         select:hover {
-            background: #2c3e50;
-            box-shadow: 0 8px 20px rgba(15, 23, 36, 0.55);
+            background: linear-gradient(135deg, rgba(64, 104, 149, 0.98), rgba(42, 72, 112, 0.98));
+            box-shadow: 0 12px 26px rgba(3, 8, 15, 0.55);
             transform: translateY(-1px);
         }
         form {
