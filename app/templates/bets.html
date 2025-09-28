@@ -65,6 +65,7 @@
       box-shadow: 0 30px 64px rgba(2, 6, 12, 0.78);
       color: inherit;
       backdrop-filter: blur(3px);
+      margin: 12px 0 24px;
     }
     th, td {
       border-bottom: 1px solid rgba(59, 76, 99, 0.4);
@@ -159,6 +160,18 @@
     #betsTable_info {
       color: #aebcd1;
     }
+    .dataTables_wrapper {
+      gap: 16px;
+      display: flex;
+      flex-direction: column;
+    }
+    .dataTables_filter,
+    .dataTables_length {
+      margin-bottom: 6px !important;
+    }
+    .dataTables_paginate {
+      margin-top: 12px !important;
+    }
     .dataTables_wrapper .dataTables_paginate .paginate_button {
       border: 1px solid transparent;
       border-radius: 6px;
@@ -204,7 +217,7 @@
           <td>{{ a.apuesta }}</td>
           <td>{{ a.creacion }}</td>
           <td>{{ a.categoria }}</td>
-          <td>{{ a.tipo }}</td>
+        <td>{{ a.tipo|title }}</td>
           <td>{{ a.multiplica }}</td>
           <td>
             {% set parts = [a.apostante1, a.apostante2, a.apostante3] | select | list %}
