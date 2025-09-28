@@ -9,57 +9,81 @@
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       display: flex;
       height: 100vh;
-      background: #0b1622;
+      background: linear-gradient(180deg, #02070d 0%, #050d18 45%, #010409 100%);
       color: #e6edf7;
     }
     .sidebar {
-      width: 220px;
-      background: #2c3e50;
+      width: min(258px, 30vw);
+      background: linear-gradient(188deg, rgba(9, 18, 30, 0.94) 0%, rgba(18, 32, 48, 0.9) 62%, rgba(9, 19, 32, 0.95) 100%),
+        url("{{ request.url_for('static', path='sidebar.png') }}") center/cover;
       color: #fff;
-      padding: 24px 20px;
+      padding: 28px 24px 36px;
       box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      box-shadow: 8px 0 30px rgba(2, 6, 12, 0.65);
     }
     .sidebar h2 {
-      font-size: 1.3em;
-      margin: 0 0 20px 0;
+      font-size: 1.28em;
+      margin: 0;
+      letter-spacing: 0.08em;
+    }
+    .sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
     .sidebar a {
       display: block;
       color: #fff;
       text-decoration: none;
-      margin: 12px 0;
-      padding: 10px 12px;
-      border-radius: 6px;
-      background: rgba(255,255,255,0.08);
+      padding: 11px 14px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.1);
       text-align: center;
+      font-weight: 500;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
     }
     .sidebar a:hover {
-      background: rgba(255,255,255,0.18);
+      background: rgba(255, 255, 255, 0.22);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 26px rgba(5, 12, 22, 0.45);
     }
     .league-icons {
-      margin-top: 600px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 25px;
+      margin-top: auto;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px 12px;
+      align-items: end;
+      justify-items: center;
+      padding-top: 16px;
     }
     .league-icons img {
-      width: 80px;
-      filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.4));
+      max-width: 100%;
+      max-height: 90px;
+      height: auto;
+      width: auto;
+      filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.45));
     }
     .content {
       flex: 1;
       border: none;
-      background: #101d2c;
+      background: linear-gradient(160deg, rgba(8, 18, 30, 0.92) 0%, rgba(5, 13, 22, 0.95) 58%, rgba(2, 7, 12, 0.98) 100%),
+        url("{{ request.url_for('static', path='main_back.png') }}") center/cover fixed;
       color: #e6edf7;
+      display: block;
+      height: 100vh;
     }
   </style>
 </head>
 <body>
   <aside class="sidebar">
     <h2>🐑 Corderos</h2>
-    <a href="/bets" target="main_frame">Ver apuestas</a>
-    <a href="/apuestas/nueva" target="main_frame">➕ Añadir apuesta</a>
+    <div class="sidebar-nav">
+      <a href="/bets" target="main_frame">Ver apuestas</a>
+      <a href="/apuestas/nueva" target="main_frame">➕ Añadir apuesta</a>
+    </div>
     <div class="league-icons">
       <img src="{{ request.url_for('static', path='la-liga.png') }}" alt="La Liga logo">
       <img src="{{ request.url_for('static', path='premier.png') }}" alt="Premier League logo">

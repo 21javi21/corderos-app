@@ -8,35 +8,56 @@
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       display: flex;
       height: 100vh;
-      background: #0b1622;
+      background:
+        linear-gradient(184deg, rgba(2, 6, 14, 0.86) 0%, rgba(4, 12, 24, 0.82) 52%, rgba(2, 7, 14, 0.9) 100%),
+        radial-gradient(circle at 14% 20%, rgba(58, 128, 188, 0.22), transparent 55%),
+        #010409;
       color: #e6edf7;
     }
     .sidebar {
-      width: 220px;
-      background: #2c3e50;
+      width: min(240px, 28vw);
+      background:
+        linear-gradient(190deg, rgba(6, 14, 26, 0.52) 0%, rgba(12, 24, 38, 0.68) 55%, rgba(5, 12, 24, 0.76) 100%),
+        url("{{ request.url_for('static', path='sidebar.png') }}") center/cover;
       color: white;
-      padding: 20px;
+      padding: 26px 24px 34px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      box-shadow: 8px 0 28px rgba(2, 6, 12, 0.6);
     }
     .sidebar h2 {
       font-size: 1.2em;
-      margin-bottom: 20px;
+      margin: 0;
+      letter-spacing: 0.08em;
     }
     .sidebar a {
       display: block;
       color: white;
       text-decoration: none;
-      margin: 10px 0;
-      padding: 8px;
-      border-radius: 5px;
+      margin: 0;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      text-align: center;
+      font-weight: 500;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
     }
     .sidebar a:hover {
-      background: #34495e;
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px rgba(5, 12, 22, 0.45);
     }
     .content {
       flex: 1;
       border: none;
-      background: #101d2c;
+      background:
+        linear-gradient(170deg, rgba(4, 10, 18, 0.4) 0%, rgba(9, 18, 30, 0.62) 54%, rgba(2, 8, 16, 0.74) 100%),
+        url("{{ request.url_for('static', path='main_back.png') }}") center/cover fixed;
       color: #e6edf7;
+      display: block;
+      height: 100vh;
     }
   </style>
 </head>

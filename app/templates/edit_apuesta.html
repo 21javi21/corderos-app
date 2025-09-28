@@ -9,7 +9,8 @@
       margin: 0;
       min-height: 100vh;
       padding: 40px 32px 60px;
-      background: radial-gradient(circle at 80% 10%, rgba(61, 90, 128, 0.32) 0%, rgba(10, 18, 30, 0.94) 50%, #060c14 100%);
+      background: linear-gradient(160deg, rgba(5, 13, 24, 0.9) 0%, rgba(12, 24, 39, 0.94) 55%, rgba(4, 10, 18, 0.97) 100%),
+        url("{{ request.url_for('static', path='main_back.png') }}") center/cover fixed;
       color: #e6edf7;
     }
     h1 {
@@ -21,18 +22,20 @@
     form {
       max-width: 780px;
       margin-top: 20px;
-      background: rgba(12, 21, 33, 0.95);
+      background: rgba(12, 22, 36, 0.9);
       padding: 32px 36px;
       border-radius: 18px;
-      box-shadow: 0 26px 60px rgba(4, 9, 18, 0.78);
-      backdrop-filter: blur(2px);
+      box-shadow: 0 28px 60px rgba(2, 6, 12, 0.8);
+      backdrop-filter: blur(3px);
+      border: 1px solid rgba(70, 104, 146, 0.25);
     }
     fieldset {
       margin-bottom: 22px;
-      border: 1px solid rgba(52, 69, 90, 0.6);
+      border: 1px solid rgba(61, 90, 128, 0.35);
       border-radius: 12px;
       padding: 18px 20px 20px;
-      background: rgba(14, 24, 36, 0.7);
+      background: rgba(10, 20, 33, 0.78);
+      backdrop-filter: blur(1px);
     }
     legend {
       padding: 0 12px;
@@ -71,24 +74,25 @@
       flex-wrap: wrap;
       align-items: center;
     }
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 10px 18px;
-      background: linear-gradient(135deg, #2c3e50, #1f2d3c);
-      color: #f7fbff;
-      text-decoration: none;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      min-width: 180px;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 16px 28px rgba(7, 13, 24, 0.65);
-    }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 18px;
+        background: linear-gradient(135deg, rgba(50, 86, 128, 0.95), rgba(37, 64, 98, 0.95));
+        color: #f7fbff;
+        text-decoration: none;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        min-width: 180px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      }
+      .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 18px 32px rgba(3, 8, 15, 0.65);
+        background: linear-gradient(135deg, rgba(64, 104, 149, 0.98), rgba(42, 72, 112, 0.98));
+      }
     .link {
       color: #93b3ff;
       text-decoration: none;

@@ -10,18 +10,40 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: radial-gradient(circle at top, #1b2940 0%, #0b1622 55%, #08111b 100%);
+            position: relative;
+            overflow: hidden;
             color: #e6edf7;
         }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background:
+                linear-gradient(188deg, rgba(2, 8, 16, 0.45) 0%, rgba(5, 16, 28, 0.65) 45%, rgba(1, 6, 12, 0.78) 100%),
+                url("{{ request.url_for('static', path='login_back.png') }}") center/cover fixed;
+            transform: scale(1.02);
+            z-index: -2;
+        }
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at 18% 14%, rgba(255, 255, 255, 0.18), transparent 36%),
+                radial-gradient(circle at 82% 82%, rgba(15, 80, 140, 0.2), transparent 50%);
+            mix-blend-mode: screen;
+            pointer-events: none;
+            z-index: -1;
+        }
         form {
-            background: rgba(17, 27, 39, 0.92);
+            background: rgba(12, 23, 36, 0.88);
             padding: 36px 40px 32px;
-            border-radius: 14px;
-            box-shadow: 0 20px 45px rgba(5, 12, 22, 0.75);
-            min-width: 320px;
+            border-radius: 16px;
+            box-shadow: 0 26px 55px rgba(2, 8, 16, 0.82);
+            min-width: min(420px, 90vw);
             display: flex;
             flex-direction: column;
             gap: 16px;
+            backdrop-filter: blur(2px);
         }
         h2 {
             text-align: center;
@@ -50,17 +72,18 @@
             margin-top: 8px;
             padding: 12px;
             border: none;
-            border-radius: 8px;
-            background: linear-gradient(135deg, #2c3e50, #1f2d3c);
+            border-radius: 10px;
+            background: linear-gradient(135deg, rgba(42, 74, 110, 0.9), rgba(31, 52, 78, 0.95));
             color: #f7fbff;
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
         }
         button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 14px 24px rgba(10, 17, 28, 0.6);
+            box-shadow: 0 18px 32px rgba(4, 10, 20, 0.65);
+            background: linear-gradient(135deg, rgba(56, 96, 142, 0.95), rgba(31, 52, 78, 1));
         }
         .league-strip {
             margin-top: 6px;
@@ -82,7 +105,9 @@
             flex-wrap: wrap;
         }
         .league-logos img {
-            height: 46px;
+            max-height: 48px;
+            width: auto;
+            height: auto;
             filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.35));
             transition: transform 0.2s ease;
         }

@@ -8,46 +8,73 @@
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       display: flex;
       height: 100vh;
-      background: #0b1622;
+      background:
+        linear-gradient(184deg, rgba(2, 6, 14, 0.86) 0%, rgba(4, 12, 24, 0.82) 52%, rgba(2, 7, 14, 0.9) 100%),
+        radial-gradient(circle at 12% 18%, rgba(70, 136, 196, 0.2), transparent 55%),
+        #010409;
       color: #e6edf7;
     }
     .sidebar {
-      width: 220px;
-      background: #2c3e50;
+      width: min(240px, 26vw);
+      background:
+        linear-gradient(192deg, rgba(6, 14, 26, 0.55) 0%, rgba(10, 24, 40, 0.7) 58%, rgba(4, 10, 22, 0.78) 100%),
+        url("{{ request.url_for('static', path='sidebar.png') }}") center/cover;
       color: white;
-      padding: 20px;
+      padding: 24px 22px 32px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 8px 0 28px rgba(2, 6, 12, 0.65);
     }
     .sidebar h2 {
-      font-size: 1.2em;
-      margin-bottom: 20px;
+      font-size: 1.15em;
+      margin: 0 0 12px 0;
+      letter-spacing: 0.08em;
     }
     .sidebar a {
       display: block;
       color: white;
       text-decoration: none;
-      margin: 10px 0;
-      padding: 8px;
-      border-radius: 5px;
+      margin: 6px 0;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(1px);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      text-align: center;
+      font-weight: 500;
     }
     .sidebar a:hover {
-      background: #34495e;
+      background: rgba(255, 255, 255, 0.18);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 24px rgba(5, 12, 22, 0.45);
     }
     .league-icons {
-      margin-top: 28px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 18px;
+      margin-top: auto;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px 12px;
+      align-items: end;
+      justify-items: center;
+      padding-top: 8px;
     }
     .league-icons img {
-      width: 120px;
-      filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.4));
+      max-width: 100%;
+      max-height: 92px;
+      height: auto;
+      width: auto;
+      filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.45));
     }
     .content {
       flex: 1;
       border: none;
-      background: #101d2c;
+      background:
+        linear-gradient(172deg, rgba(5, 12, 22, 0.42) 0%, rgba(10, 20, 32, 0.65) 48%, rgba(4, 10, 20, 0.75) 100%),
+        url("{{ request.url_for('static', path='main_back.png') }}") center/cover fixed;
       color: #e6edf7;
+      display: block;
+      height: 100vh;
     }
   </style>
 </head>
