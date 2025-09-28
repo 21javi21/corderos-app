@@ -14,6 +14,16 @@
       color: #e6edf7;
       display: flex;
       flex-direction: column;
+      position: relative;
+    }
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: url("{{ request.url_for('static', path='corderos_logo_white.png') }}") center calc(100% - 44px)/clamp(180px, 30vw, 260px) auto no-repeat;
+      opacity: 0.16;
+      pointer-events: none;
+      z-index: 0;
     }
     h1 {
       margin-top: 0;
@@ -108,19 +118,8 @@
       display: flex;
       flex-direction: column;
       gap: 24px;
-    }
-    .brand-watermark {
-      margin-top: auto;
-      display: flex;
-      justify-content: center;
-      align-items: flex-end;
-      padding-top: 32px;
-      padding-bottom: 36px;
-    }
-    .brand-watermark img {
-      width: clamp(160px, 28vw, 220px);
-      height: auto;
-      filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.45));
+      position: relative;
+      z-index: 1;
     }
   </style>
 </head>
@@ -225,8 +224,5 @@
     </div>
     </form>
   </main>
-  <div class="brand-watermark">
-    <img src="{{ request.url_for('static', path='corderos_logo_white.png') }}" alt="Logo de la Liga de los Corderos" />
-  </div>
 </body>
 </html>

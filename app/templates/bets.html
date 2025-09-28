@@ -14,12 +14,24 @@
       color: #e6edf7;
       display: flex;
       flex-direction: column;
+      position: relative;
+    }
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: url("{{ request.url_for('static', path='corderos_logo_white.png') }}") center calc(100% - 44px)/clamp(180px, 30vw, 260px) auto no-repeat;
+      opacity: 0.16;
+      pointer-events: none;
+      z-index: 0;
     }
     .content-area {
       flex: 1;
       display: flex;
       flex-direction: column;
       gap: 18px;
+      position: relative;
+      z-index: 1;
     }
     .topbar {
       display: flex;
@@ -160,19 +172,6 @@
       border: none;
       box-shadow: 0 10px 20px rgba(5, 10, 18, 0.4);
     }
-    .brand-watermark {
-      margin-top: auto;
-      display: flex;
-      justify-content: center;
-      align-items: flex-end;
-      padding-top: 28px;
-      padding-bottom: 36px;
-    }
-    .brand-watermark img {
-      width: clamp(160px, 28vw, 220px);
-      height: auto;
-      filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.45));
-    }
   </style>
 </head>
 <body>
@@ -253,9 +252,6 @@
       <p>No hay apuestas todavía. Usa “Añadir apuesta”.</p>
     {% endif %}
   </main>
-  <div class="brand-watermark">
-    <img src="{{ request.url_for('static', path='corderos_logo_white.png') }}" alt="Logo de la Liga de los Corderos" />
-  </div>
 
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>

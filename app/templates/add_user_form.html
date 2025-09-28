@@ -14,6 +14,16 @@
             background: linear-gradient(160deg, rgba(5, 13, 24, 0.9) 0%, rgba(12, 24, 39, 0.94) 55%, rgba(4, 10, 18, 0.97) 100%),
                 url("{{ request.url_for('static', path='main_back.png') }}") center/cover fixed;
             color: #e6edf7;
+            position: relative;
+        }
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: url("{{ request.url_for('static', path='corderos_logo_white.png') }}") center calc(100% - 44px)/clamp(180px, 30vw, 260px) auto no-repeat;
+            opacity: 0.16;
+            pointer-events: none;
+            z-index: 0;
         }
         .card {
             background: rgba(12, 22, 36, 0.9);
@@ -75,18 +85,8 @@
             align-items: center;
             justify-content: center;
             padding: 40px 0;
-        }
-        .brand-watermark {
-            margin-top: auto;
-            display: flex;
-            justify-content: center;
-            align-items: flex-end;
-            padding-bottom: 36px;
-        }
-        .brand-watermark img {
-            width: clamp(160px, 28vw, 220px);
-            height: auto;
-            filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.45));
+            position: relative;
+            z-index: 1;
         }
     </style>
 </head>
@@ -107,8 +107,5 @@
         <button type="submit">Create User</button>
     </form>
     </main>
-    <div class="brand-watermark">
-        <img src="{{ request.url_for('static', path='corderos_logo_white.png') }}" alt="Logo de la Liga de los Corderos" />
-    </div>
 </body>
 </html>
