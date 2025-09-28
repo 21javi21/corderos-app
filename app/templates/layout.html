@@ -8,12 +8,20 @@
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       display: flex;
       height: 100vh;
+      background:
+        linear-gradient(184deg, rgba(2, 6, 14, 0.86) 0%, rgba(4, 12, 24, 0.82) 52%, rgba(2, 7, 14, 0.9) 100%),
+        radial-gradient(circle at 12% 18%, rgba(70, 136, 196, 0.2), transparent 55%),
+        #010409;
       background: linear-gradient(180deg, #02070d 0%, #050d18 45%, #010409 100%);
+         main
       color: #e6edf7;
     }
     .sidebar {
       width: min(240px, 26vw);
+      background:
+        linear-gradient(192deg, rgba(6, 14, 26, 0.55) 0%, rgba(10, 24, 40, 0.7) 58%, rgba(4, 10, 22, 0.78) 100%),
       background: linear-gradient(190deg, rgba(9, 18, 30, 0.94) 0%, rgba(14, 29, 46, 0.92) 65%, rgba(8, 16, 28, 0.95) 100%),
+         main
         url("{{ request.url_for('static', path='sidebar.png') }}") center/cover;
       color: white;
       padding: 24px 22px 32px;
@@ -65,7 +73,10 @@
     .content {
       flex: 1;
       border: none;
+      background:
+        linear-gradient(172deg, rgba(5, 12, 22, 0.42) 0%, rgba(10, 20, 32, 0.65) 48%, rgba(4, 10, 20, 0.75) 100%),
       background: linear-gradient(160deg, rgba(8, 18, 30, 0.92) 0%, rgba(5, 13, 22, 0.95) 58%, rgba(2, 7, 12, 0.98) 100%),
+        main
         url("{{ request.url_for('static', path='main_back.png') }}") center/cover fixed;
       color: #e6edf7;
       display: block;

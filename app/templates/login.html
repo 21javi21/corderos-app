@@ -10,9 +10,32 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            position: relative;
+            overflow: hidden;
             background: linear-gradient(185deg, rgba(4, 10, 18, 0.82) 0%, rgba(7, 16, 27, 0.92) 52%, rgba(2, 7, 12, 0.96) 100%),
                 url("{{ request.url_for('static', path='login_back.png') }}") center/cover fixed;
+              main
             color: #e6edf7;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background:
+                linear-gradient(188deg, rgba(2, 8, 16, 0.45) 0%, rgba(5, 16, 28, 0.65) 45%, rgba(1, 6, 12, 0.78) 100%),
+                url("{{ request.url_for('static', path='login_back.png') }}") center/cover fixed;
+            transform: scale(1.02);
+            z-index: -2;
+        }
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at 18% 14%, rgba(255, 255, 255, 0.18), transparent 36%),
+                radial-gradient(circle at 82% 82%, rgba(15, 80, 140, 0.2), transparent 50%);
+            mix-blend-mode: screen;
+            pointer-events: none;
+            z-index: -1;
         }
         form {
             background: rgba(12, 23, 36, 0.88);
