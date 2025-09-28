@@ -17,7 +17,7 @@ spec:
       - name: regcred
       containers:
       - name: corderos-app
-        image: docker.io/kaligulix/21k-registry:corderos-app-v0.9.4.1
+        image: docker.io/kaligulix/21k-registry:corderos-app-v0.9.4.2
         imagePullPolicy: IfNotPresent
         resources:
           requests:
