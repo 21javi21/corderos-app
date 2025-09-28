@@ -2,6 +2,7 @@
 <html>
 <head>
   <title>Corderos — Apuestas</title>
+  <link rel="icon" href="{{ request.url_for('static', path='corderos_logo_white.png') }}" type="image/png">
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
   <style>
     body {
@@ -278,14 +279,14 @@
             </div>
           </td>
           <td>
-            {% if a.locked %}
-              <span class="status-badge locked">Bloqueada</span>
+            {% if a.estado_label == "CERRADA" %}
+              <span class="status-badge locked">CERRADA</span>
             {% else %}
-              <span class="status-badge unlocked">Activa</span>
+              <span class="status-badge unlocked">ACTIVA</span>
             {% endif %}
           </td>
           <td class="actions-cell">
-            {% if is_admin or not a.locked %}
+            {% if is_admin or not a.effective_locked %}
               <a href="/apuestas/{{ a.id }}/editar">✏️ Modificar</a>
               <form method="post"
                     action="/apuestas/{{ a.id }}/borrar"
@@ -293,7 +294,7 @@
                 <button type="submit">🗑️ Borrar</button>
               </form>
             {% else %}
-              <span class="locked-note">🔒 Bloqueada</span>
+              <span class="locked-note">🔒 {{ a.estado_label }}</span>
             {% endif %}
           </td>
         </tr>

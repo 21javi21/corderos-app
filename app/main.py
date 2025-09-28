@@ -1,7 +1,7 @@
 import os
 import re
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path as PathlibPath
 
 from fastapi import FastAPI, Request, Form, Path, HTTPException
@@ -22,6 +22,8 @@ CATEGORIAS_PREDEFINIDAS = [
 ]
 
 MULTIPLICA_OPCIONES = [1, 2, 3, 4, 5]
+
+AUTO_LOCK_DAYS = 3
 
 HALL_OF_HATE_NAMES = [
     "Lebron James",
@@ -69,6 +71,33 @@ def _parse_locked_value(value: str | None, current: bool) -> bool:
     if normalized in {"false", "0", "no", "n", "unlocked", "desbloqueada", "off"}:
         return False
     return current
+
+
+def _empty_to_none(value: str | None) -> str | None:
+    if value is None:
+        return None
+    value = value.strip()
+    return value or None
+
+
+def _has_result_fields(winners: tuple[str | None, ...], losers: tuple[str | None, ...]) -> bool:
+    return any(_empty_to_none(item) for item in winners) and any(_empty_to_none(item) for item in losers)
+
+
+def _compute_auto_locked(
+    manual_locked: bool,
+    result_recorded: date | None,
+    auto_lock_released: bool,
+    winners: tuple[str | None, ...],
+    losers: tuple[str | None, ...],
+) -> tuple[bool, bool]:
+    has_result = _has_result_fields(winners, losers)
+    auto_locked = False
+    if has_result and result_recorded and not auto_lock_released:
+        if date.today() >= result_recorded + timedelta(days=AUTO_LOCK_DAYS):
+            auto_locked = True
+    effective_locked = manual_locked or auto_locked
+    return auto_locked, effective_locked
 
 
 def _slugify(name: str) -> str:
@@ -135,7 +164,7 @@ def bets_home(request: Request):
                        apostante1, apostante2, apostante3,
                        apostado1, apostado2, apostado3,
                        ganador1, ganador2, perdedor1, perdedor2,
-                       locked
+                       locked, resultado_registrado, auto_lock_released
                 FROM apuestas
                 ORDER BY id DESC
             """)
@@ -151,8 +180,24 @@ def bets_home(request: Request):
             "apostado1": r[9], "apostado2": r[10], "apostado3": r[11],
             "ganador1": r[12], "ganador2": r[13], "perdedor1": r[14], "perdedor2": r[15],
             "locked": bool(r[16]),
+            "resultado_registrado": r[17],
+            "auto_lock_released": bool(r[18]),
         } for r in rows
     ]
+
+    for apuesta in apuestas:
+        winners = (apuesta["ganador1"], apuesta["ganador2"])
+        losers = (apuesta["perdedor1"], apuesta["perdedor2"])
+        auto_locked, effective_locked = _compute_auto_locked(
+            apuesta["locked"],
+            apuesta["resultado_registrado"],
+            apuesta["auto_lock_released"],
+            winners,
+            losers,
+        )
+        apuesta["auto_locked"] = auto_locked
+        apuesta["effective_locked"] = effective_locked
+        apuesta["estado_label"] = "CERRADA" if effective_locked else "ACTIVA"
 
     return templates.TemplateResponse(
         "bets.html",
@@ -207,6 +252,22 @@ def crear_apuesta(
     perdedor1: str | None = Form(None),
     perdedor2: str | None = Form(None),
 ):
+    clean_apostante1 = _empty_to_none(apostante1)
+    clean_apostante2 = _empty_to_none(apostante2)
+    clean_apostante3 = _empty_to_none(apostante3)
+    clean_apostado1 = _empty_to_none(apostado1)
+    clean_apostado2 = _empty_to_none(apostado2)
+    clean_apostado3 = _empty_to_none(apostado3)
+    clean_ganador1 = _empty_to_none(ganador1)
+    clean_ganador2 = _empty_to_none(ganador2)
+    clean_perdedor1 = _empty_to_none(perdedor1)
+    clean_perdedor2 = _empty_to_none(perdedor2)
+
+    winners = (clean_ganador1, clean_ganador2)
+    losers = (clean_perdedor1, clean_perdedor2)
+    has_result = _has_result_fields(winners, losers)
+    resultado_registrado = date.today() if has_result else None
+
     conn = pool.getconn()
     try:
         with conn, conn.cursor() as cur:
@@ -216,13 +277,13 @@ def crear_apuesta(
                     apostante1, apostante2, apostante3,
                     apostado1, apostado2, apostado3,
                     ganador1, ganador2, perdedor1, perdedor2,
-                    locked
+                    locked, resultado_registrado, auto_lock_released
                 ) VALUES (
                     %s, %s, %s, %s, %s,
                     %s, %s, %s,
                     %s, %s, %s,
                     %s, %s, %s, %s,
-                    %s
+                    %s, %s, %s
                 ) RETURNING id
             """, (
                 apuesta,
@@ -230,16 +291,18 @@ def crear_apuesta(
                 categoria,
                 tipo,
                 multiplica,
-                _empty_to_none(apostante1),
-                _empty_to_none(apostante2),
-                _empty_to_none(apostante3),
-                _empty_to_none(apostado1),
-                _empty_to_none(apostado2),
-                _empty_to_none(apostado3),
-                _empty_to_none(ganador1),
-                _empty_to_none(ganador2),
-                _empty_to_none(perdedor1),
-                _empty_to_none(perdedor2),
+                clean_apostante1,
+                clean_apostante2,
+                clean_apostante3,
+                clean_apostado1,
+                clean_apostado2,
+                clean_apostado3,
+                clean_ganador1,
+                clean_ganador2,
+                clean_perdedor1,
+                clean_perdedor2,
+                False,
+                resultado_registrado,
                 False,
             ))
             _new_id = cur.fetchone()[0]
@@ -456,13 +519,28 @@ def borrar_apuesta(request: Request, apuesta_id: int = Path(...)):
     conn = pool.getconn()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT locked FROM apuestas WHERE id = %s", (apuesta_id,))
+            cur.execute(
+                """
+                SELECT locked, resultado_registrado, auto_lock_released,
+                       ganador1, ganador2, perdedor1, perdedor2
+                FROM apuestas
+                WHERE id = %s
+                """,
+                (apuesta_id,),
+            )
             row = cur.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Apuesta no encontrada")
 
         locked = bool(row[0])
-        if locked and not is_admin:
+        _auto_locked, effective_locked = _compute_auto_locked(
+            locked,
+            row[1],
+            bool(row[2]),
+            (row[3], row[4]),
+            (row[5], row[6]),
+        )
+        if effective_locked and not is_admin:
             raise HTTPException(status_code=403, detail="La apuesta está bloqueada para borrado")
 
         with conn, conn.cursor() as cur:
@@ -483,7 +561,7 @@ def editar_apuesta_form(request: Request, apuesta_id: int = Path(...)):
                        apostante1, apostante2, apostante3,
                        apostado1, apostado2, apostado3,
                        ganador1, ganador2, perdedor1, perdedor2,
-                       locked
+                       locked, resultado_registrado, auto_lock_released
                 FROM apuestas
                 WHERE id = %s
                 """,
@@ -513,9 +591,29 @@ def editar_apuesta_form(request: Request, apuesta_id: int = Path(...)):
         "perdedor1": row[13],
         "perdedor2": row[14],
         "locked": bool(row[15]),
+        "resultado_registrado": row[16],
+        "auto_lock_released": bool(row[17]),
     }
 
     usuarios = auth_ldap.fetch_all_user_uids()
+
+    winners = (apuesta["ganador1"], apuesta["ganador2"])
+    losers = (apuesta["perdedor1"], apuesta["perdedor2"])
+    auto_locked, effective_locked = _compute_auto_locked(
+        apuesta["locked"],
+        apuesta["resultado_registrado"],
+        apuesta["auto_lock_released"],
+        winners,
+        losers,
+    )
+
+    is_admin = _is_admin_request(request)
+    if effective_locked and not is_admin:
+        raise HTTPException(status_code=403, detail="La apuesta está bloqueada")
+
+    apuesta["auto_locked"] = auto_locked
+    apuesta["effective_locked"] = effective_locked
+    apuesta["estado_label"] = "CERRADA" if effective_locked else "ACTIVA"
 
     return templates.TemplateResponse(
         "edit_apuesta.html",
@@ -525,17 +623,9 @@ def editar_apuesta_form(request: Request, apuesta_id: int = Path(...)):
             "usuarios": usuarios,
             "categorias": CATEGORIAS_PREDEFINIDAS,
             "multiplica_opciones": MULTIPLICA_OPCIONES,
-            "is_admin": _is_admin_request(request),
+            "is_admin": is_admin,
         },
     )
-
-
-def _empty_to_none(value: str | None) -> str | None:
-    if value is None:
-        return None
-    value = value.strip()
-    return value or None
-
 
 @app.post("/apuestas/{apuesta_id}/editar")
 def actualizar_apuesta(
@@ -561,18 +651,72 @@ def actualizar_apuesta(
     conn = pool.getconn()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT locked FROM apuestas WHERE id = %s", (apuesta_id,))
+            cur.execute(
+                """
+                SELECT locked, resultado_registrado, auto_lock_released,
+                       ganador1, ganador2, perdedor1, perdedor2
+                FROM apuestas
+                WHERE id = %s
+                """,
+                (apuesta_id,),
+            )
             row = cur.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Apuesta no encontrada")
 
         current_locked = bool(row[0])
-        if current_locked and not is_admin:
+        result_recorded = row[1]
+        auto_lock_released = bool(row[2])
+        prev_winners = (row[3], row[4])
+        prev_losers = (row[5], row[6])
+
+        auto_locked, effective_locked = _compute_auto_locked(
+            current_locked,
+            result_recorded,
+            auto_lock_released,
+            prev_winners,
+            prev_losers,
+        )
+        if effective_locked and not is_admin:
             raise HTTPException(status_code=403, detail="La apuesta está bloqueada para edición")
+
+        clean_apostante1 = _empty_to_none(apostante1)
+        clean_apostante2 = _empty_to_none(apostante2)
+        clean_apostante3 = _empty_to_none(apostante3)
+        clean_apostado1 = _empty_to_none(apostado1)
+        clean_apostado2 = _empty_to_none(apostado2)
+        clean_apostado3 = _empty_to_none(apostado3)
+        clean_ganador1 = _empty_to_none(ganador1)
+        clean_ganador2 = _empty_to_none(ganador2)
+        clean_perdedor1 = _empty_to_none(perdedor1)
+        clean_perdedor2 = _empty_to_none(perdedor2)
+
+        new_winners = (clean_ganador1, clean_ganador2)
+        new_losers = (clean_perdedor1, clean_perdedor2)
+
+        prev_clean_winners = tuple(_empty_to_none(item) for item in prev_winners)
+        prev_clean_losers = tuple(_empty_to_none(item) for item in prev_losers)
+        prev_has_result = _has_result_fields(prev_clean_winners, prev_clean_losers)
+        new_has_result = _has_result_fields(new_winners, new_losers)
+        result_changed = (new_winners != prev_clean_winners) or (new_losers != prev_clean_losers)
+
+        new_result_recorded = result_recorded
+        new_auto_lock_released = auto_lock_released
+        if new_has_result:
+            if not prev_has_result or result_changed:
+                new_result_recorded = date.today()
+                new_auto_lock_released = False
+        else:
+            new_result_recorded = None
+            new_auto_lock_released = False
 
         desired_locked = current_locked
         if is_admin:
             desired_locked = _parse_locked_value(bloqueo, current_locked)
+            if desired_locked:
+                new_auto_lock_released = False
+            elif new_has_result:
+                new_auto_lock_released = True
 
         with conn, conn.cursor() as cur:
             cur.execute(
@@ -592,7 +736,9 @@ def actualizar_apuesta(
                     ganador2 = %s,
                     perdedor1 = %s,
                     perdedor2 = %s,
-                    locked = %s
+                    locked = %s,
+                    resultado_registrado = %s,
+                    auto_lock_released = %s
                 WHERE id = %s
                 """,
                 (
@@ -600,17 +746,19 @@ def actualizar_apuesta(
                     categoria,
                     tipo,
                     multiplica,
-                    _empty_to_none(apostante1),
-                    _empty_to_none(apostante2),
-                    _empty_to_none(apostante3),
-                    _empty_to_none(apostado1),
-                    _empty_to_none(apostado2),
-                    _empty_to_none(apostado3),
-                    _empty_to_none(ganador1),
-                    _empty_to_none(ganador2),
-                    _empty_to_none(perdedor1),
-                    _empty_to_none(perdedor2),
+                    clean_apostante1,
+                    clean_apostante2,
+                    clean_apostante3,
+                    clean_apostado1,
+                    clean_apostado2,
+                    clean_apostado3,
+                    clean_ganador1,
+                    clean_ganador2,
+                    clean_perdedor1,
+                    clean_perdedor2,
                     desired_locked,
+                    new_result_recorded,
+                    new_auto_lock_released,
                     apuesta_id,
                 ),
             )
