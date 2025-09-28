@@ -12,6 +12,8 @@
       background: linear-gradient(160deg, rgba(5, 13, 24, 0.9) 0%, rgba(12, 24, 39, 0.94) 55%, rgba(4, 10, 18, 0.97) 100%),
         url("{{ request.url_for('static', path='main_back.png') }}") center/cover fixed;
       color: #e6edf7;
+      display: flex;
+      flex-direction: column;
     }
     h1 {
       margin-bottom: 20px;
@@ -76,17 +78,36 @@
       color: #95a7be;
       font-style: italic;
     }
+    .content-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .brand-watermark {
+      margin-top: auto;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      padding-top: 28px;
+    }
+    .brand-watermark img {
+      width: clamp(160px, 28vw, 220px);
+      height: auto;
+      filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.45));
+    }
   </style>
 </head>
 <body>
-  <div class="topbar">
-    <a href="/bets">⬅️ Volver a apuestas</a>
-    <a href="/apuestas/nueva">➕ Añadir apuesta</a>
-  </div>
-  <h1>Clasificación</h1>
+  <main class="content-area">
+    <div class="topbar">
+      <a href="/bets">⬅️ Volver a apuestas</a>
+      <a href="/apuestas/nueva">➕ Añadir apuesta</a>
+    </div>
+    <h1>Clasificación</h1>
 
-  {% if clasificacion and clasificacion|length > 0 %}
-  <table>
+    {% if clasificacion and clasificacion|length > 0 %}
+    <table>
     <thead>
       <tr>
         <th>Posición</th>
@@ -111,9 +132,13 @@
       </tr>
       {% endfor %}
     </tbody>
-  </table>
-  {% else %}
-    <p class="empty">No hay datos de apuestas todavía.</p>
-  {% endif %}
+    </table>
+    {% else %}
+      <p class="empty">No hay datos de apuestas todavía.</p>
+    {% endif %}
+  </main>
+  <div class="brand-watermark">
+    <img src="{{ request.url_for('static', path='corderos_logo_white.png') }}" alt="Logo de la Liga de los Corderos" />
+  </div>
 </body>
 </html>

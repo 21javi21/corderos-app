@@ -29,6 +29,17 @@
       margin: 0;
       letter-spacing: 0.08em;
     }
+    .sidebar h2.brand-title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+    .sidebar h2.brand-title img {
+      height: 38px;
+      width: auto;
+      filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.35));
+    }
     .sidebar-nav {
       display: flex;
       flex-direction: column;
@@ -79,7 +90,10 @@
 </head>
 <body>
   <aside class="sidebar">
-    <h2>🐑 Corderos</h2>
+    <h2 class="brand-title">
+      <img src="{{ request.url_for('static', path='corderos_logo_white.png') }}" alt="Logo de la Liga de los Corderos" />
+      <span>Corderos</span>
+    </h2>
     <div class="sidebar-nav">
       <a href="/bets" target="main_frame">Ver apuestas</a>
       <a href="/apuestas/nueva" target="main_frame">➕ Añadir apuesta</a>
