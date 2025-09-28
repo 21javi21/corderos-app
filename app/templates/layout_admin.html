@@ -24,8 +24,17 @@
       flex-direction: column;
       gap: 18px;
       box-shadow: 8px 0 30px rgba(2, 6, 12, 0.65);
+      padding: 26px 24px 36px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      box-shadow: 8px 0 30px rgba(2, 6, 12, 0.65);
     }
     .sidebar h2 {
+      font-size: 1.25em;
+      margin: 0;
+      letter-spacing: 0.06em;
       font-size: 1.25em;
       margin: 0;
       letter-spacing: 0.06em;
@@ -40,8 +49,17 @@
       background: rgba(255, 255, 255, 0.08);
       font-weight: 500;
       transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      margin: 0;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      font-weight: 500;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
     }
     .sidebar a:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 26px rgba(5, 12, 22, 0.45);
       background: rgba(255, 255, 255, 0.2);
       transform: translateY(-2px);
       box-shadow: 0 12px 26px rgba(5, 12, 22, 0.45);
@@ -55,6 +73,8 @@
         main
         url("{{ request.url_for('static', path='main_back.png') }}") center/cover fixed;
       color: #e6edf7;
+      display: block;
+      height: 100vh;
       display: block;
       height: 100vh;
     }
