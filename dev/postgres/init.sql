@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS apuestas (
     ganador1 VARCHAR(100),
     ganador2 VARCHAR(100),
     perdedor1 VARCHAR(100),
-    perdedor2 VARCHAR(100)
+    perdedor2 VARCHAR(100),
+    locked BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO corderos_app;
