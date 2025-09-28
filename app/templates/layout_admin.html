@@ -28,24 +28,33 @@
       margin: 0;
       letter-spacing: 0.06em;
     }
+    .sidebar h2.brand-title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+    .sidebar h2.brand-title img {
+      height: 36px;
+      width: auto;
+      filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
+    }
+    .sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
     .sidebar a {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
       color: white;
       text-decoration: none;
-      margin: 0;
       padding: 10px 14px;
       border-radius: 12px;
       background: rgba(255, 255, 255, 0.08);
       font-weight: 500;
       transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-    }
-    .sidebar a img {
-      height: 26px;
-      width: auto;
-      filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
     }
     .sidebar a:hover {
       background: rgba(255, 255, 255, 0.2);
@@ -66,16 +75,19 @@
 </head>
 <body>
   <div class="sidebar">
-    <h2>⚙️ Admin Menu</h2>
-    <a href="/auth/panel" target="main_frame">User Panel</a>
-    <a href="/auth/add_user_form" target="main_frame">➕ Add User</a>
-    <a href="/auth/list_users" target="main_frame">👥 List Users</a>
-    <a href="/bets" target="main_frame">
+    <h2 class="brand-title">
       <img src="{{ request.url_for('static', path='corderos_logo_white.png') }}" alt="Logo de la Liga de los Corderos" />
-      <span>Corderos Betting</span>
-    </a>
+      <span>Corderos</span>
+    </h2>
+    <div class="sidebar-nav">
+      <a href="/bets" target="main_frame">🐑 Corderos App</a>
+      <a href="/hall-of-hate" target="main_frame">😡 Hall Of Hate</a>
+      <a href="/auth/add_user_form" target="main_frame">➕ Añadir usuario</a>
+      <a href="/auth/list_users" target="main_frame">👥 Listado de usuarios</a>
+      <a href="/auth/panel" target="main_frame">🛠️ Gestion De Usuarios</a>
+    </div>
   </div>
 
-  <iframe name="main_frame" class="content"></iframe>
+  <iframe name="main_frame" class="content" src="/bets"></iframe>
 </body>
 </html>

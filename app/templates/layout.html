@@ -32,11 +32,26 @@
       margin: 0 0 12px 0;
       letter-spacing: 0.08em;
     }
+    .sidebar h2.brand-title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+    .sidebar h2.brand-title img {
+      height: 34px;
+      width: auto;
+      filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.35));
+    }
+    .sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
     .sidebar a {
       display: block;
       color: white;
       text-decoration: none;
-      margin: 6px 0;
       padding: 10px 12px;
       border-radius: 10px;
       background: rgba(255, 255, 255, 0.08);
@@ -80,11 +95,17 @@
 </head>
 <body>
   <div class="sidebar">
-    <h2>📋 Menu</h2>
-    <a href="/auth/panel" target="main_frame">User Panel</a>
-    <a href="/auth/add_user_form" target="main_frame">Add User</a>
-    <a href="/auth/list_users" target="main_frame">List Users</a>
-    <a href="/bets" target="main_frame">Corderos Betting</a>
+    <h2 class="brand-title">
+      <img src="{{ request.url_for('static', path='corderos_logo_white.png') }}" alt="Logo de la Liga de los Corderos" />
+      <span>Corderos</span>
+    </h2>
+    <div class="sidebar-nav">
+      <a href="/bets" target="main_frame">🐑 Corderos App</a>
+      <a href="/hall-of-hate" target="main_frame">😡 Hall Of Hate</a>
+      <a href="/auth/add_user_form" target="main_frame">➕ Add User</a>
+      <a href="/auth/list_users" target="main_frame">👥 List Users</a>
+      <a href="/auth/panel" target="main_frame">🛠️ Gestion De Usuarios</a>
+    </div>
     <div class="league-icons">
       <img src="{{ request.url_for('static', path='la-liga.png') }}" alt="La Liga logo">
       <img src="{{ request.url_for('static', path='premier.png') }}" alt="Premier League logo">
@@ -93,6 +114,6 @@
     </div>
   </div>
 
-  <iframe name="main_frame" class="content"></iframe>
+  <iframe name="main_frame" class="content" src="/bets"></iframe>
 </body>
 </html>

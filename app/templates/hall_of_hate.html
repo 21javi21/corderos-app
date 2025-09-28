@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Hall Of Hate</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      padding: 48px 32px 60px;
+      background: linear-gradient(160deg, rgba(5, 13, 24, 0.9) 0%, rgba(12, 24, 39, 0.94) 55%, rgba(4, 10, 18, 0.97) 100%),
+        url("{{ request.url_for('static', path='main_back.png') }}") center/cover fixed;
+      color: #e6edf7;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: url("{{ request.url_for('static', path='corderos_logo_white.png') }}") center calc(100% - 44px)/clamp(200px, 32vw, 280px) auto no-repeat;
+      opacity: 0.16;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .content {
+      width: 100%;
+      max-width: 1100px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+      position: relative;
+      z-index: 1;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 3vw, 2.6rem);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      text-align: center;
+      color: #f4f8ff;
+    }
+    p.subtitle {
+      margin: 0;
+      color: #9fb4cf;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-size: 0.85rem;
+      text-align: center;
+    }
+    .gallery {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 28px 24px;
+    }
+    .card {
+      background: rgba(12, 23, 36, 0.9);
+      border-radius: 18px;
+      padding: 18px 16px 22px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 26px 54px rgba(2, 6, 12, 0.7);
+      backdrop-filter: blur(2px);
+    }
+    .card img {
+      width: clamp(120px, 18vw, 160px);
+      height: clamp(120px, 18vw, 160px);
+      object-fit: cover;
+      border-radius: 16px;
+      box-shadow: 0 18px 32px rgba(3, 8, 15, 0.6);
+    }
+    .card h3 {
+      margin: 0;
+      font-size: 1rem;
+      text-align: center;
+      letter-spacing: 0.05em;
+    }
+    .missing {
+      width: clamp(120px, 18vw, 160px);
+      height: clamp(120px, 18vw, 160px);
+      border-radius: 16px;
+      border: 2px dashed rgba(255, 255, 255, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255, 255, 255, 0.55);
+      font-size: 0.85rem;
+      text-align: center;
+      padding: 8px;
+    }
+    @media (max-width: 1100px) {
+      .gallery {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+    @media (max-width: 720px) {
+      .gallery {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+  <section class="content">
+    <div>
+      <h1>Hall Of Hate</h1>
+      <p class="subtitle">nunca olvidamos a nuestros villanos</p>
+    </div>
+    <div class="gallery">
+      {% for item in entries %}
+        <article class="card">
+          {% if item.image %}
+            <img src="{{ request.url_for('static', path=item.image) }}" alt="{{ item.name }}" />
+          {% else %}
+            <div class="missing">Foto no disponible</div>
+          {% endif %}
+          <h3>{{ item.name }}</h3>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+</body>
+</html>

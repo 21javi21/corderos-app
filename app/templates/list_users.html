@@ -82,6 +82,24 @@
             align-items: center;
             gap: 8px;
         }
+        .primary-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 18px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(50, 86, 128, 0.95), rgba(37, 64, 98, 0.95));
+            color: #f7fbff;
+            text-decoration: none;
+            font-weight: 600;
+            box-shadow: 0 18px 32px rgba(3, 8, 15, 0.6);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+        .primary-btn:hover {
+            background: linear-gradient(135deg, rgba(64, 104, 149, 0.98), rgba(42, 72, 112, 0.98));
+            transform: translateY(-2px);
+            box-shadow: 0 22px 40px rgba(3, 8, 15, 0.65);
+        }
         .content-area {
             flex: 1;
             display: flex;
@@ -90,10 +108,50 @@
             position: relative;
             z-index: 1;
         }
+        .user-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: stretch;
+        }
+        .action-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: none;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+        .action-button.edit {
+            background: linear-gradient(135deg, rgba(50, 86, 128, 0.95), rgba(37, 64, 98, 0.95));
+            color: #f7fbff;
+            box-shadow: 0 16px 30px rgba(3, 8, 15, 0.55);
+        }
+        .action-button.edit:hover {
+            transform: translateY(-2px);
+            background: linear-gradient(135deg, rgba(64, 104, 149, 0.98), rgba(42, 72, 112, 0.98));
+            box-shadow: 0 20px 36px rgba(3, 8, 15, 0.6);
+        }
+        .action-button.delete {
+            background: linear-gradient(135deg, #9b2f24, #c0392b);
+            color: #f7fbff;
+            box-shadow: 0 16px 30px rgba(124, 36, 28, 0.55);
+        }
+        .action-button.delete:hover {
+            transform: translateY(-2px);
+            background: linear-gradient(135deg, #7c241c, #a12f23);
+            box-shadow: 0 20px 36px rgba(124, 36, 28, 0.6);
+        }
     </style>
 </head>
 <body>
     <main class="content-area">
+        <a class="primary-btn" href="/auth/add_user_form">➕ Añadir usuario</a>
         <h2>👥 Users in LDAP</h2>
         <table>
         <tr>
@@ -114,17 +172,20 @@
                 <form method="post" action="/auth/change_group">
                     <input type="hidden" name="username" value="{{ user.uid }}">
                     <select name="group">
-                        <option value="users" {% if user.group is defined and user.group == 'users' %}selected{% endif %}>users</option>
-                        <option value="admins" {% if user.group is defined and user.group == 'admins' %}selected{% endif %}>admins</option>
+                        <option value="users" {% if user.group == 'users' %}selected{% endif %}>users</option>
+                        <option value="admins" {% if user.group == 'admins' %}selected{% endif %}>admins</option>
                     </select>
                     <button type="submit">Change</button>
                 </form>
             </td>
             <td>
-                <form method="post" action="/auth/delete_user" onsubmit="return confirm('Are you sure you want to delete {{ user.uid }}?');">
-                    <input type="hidden" name="username" value="{{ user.uid }}">
-                    <button type="submit">❌ Delete</button>
-                </form>
+                <div class="user-actions">
+                    <a class="action-button edit" href="/auth/edit_user/{{ user.uid }}">Modificar</a>
+                    <form method="post" action="/auth/delete_user" onsubmit="return confirm('Are you sure you want to delete {{ user.uid }}?');">
+                        <input type="hidden" name="username" value="{{ user.uid }}">
+                        <button type="submit" class="action-button delete">❌ Delete</button>
+                    </form>
+                </div>
             </td>
         </tr>
         {% endfor %}

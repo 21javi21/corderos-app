@@ -1,6 +1,8 @@
 import os
+import re
 from collections import defaultdict
 from datetime import date
+from pathlib import Path as PathlibPath
 
 from fastapi import FastAPI, Request, Form, Path, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -21,6 +23,18 @@ CATEGORIAS_PREDEFINIDAS = [
 
 MULTIPLICA_OPCIONES = [1, 2, 3, 4, 5]
 
+HALL_OF_HATE_NAMES = [
+    "Lebron James",
+    "Luka Doncic",
+    "Carlo Ancelotti",
+    "\"El Cholo\" Simeone",
+    "Vinicius",
+    "Xabi Alonso",
+]
+
+HALL_OF_HATE_DIR = PathlibPath("app/images/hall_of_hate")
+_HALL_SLUG_PATTERN = re.compile(r"[^a-z0-9]+")
+
 app = FastAPI()
 templates = Jinja2Templates(directory="app/templates")
 app.include_router(auth_ldap.router)
@@ -29,6 +43,31 @@ app.mount("/static", StaticFiles(directory="app/images"), name="static")
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 pool: SimpleConnectionPool | None = None
+
+
+def _slugify(name: str) -> str:
+    return _HALL_SLUG_PATTERN.sub("_", name.lower()).strip("_")
+
+
+def _hall_of_hate_entries() -> list[dict[str, str | None]]:
+    entries: list[dict[str, str | None]] = []
+    files_by_slug: dict[str, str] = {}
+
+    if HALL_OF_HATE_DIR.exists():
+        for image_path in HALL_OF_HATE_DIR.iterdir():
+            if not image_path.is_file():
+                continue
+            files_by_slug[_slugify(image_path.stem)] = image_path.name
+
+    for name in HALL_OF_HATE_NAMES:
+        slug = _slugify(name)
+        filename = files_by_slug.get(slug)
+        entries.append({
+            "name": name,
+            "image": f"hall_of_hate/{filename}" if filename else None,
+        })
+
+    return entries
 
 @app.on_event("startup")
 def startup_db():
@@ -89,6 +128,14 @@ def bets_home(request: Request):
     return templates.TemplateResponse(
         "bets.html",
         {"request": request, "apuestas": apuestas}
+    )
+
+
+@app.get("/hall-of-hate", response_class=HTMLResponse)
+def hall_of_hate(request: Request):
+    return templates.TemplateResponse(
+        "hall_of_hate.html",
+        {"request": request, "entries": _hall_of_hate_entries()}
     )
 
 

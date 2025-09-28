@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Editar usuario</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            background: linear-gradient(160deg, rgba(5, 13, 24, 0.9) 0%, rgba(12, 24, 39, 0.94) 55%, rgba(4, 10, 18, 0.97) 100%),
+                url("{{ request.url_for('static', path='main_back.png') }}") center/cover fixed;
+            color: #e6edf7;
+            position: relative;
+        }
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: url("{{ request.url_for('static', path='corderos_logo_white.png') }}") center calc(100% - 44px)/clamp(180px, 30vw, 260px) auto no-repeat;
+            opacity: 0.16;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .content-area {
+            flex: 1;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+            padding: 40px 0 60px;
+            position: relative;
+            z-index: 1;
+        }
+        .back-link {
+            align-self: flex-start;
+            margin-left: clamp(16px, 8vw, 80px);
+            padding: 10px 16px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(50, 86, 128, 0.95), rgba(37, 64, 98, 0.95));
+            color: #f7fbff;
+            text-decoration: none;
+            font-weight: 600;
+            box-shadow: 0 18px 32px rgba(3, 8, 15, 0.6);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+        .back-link:hover {
+            transform: translateY(-2px);
+            background: linear-gradient(135deg, rgba(64, 104, 149, 0.98), rgba(42, 72, 112, 0.98));
+            box-shadow: 0 22px 40px rgba(3, 8, 15, 0.65);
+        }
+        .card {
+            background: rgba(12, 22, 36, 0.9);
+            padding: 40px 44px;
+            border-radius: 18px;
+            box-shadow: 0 28px 60px rgba(2, 6, 12, 0.78);
+            border: 1px solid rgba(70, 104, 146, 0.25);
+            width: min(480px, 92vw);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            backdrop-filter: blur(3px);
+        }
+        h2 {
+            margin: 0;
+            color: #f2f7ff;
+            text-align: center;
+        }
+        label {
+            font-size: 0.9rem;
+            color: #aebcd1;
+            letter-spacing: 0.03em;
+        }
+        input {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 8px;
+            border: 1px solid #28384c;
+            background: #0f1b2a;
+            color: #f7fbff;
+        }
+        input:focus {
+            outline: none;
+            border-color: #3a7bd5;
+            box-shadow: 0 0 0 3px rgba(58, 123, 213, 0.25);
+        }
+        input[readonly] {
+            background: rgba(15, 26, 41, 0.85);
+            color: #9fb4cf;
+        }
+        button {
+            margin-top: 12px;
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(50, 86, 128, 0.95), rgba(37, 64, 98, 0.95));
+            color: #f2f7ff;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 36px rgba(3, 8, 15, 0.6);
+            background: linear-gradient(135deg, rgba(64, 104, 149, 0.98), rgba(42, 72, 112, 0.98));
+        }
+    </style>
+</head>
+<body>
+    <section class="content-area">
+        <a class="back-link" href="/auth/list_users">⬅️ Volver a listado de usuarios</a>
+        <form class="card" method="post" action="/auth/edit_user/{{ user.uid }}">
+            <h2>✏️ Editar {{ user.uid }}</h2>
+            <label>UID</label>
+            <input type="text" value="{{ user.uid }}" readonly>
+            <label>First Name (cn)</label>
+            <input type="text" name="cn" value="{{ user.cn }}" required>
+            <label>Last Name (sn)</label>
+            <input type="text" name="sn" value="{{ user.sn }}" required>
+            <label>Email</label>
+            <input type="email" name="mail" value="{{ user.mail }}" required>
+            <button type="submit">Guardar cambios</button>
+        </form>
+    </section>
+</body>
+</html>

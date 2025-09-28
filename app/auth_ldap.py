@@ -1,7 +1,7 @@
 import os
 import base64
 import hashlib
-from ldap3 import Server, Connection, ALL, SUBTREE, MODIFY_ADD, MODIFY_DELETE
+from ldap3 import Server, Connection, ALL, SUBTREE, MODIFY_ADD, MODIFY_DELETE, MODIFY_REPLACE
 from fastapi import Depends, HTTPException, Form, APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -185,17 +185,83 @@ def list_users(request: Request):
                 search_scope=SUBTREE,
                 attributes=["uid", "cn", "sn", "mail"]
             )
-            for entry in conn.entries:
+            entries = list(conn.entries)
+            for entry in entries:
+                uid = str(entry.uid) if "uid" in entry else ""
+                if not uid:
+                    continue
+
+                user_dn = _user_dn(uid)
+                groups = _fetch_user_groups(conn, user_dn)
+                group_label = "admins" if "admins" in groups else "users"
+
                 users.append({
-                    "uid": str(entry.uid) if "uid" in entry else "",
+                    "uid": uid,
                     "cn": str(entry.cn) if "cn" in entry else "",
                     "sn": str(entry.sn) if "sn" in entry else "",
                     "mail": str(entry.mail) if "mail" in entry else "",
+                    "group": group_label,
                 })
+            users.sort(key=lambda item: item["uid"].lower())
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
     return templates.TemplateResponse("list_users.html", {"request": request, "users": users})
+
+
+@router.get("/edit_user/{username}", response_class=HTMLResponse)
+def edit_user_form(request: Request, username: str):
+    server = Server(LDAP_URI, get_info=ALL)
+    try:
+        with Connection(server, LDAP_BIND_DN, LDAP_BIND_PASSWORD, auto_bind=True) as conn:
+            user_dn = _user_dn(username)
+            conn.search(
+                search_base=user_dn,
+                search_filter="(objectClass=inetOrgPerson)",
+                attributes=["uid", "cn", "sn", "mail"]
+            )
+            if not conn.entries:
+                raise HTTPException(status_code=404, detail="User not found")
+
+            entry = conn.entries[0]
+            groups = _fetch_user_groups(conn, user_dn)
+            group_label = "admins" if "admins" in groups else "users"
+
+            user = {
+                "uid": username,
+                "cn": str(entry.cn) if "cn" in entry else "",
+                "sn": str(entry.sn) if "sn" in entry else "",
+                "mail": str(entry.mail) if "mail" in entry else "",
+                "group": group_label,
+            }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    return templates.TemplateResponse("edit_user_form.html", {"request": request, "user": user})
+
+
+@router.post("/edit_user/{username}")
+def edit_user(username: str, cn: str = Form(...), sn: str = Form(...), mail: str = Form(...)):
+    server = Server(LDAP_URI, get_info=ALL)
+    user_dn = _user_dn(username)
+
+    try:
+        with Connection(server, LDAP_BIND_DN, LDAP_BIND_PASSWORD, auto_bind=True) as conn:
+            modifications = {
+                "cn": [(MODIFY_REPLACE, [cn])],
+                "sn": [(MODIFY_REPLACE, [sn])],
+                "mail": [(MODIFY_REPLACE, [mail])],
+            }
+            if not conn.modify(user_dn, modifications):
+                raise HTTPException(status_code=500, detail=str(conn.result))
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    return RedirectResponse(url="/auth/list_users", status_code=303)
 
 @router.post("/delete_user")
 def delete_user(username: str = Form(...)):
@@ -213,21 +279,24 @@ def delete_user(username: str = Form(...)):
 @router.post("/change_group")
 def change_group(username: str = Form(...), group: str = Form(...)):
     server = Server(LDAP_URI, get_info=ALL)
-    user_dn = f"uid={username},ou=Users,{LDAP_BASE_DN}"
+    user_dn = _user_dn(username)
 
     try:
         with Connection(server, LDAP_BIND_DN, LDAP_BIND_PASSWORD, auto_bind=True) as conn:
-            # Quitar de users y admins (para evitar duplicados)
-            for grp in ["users", "admins"]:
-                conn.modify(
-                    f"cn={grp},ou=Groups,{LDAP_BASE_DN}",
+            current_groups = _fetch_user_groups(conn, user_dn)
+            for grp in current_groups:
+                if not conn.modify(
+                    f"cn={grp},{_groups_base_dn()}",
                     {"member": [(MODIFY_DELETE, [user_dn])]}
-                )
+                ):
+                    if conn.result.get("description") not in {"success", "noSuchAttribute"}:
+                        raise HTTPException(status_code=500, detail=str(conn.result))
             # Añadir al grupo elegido
-            conn.modify(
-                f"cn={group},ou=Groups,{LDAP_BASE_DN}",
+            if not conn.modify(
+                f"cn={group},{_groups_base_dn()}",
                 {"member": [(MODIFY_ADD, [user_dn])]}
-            )
+            ):
+                raise HTTPException(status_code=500, detail=str(conn.result))
             return RedirectResponse(url="/auth/list_users", status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -239,3 +308,24 @@ def dashboard_admin(request: Request):
 @router.get("/dashboard_user", response_class=HTMLResponse)
 def dashboard_user(request: Request):
     return templates.TemplateResponse("user_dashboard.html", {"request": request})
+
+
+def _user_dn(username: str) -> str:
+    return f"uid={username},ou=Users,{LDAP_BASE_DN}"
+
+
+def _groups_base_dn() -> str:
+    return f"ou=Groups,{LDAP_BASE_DN}"
+
+
+def _fetch_user_groups(conn: Connection, user_dn: str) -> set[str]:
+    groups: set[str] = set()
+    conn.search(
+        search_base=_groups_base_dn(),
+        search_filter=f"(&(objectClass=groupOfNames)(member={user_dn}))",
+        attributes=["cn"],
+    )
+    for entry in conn.entries:
+        if "cn" in entry:
+            groups.add(str(entry.cn).lower())
+    return groups
