@@ -8,8 +8,9 @@
             margin: 0;
             min-height: 100vh;
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             position: relative;
             overflow: hidden;
             background: linear-gradient(185deg, rgba(4, 10, 18, 0.82) 0%, rgba(7, 16, 27, 0.92) 52%, rgba(2, 7, 12, 0.96) 100%),
@@ -116,10 +117,31 @@
         .league-logos img:hover {
             transform: translateY(-4px) scale(1.03);
         }
+        .content-area {
+            flex: 1;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 0 24px;
+        }
+        .brand-watermark {
+            margin-top: auto;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            padding-bottom: 32px;
+        }
+        .brand-watermark img {
+            width: clamp(160px, 28vw, 220px);
+            height: auto;
+            filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.45));
+        }
     </style>
 </head>
 <body>
-    <form method="post" action="/auth/login">
+    <main class="content-area">
+        <form method="post" action="/auth/login">
         <h2>🔑 Login</h2>
         <label>Username</label>
         <input type="text" name="username" required>
@@ -136,5 +158,9 @@
             </div>
         </div>
     </form>
+    </main>
+    <div class="brand-watermark">
+        <img src="{{ request.url_for('static', path='corderos_logo_white.png') }}" alt="Logo de la Liga de los Corderos" />
+    </div>
 </body>
 </html>

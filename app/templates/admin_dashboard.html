@@ -34,7 +34,10 @@
       gap: 12px;
     }
     .sidebar a {
-      display: block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
       color: #fff;
       text-decoration: none;
       padding: 11px 14px;
@@ -42,6 +45,11 @@
       background: rgba(255, 255, 255, 0.08);
       font-weight: 500;
       transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+    .sidebar a img {
+      height: 26px;
+      width: auto;
+      filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
     }
     .sidebar a:hover {
       background: rgba(255, 255, 255, 0.22);
@@ -82,7 +90,10 @@
       <a href="/auth/panel" target="main_frame">Panel de usuarios LDAP</a>
       <a href="/auth/add_user_form" target="main_frame">➕ Añadir usuario</a>
       <a href="/auth/list_users" target="main_frame">👥 Listado de usuarios</a>
-      <a href="/bets" target="main_frame">🐑 Corderos App</a>
+      <a href="/bets" target="main_frame">
+        <img src="{{ request.url_for('static', path='corderos_logo_white.png') }}" alt="Logo de la Liga de los Corderos" />
+        <span>Corderos App</span>
+      </a>
     </div>
     <div class="league-icons">
       <img src="{{ request.url_for('static', path='la-liga_white.png') }}" alt="La Liga logo">

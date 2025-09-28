@@ -8,8 +8,9 @@
             margin: 0;
             min-height: 100vh;
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             background: linear-gradient(160deg, rgba(5, 13, 24, 0.9) 0%, rgba(12, 24, 39, 0.94) 55%, rgba(4, 10, 18, 0.97) 100%),
                 url("{{ request.url_for('static', path='main_back.png') }}") center/cover fixed;
             color: #e6edf7;
@@ -67,10 +68,31 @@
             box-shadow: 0 20px 36px rgba(3, 8, 15, 0.6);
             background: linear-gradient(135deg, rgba(64, 104, 149, 0.98), rgba(42, 72, 112, 0.98));
         }
+        .content-area {
+            flex: 1;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 0;
+        }
+        .brand-watermark {
+            margin-top: auto;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            padding-bottom: 20px;
+        }
+        .brand-watermark img {
+            width: clamp(160px, 28vw, 220px);
+            height: auto;
+            filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.45));
+        }
     </style>
 </head>
 <body>
-    <form class="card" method="post" action="/auth/add_user">
+    <main class="content-area">
+        <form class="card" method="post" action="/auth/add_user">
         <h2>➕ Add New User</h2>
         <label>Username</label>
         <input type="text" name="username" required>
@@ -84,5 +106,9 @@
         <input type="email" name="mail" required>
         <button type="submit">Create User</button>
     </form>
+    </main>
+    <div class="brand-watermark">
+        <img src="{{ request.url_for('static', path='corderos_logo_white.png') }}" alt="Logo de la Liga de los Corderos" />
+    </div>
 </body>
 </html>

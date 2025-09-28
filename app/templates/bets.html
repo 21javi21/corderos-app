@@ -12,9 +12,16 @@
       background: linear-gradient(160deg, rgba(5, 13, 24, 0.88) 0%, rgba(12, 25, 40, 0.94) 52%, rgba(4, 10, 18, 0.96) 100%),
         url("{{ request.url_for('static', path='main_back.png') }}") center/cover fixed;
       color: #e6edf7;
+      display: flex;
+      flex-direction: column;
+    }
+    .content-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
     }
     .topbar {
-      margin-bottom: 18px;
       display: flex;
       gap: 12px;
       flex-wrap: wrap;
@@ -153,84 +160,102 @@
       border: none;
       box-shadow: 0 10px 20px rgba(5, 10, 18, 0.4);
     }
+    .brand-watermark {
+      margin-top: auto;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      padding-top: 28px;
+    }
+    .brand-watermark img {
+      width: clamp(160px, 28vw, 220px);
+      height: auto;
+      filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.45));
+    }
   </style>
 </head>
 <body>
-  <div class="topbar">
-    <a href="/apuestas/nueva" target="_self">➕ Añadir apuesta</a>
-    <a href="/clasificacion" target="_self">📊 Ver clasificación</a>
+  <main class="content-area">
+    <div class="topbar">
+      <a href="/apuestas/nueva" target="_self">➕ Añadir apuesta</a>
+      <a href="/clasificacion" target="_self">📊 Ver clasificación</a>
+    </div>
+
+    {% if apuestas and apuestas|length > 0 %}
+    <table id="betsTable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Apuesta</th>
+          <th>Creación</th>
+          <th>Categoría</th>
+          <th>Tipo</th>
+          <th>Multiplica</th>
+          <th>Participantes</th>
+          <th>Apostado</th>
+          <th>Resultado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in apuestas %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ a.apuesta }}</td>
+          <td>{{ a.creacion }}</td>
+          <td>{{ a.categoria }}</td>
+          <td>{{ a.tipo }}</td>
+          <td>{{ a.multiplica }}</td>
+          <td>
+            {% set parts = [a.apostante1, a.apostante2, a.apostante3] | select | list %}
+            {% if parts|length == 0 %}
+              -
+            {% else %}
+              <div class="multi-line">
+                {% for part in parts %}
+                  <span>{{ part }}</span>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </td>
+          <td>
+            {% set bets = [a.apostado1, a.apostado2, a.apostado3] | select | list %}
+            {% if bets|length == 0 %}
+              -
+            {% else %}
+              <div class="multi-line">
+                {% for bet in bets %}
+                  <span>{{ bet }}</span>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </td>
+          <td>
+            <div class="multi-line">
+              <span>G: {{ a.ganador1 or "-" }}{% if a.ganador2 %}, {{ a.ganador2 }}{% endif %}</span>
+              <span>P: {{ a.perdedor1 or "-" }}{% if a.perdedor2 %}, {{ a.perdedor2 }}{% endif %}</span>
+            </div>
+          </td>
+          <td class="actions-cell">
+            <a href="/apuestas/{{ a.id }}/editar">✏️ Modificar</a>
+            <form method="post"
+                  action="/apuestas/{{ a.id }}/borrar"
+                  onsubmit="return confirm('¿Borrar apuesta #{{ a.id }}?');">
+              <button type="submit">🗑️ Borrar</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <p>No hay apuestas todavía. Usa “Añadir apuesta”.</p>
+    {% endif %}
+  </main>
+  <div class="brand-watermark">
+    <img src="{{ request.url_for('static', path='corderos_logo_white.png') }}" alt="Logo de la Liga de los Corderos" />
   </div>
 
-  {% if apuestas and apuestas|length > 0 %}
-  <table id="betsTable">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Apuesta</th>
-        <th>Creación</th>
-        <th>Categoría</th>
-        <th>Tipo</th>
-        <th>Multiplica</th>
-        <th>Participantes</th>
-        <th>Apostado</th>
-        <th>Resultado</th>
-        <th>Acciones</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for a in apuestas %}
-      <tr>
-        <td>{{ loop.index }}</td>
-        <td>{{ a.apuesta }}</td>
-        <td>{{ a.creacion }}</td>
-        <td>{{ a.categoria }}</td>
-        <td>{{ a.tipo }}</td>
-        <td>{{ a.multiplica }}</td>
-        <td>
-          {% set parts = [a.apostante1, a.apostante2, a.apostante3] | select | list %}
-          {% if parts|length == 0 %}
-            -
-          {% else %}
-            <div class="multi-line">
-              {% for part in parts %}
-                <span>{{ part }}</span>
-              {% endfor %}
-            </div>
-          {% endif %}
-        </td>
-        <td>
-          {% set bets = [a.apostado1, a.apostado2, a.apostado3] | select | list %}
-          {% if bets|length == 0 %}
-            -
-          {% else %}
-            <div class="multi-line">
-              {% for bet in bets %}
-                <span>{{ bet }}</span>
-              {% endfor %}
-            </div>
-          {% endif %}
-        </td>
-        <td>
-          <div class="multi-line">
-            <span>G: {{ a.ganador1 or "-" }}{% if a.ganador2 %}, {{ a.ganador2 }}{% endif %}</span>
-            <span>P: {{ a.perdedor1 or "-" }}{% if a.perdedor2 %}, {{ a.perdedor2 }}{% endif %}</span>
-          </div>
-        </td>
-        <td class="actions-cell">
-          <a href="/apuestas/{{ a.id }}/editar">✏️ Modificar</a>
-          <form method="post"
-                action="/apuestas/{{ a.id }}/borrar"
-                onsubmit="return confirm('¿Borrar apuesta #{{ a.id }}?');">
-            <button type="submit">🗑️ Borrar</button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-    <p>No hay apuestas todavía. Usa “Añadir apuesta”.</p>
-  {% endif %}
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
   <script>

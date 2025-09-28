@@ -12,6 +12,8 @@
       background: linear-gradient(160deg, rgba(5, 13, 24, 0.9) 0%, rgba(12, 24, 39, 0.94) 55%, rgba(4, 10, 18, 0.97) 100%),
         url("{{ request.url_for('static', path='main_back.png') }}") center/cover fixed;
       color: #e6edf7;
+      display: flex;
+      flex-direction: column;
     }
     h1 {
       margin-top: 0;
@@ -101,12 +103,31 @@
     .link:hover {
       text-decoration: underline;
     }
+    .content-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .brand-watermark {
+      margin-top: auto;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      padding-top: 32px;
+    }
+    .brand-watermark img {
+      width: clamp(160px, 28vw, 220px);
+      height: auto;
+      filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.45));
+    }
   </style>
 </head>
 <body>
-  <h1 class="title">Editar apuesta #{{ apuesta.id }}</h1>
+  <main class="content-area">
+    <h1 class="title">Editar apuesta #{{ apuesta.id }}</h1>
 
-  <form method="post" action="/apuestas/{{ apuesta.id }}/editar">
+    <form method="post" action="/apuestas/{{ apuesta.id }}/editar">
     <fieldset>
       <legend>Datos básicos</legend>
       <label>Apuesta</label>
@@ -201,6 +222,10 @@
       <button type="submit" class="btn">Guardar cambios</button>
       <a href="/bets" class="link">Cancelar</a>
     </div>
-  </form>
+    </form>
+  </main>
+  <div class="brand-watermark">
+    <img src="{{ request.url_for('static', path='corderos_logo_white.png') }}" alt="Logo de la Liga de los Corderos" />
+  </div>
 </body>
 </html>
