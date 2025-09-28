@@ -109,10 +109,8 @@
             z-index: 1;
         }
         .user-actions {
-            display: flex;
-            flex-direction: column;
+            display: grid;
             gap: 10px;
-            align-items: stretch;
         }
         .action-button {
             display: inline-flex;
@@ -164,9 +162,9 @@
         </tr>
         {% for user in users %}
         <tr>
-            <td>{{ user.uid }}</td>
-            <td>{{ user.cn }}</td>
-            <td>{{ user.sn }}</td>
+            <td>{{ user.uid|title }}</td>
+            <td>{{ user.cn|title }}</td>
+            <td>{{ user.sn|title }}</td>
             <td>{{ user.mail }}</td>
             <td>
                 <form method="post" action="/auth/change_group">

@@ -123,7 +123,7 @@
       {% for fila in clasificacion %}
       <tr>
         <td>{{ fila.posicion }}</td>
-        <td>{{ fila.nombre }}</td>
+        <td>{{ fila.nombre|title }}</td>
         <td>{{ fila.apuestados }}</td>
         <td>{{ fila.ganados }}</td>
         <td>{{ fila.perdidos }}</td>

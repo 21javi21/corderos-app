@@ -213,7 +213,7 @@
             {% else %}
               <div class="multi-line">
                 {% for part in parts %}
-                  <span>{{ part }}</span>
+                  <span>{{ part|title }}</span>
                 {% endfor %}
               </div>
             {% endif %}
@@ -225,15 +225,15 @@
             {% else %}
               <div class="multi-line">
                 {% for bet in bets %}
-                  <span>{{ bet }}</span>
+                  <span>{{ bet|title }}</span>
                 {% endfor %}
               </div>
             {% endif %}
           </td>
           <td>
             <div class="multi-line">
-              <span>G: {{ a.ganador1 or "-" }}{% if a.ganador2 %}, {{ a.ganador2 }}{% endif %}</span>
-              <span>P: {{ a.perdedor1 or "-" }}{% if a.perdedor2 %}, {{ a.perdedor2 }}{% endif %}</span>
+              <span>G: {{ (a.ganador1 or "-")|title }}{% if a.ganador2 %}, {{ a.ganador2|title }}{% endif %}</span>
+              <span>P: {{ (a.perdedor1 or "-")|title }}{% if a.perdedor2 %}, {{ a.perdedor2|title }}{% endif %}</span>
             </div>
           </td>
           <td class="actions-cell">
