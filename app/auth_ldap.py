@@ -116,9 +116,12 @@ def login(request: Request, username: str = Form(...), password: str = Form(...)
         with Connection(server, user_dn, password, auto_bind=True):
             with Connection(server, LDAP_BIND_DN, LDAP_BIND_PASSWORD, auto_bind=True) as check_conn:
                 if is_admin(check_conn, user_dn):
-                    return RedirectResponse(url="/auth/dashboard_admin", status_code=303)
+                    response = RedirectResponse(url="/auth/dashboard_admin", status_code=303)
+                    response.set_cookie("is_admin", "true", max_age=60 * 60 * 12, samesite="lax", httponly=True)
                 else:
-                    return RedirectResponse(url="/auth/dashboard_user", status_code=303)
+                    response = RedirectResponse(url="/auth/dashboard_user", status_code=303)
+                    response.set_cookie("is_admin", "false", max_age=60 * 60 * 12, samesite="lax", httponly=True)
+                return response
 
     except Exception as e:
         print(f"❌ Exception: {e}")

@@ -152,6 +152,14 @@
           <option value="{{ opcion }}" {% if apuesta.multiplica == opcion %}selected{% endif %}>{{ opcion }}</option>
         {% endfor %}
       </select>
+
+      {% if is_admin %}
+      <label>Bloqueo</label>
+      <select name="bloqueo">
+        <option value="false" {% if not apuesta.locked %}selected{% endif %}>Desactivado — editable (false)</option>
+        <option value="true" {% if apuesta.locked %}selected{% endif %}>Activado — bloqueada (true)</option>
+      </select>
+      {% endif %}
     </fieldset>
 
     <fieldset>

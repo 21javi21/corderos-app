@@ -101,6 +101,14 @@
       align-items: center;
       gap: 10px;
     }
+    .locked-note {
+      font-size: 0.9rem;
+      color: #c19d4f;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
     .actions-cell form {
       margin: 0;
     }
@@ -146,6 +154,26 @@
     }
     small {
       color: #9aaac0;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .status-badge.locked {
+      background: rgba(193, 85, 60, 0.22);
+      color: #f4b99d;
+      border: 1px solid rgba(244, 168, 130, 0.35);
+    }
+    .status-badge.unlocked {
+      background: rgba(67, 156, 126, 0.22);
+      color: #aee4ce;
+      border: 1px solid rgba(138, 217, 180, 0.35);
     }
     #betsTable_filter input,
     #betsTable_length select {
@@ -206,6 +234,7 @@
           <th>Participantes</th>
           <th>Apostado</th>
           <th>Resultado</th>
+          <th>Estado</th>
           <th>Acciones</th>
         </tr>
       </thead>
@@ -248,13 +277,24 @@
               <span>P: {{ (a.perdedor1 or "-")|title }}{% if a.perdedor2 %}, {{ a.perdedor2|title }}{% endif %}</span>
             </div>
           </td>
+          <td>
+            {% if a.locked %}
+              <span class="status-badge locked">Bloqueada</span>
+            {% else %}
+              <span class="status-badge unlocked">Activa</span>
+            {% endif %}
+          </td>
           <td class="actions-cell">
-            <a href="/apuestas/{{ a.id }}/editar">✏️ Modificar</a>
-            <form method="post"
-                  action="/apuestas/{{ a.id }}/borrar"
-                  onsubmit="return confirm('¿Borrar apuesta #{{ a.id }}?');">
-              <button type="submit">🗑️ Borrar</button>
-            </form>
+            {% if is_admin or not a.locked %}
+              <a href="/apuestas/{{ a.id }}/editar">✏️ Modificar</a>
+              <form method="post"
+                    action="/apuestas/{{ a.id }}/borrar"
+                    onsubmit="return confirm('¿Borrar apuesta #{{ a.id }}?');">
+                <button type="submit">🗑️ Borrar</button>
+              </form>
+            {% else %}
+              <span class="locked-note">🔒 Bloqueada</span>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}

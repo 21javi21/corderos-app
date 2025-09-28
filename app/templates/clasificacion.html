@@ -31,6 +31,18 @@
       letter-spacing: 0.05em;
       color: #f2f7ff;
     }
+    h2 {
+      margin: 28px 0 12px;
+      font-size: 1.35rem;
+      letter-spacing: 0.04em;
+      color: #f6fbff;
+    }
+    h3 {
+      margin: 18px 0 10px;
+      font-size: 1.08rem;
+      letter-spacing: 0.03em;
+      color: #d6e1f5;
+    }
     .topbar {
       margin-bottom: 18px;
       display: flex;
@@ -62,6 +74,7 @@
       overflow: hidden;
       box-shadow: 0 30px 60px rgba(2, 6, 12, 0.78);
       backdrop-filter: blur(3px);
+      margin: 6px 0 24px;
     }
     th, td {
       padding: 14px 16px;
@@ -84,6 +97,10 @@
     tbody tr:hover {
       background: rgba(36, 54, 75, 0.7);
     }
+    .totals-row {
+      background: rgba(48, 71, 100, 0.65);
+      font-weight: 600;
+    }
     .empty {
       color: #95a7be;
       font-style: italic;
@@ -96,6 +113,22 @@
       position: relative;
       z-index: 1;
     }
+    .stats-section {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+    }
+    .stats-grid {
+      display: grid;
+      gap: 22px;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+    .stats-grid .stats-section {
+      margin-top: 0;
+    }
+    .no-data {
+      margin: 6px 0 20px;
+    }
   </style>
 </head>
 <body>
@@ -107,35 +140,194 @@
     <h1>Clasificación</h1>
 
     {% if clasificacion and clasificacion|length > 0 %}
-    <table>
-    <thead>
-      <tr>
-        <th>Posición</th>
-        <th>Nombre</th>
-        <th>Apostados</th>
-        <th>Ganados</th>
-        <th>Perdidos</th>
-        <th>Balance</th>
-        <th>Pendientes</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for fila in clasificacion %}
-      <tr>
-        <td>{{ fila.posicion }}</td>
-        <td>{{ fila.nombre|title }}</td>
-        <td>{{ fila.apuestados }}</td>
-        <td>{{ fila.ganados }}</td>
-        <td>{{ fila.perdidos }}</td>
-        <td>{{ fila.balance }}</td>
-        <td>{{ fila.pendientes }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-    </table>
+    <section class="stats-section">
+      <table>
+        <thead>
+          <tr>
+            <th>Posición</th>
+            <th>Nombre</th>
+            <th>Apostados</th>
+            <th>Ganados</th>
+            <th>Perdidos</th>
+            <th>Balance</th>
+            <th>Pendientes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fila in clasificacion %}
+          <tr>
+            <td>{{ fila.posicion }}</td>
+            <td>{{ fila.nombre|title }}</td>
+            <td>{{ fila.apuestados }}</td>
+            <td>{{ fila.ganados }}</td>
+            <td>{{ fila.perdidos }}</td>
+            <td>{{ fila.balance }}</td>
+            <td>{{ fila.pendientes }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
     {% else %}
       <p class="empty">No hay datos de apuestas todavía.</p>
     {% endif %}
+
+    {% if category_summary and category_summary|length > 0 %}
+    <section class="stats-section">
+      <h2>Jugados por categoría</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Categoría</th>
+            <th>Unico</th>
+            <th>Largo</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fila in category_summary %}
+          <tr>
+            <td>{{ fila.categoria }}</td>
+            <td>{{ fila.unico }}</td>
+            <td>{{ fila.largo }}</td>
+            <td>{{ fila.total }}</td>
+          </tr>
+          {% endfor %}
+          <tr class="totals-row">
+            <td>{{ category_summary_totals.categoria }}</td>
+            <td>{{ category_summary_totals.unico }}</td>
+            <td>{{ category_summary_totals.largo }}</td>
+            <td>{{ category_summary_totals.total }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+    {% endif %}
+
+    {% if player_category_rows and player_category_rows|length > 0 %}
+    <section class="stats-section">
+      <h2>Jugados por apostante y categoría</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            {% for categoria in category_order %}
+              <th>{{ categoria }}</th>
+            {% endfor %}
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fila in player_category_rows %}
+          <tr>
+            <td>{{ fila.nombre|title }}</td>
+            {% for count in fila.counts %}
+              <td>{{ count }}</td>
+            {% endfor %}
+            <td>{{ fila.total }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% endif %}
+
+    {% for tipo in type_tables %}
+      {% if tipo.jugados or tipo.ganados or tipo.perdidos %}
+      <section class="stats-section">
+        <h2>{{ tipo.label }}</h2>
+        <div class="stats-grid">
+          <div class="stats-section">
+            <h3>{{ tipo.label }} jugados</h3>
+            {% if tipo.jugados %}
+            <table>
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  {% for categoria in category_order %}
+                    <th>{{ categoria }}</th>
+                  {% endfor %}
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for fila in tipo.jugados %}
+                <tr>
+                  <td>{{ fila.nombre|title }}</td>
+                  {% for count in fila.counts %}
+                    <td>{{ count }}</td>
+                  {% endfor %}
+                  <td>{{ fila.total }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% else %}
+              <p class="empty no-data">No hay datos para mostrar.</p>
+            {% endif %}
+          </div>
+          <div class="stats-section">
+            <h3>Ganados a {{ tipo.label }}</h3>
+            {% if tipo.ganados %}
+            <table>
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  {% for categoria in category_order %}
+                    <th>{{ categoria }}</th>
+                  {% endfor %}
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for fila in tipo.ganados %}
+                <tr>
+                  <td>{{ fila.nombre|title }}</td>
+                  {% for count in fila.counts %}
+                    <td>{{ count }}</td>
+                  {% endfor %}
+                  <td>{{ fila.total }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% else %}
+              <p class="empty no-data">No hay datos para mostrar.</p>
+            {% endif %}
+          </div>
+          <div class="stats-section">
+            <h3>Perdidos a {{ tipo.label }}</h3>
+            {% if tipo.perdidos %}
+            <table>
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  {% for categoria in category_order %}
+                    <th>{{ categoria }}</th>
+                  {% endfor %}
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for fila in tipo.perdidos %}
+                <tr>
+                  <td>{{ fila.nombre|title }}</td>
+                  {% for count in fila.counts %}
+                    <td>{{ count }}</td>
+                  {% endfor %}
+                  <td>{{ fila.total }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% else %}
+              <p class="empty no-data">No hay datos para mostrar.</p>
+            {% endif %}
+          </div>
+        </div>
+      </section>
+      {% endif %}
+    {% endfor %}
   </main>
 </body>
 </html>

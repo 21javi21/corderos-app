@@ -45,6 +45,32 @@ DATABASE_URL = os.environ.get("DATABASE_URL")
 pool: SimpleConnectionPool | None = None
 
 
+def _is_admin_request(request: Request) -> bool:
+    token_sources = (
+        request.cookies.get("is_admin"),
+        request.query_params.get("admin"),
+        request.headers.get("x-admin"),
+    )
+    for raw in token_sources:
+        if not raw:
+            continue
+        value = raw.strip().lower()
+        if value in {"1", "true", "yes", "y", "admin"}:
+            return True
+    return False
+
+
+def _parse_locked_value(value: str | None, current: bool) -> bool:
+    if value is None:
+        return current
+    normalized = value.strip().lower()
+    if normalized in {"true", "1", "yes", "y", "locked", "bloqueada", "on"}:
+        return True
+    if normalized in {"false", "0", "no", "n", "unlocked", "desbloqueada", "off"}:
+        return False
+    return current
+
+
 def _slugify(name: str) -> str:
     return _HALL_SLUG_PATTERN.sub("_", name.lower()).strip("_")
 
@@ -100,6 +126,7 @@ def dashboard(request: Request):
 
 @app.get("/bets", response_class=HTMLResponse)
 def bets_home(request: Request):
+    is_admin = _is_admin_request(request)
     conn = pool.getconn()
     try:
         with conn.cursor() as cur:
@@ -107,7 +134,8 @@ def bets_home(request: Request):
                 SELECT id, apuesta, creacion, categoria, tipo, multiplica,
                        apostante1, apostante2, apostante3,
                        apostado1, apostado2, apostado3,
-                       ganador1, ganador2, perdedor1, perdedor2
+                       ganador1, ganador2, perdedor1, perdedor2,
+                       locked
                 FROM apuestas
                 ORDER BY id DESC
             """)
@@ -122,12 +150,17 @@ def bets_home(request: Request):
             "apostante1": r[6], "apostante2": r[7], "apostante3": r[8],
             "apostado1": r[9], "apostado2": r[10], "apostado3": r[11],
             "ganador1": r[12], "ganador2": r[13], "perdedor1": r[14], "perdedor2": r[15],
+            "locked": bool(r[16]),
         } for r in rows
     ]
 
     return templates.TemplateResponse(
         "bets.html",
-        {"request": request, "apuestas": apuestas}
+        {
+            "request": request,
+            "apuestas": apuestas,
+            "is_admin": is_admin,
+        }
     )
 
 
@@ -182,12 +215,14 @@ def crear_apuesta(
                     apuesta, creacion, categoria, tipo, multiplica,
                     apostante1, apostante2, apostante3,
                     apostado1, apostado2, apostado3,
-                    ganador1, ganador2, perdedor1, perdedor2
+                    ganador1, ganador2, perdedor1, perdedor2,
+                    locked
                 ) VALUES (
                     %s, %s, %s, %s, %s,
                     %s, %s, %s,
                     %s, %s, %s,
-                    %s, %s, %s, %s
+                    %s, %s, %s, %s,
+                    %s
                 ) RETURNING id
             """, (
                 apuesta,
@@ -204,7 +239,8 @@ def crear_apuesta(
                 _empty_to_none(ganador1),
                 _empty_to_none(ganador2),
                 _empty_to_none(perdedor1),
-                _empty_to_none(perdedor2)
+                _empty_to_none(perdedor2),
+                False,
             ))
             _new_id = cur.fetchone()[0]
     finally:
@@ -221,6 +257,8 @@ def clasificacion(request: Request):
             cur.execute(
                 """
                 SELECT multiplica,
+                       categoria,
+                       tipo,
                        apostante1, apostante2, apostante3,
                        ganador1, ganador2,
                        perdedor1, perdedor2
@@ -231,6 +269,9 @@ def clasificacion(request: Request):
     finally:
         pool.putconn(conn)
 
+    tipo_keys = ("largo", "unico")
+    tipo_labels = {"largo": "Largo", "unico": "Unico"}
+
     stats: dict[str, dict[str, int]] = defaultdict(
         lambda: {
             "apuestados": 0,
@@ -239,37 +280,132 @@ def clasificacion(request: Request):
             "perdidos": 0,
         }
     )
+    category_totals: dict[str, dict[str, int]] = defaultdict(lambda: {key: 0 for key in tipo_keys})
+    players_by_category: dict[str, defaultdict[str, int]] = defaultdict(lambda: defaultdict(int))
+    played_by_type = {key: defaultdict(lambda: defaultdict(int)) for key in tipo_keys}
+    wins_by_type = {key: defaultdict(lambda: defaultdict(int)) for key in tipo_keys}
+    losses_by_type = {key: defaultdict(lambda: defaultdict(int)) for key in tipo_keys}
+    categories_seen: set[str] = set()
 
-    def _sum_player(value: str | None, bucket: str, amount: int = 1, base_bucket: str | None = None):
-        nombre = _empty_to_none(value)
-        if not nombre:
-            return
-        stats[nombre][bucket] += amount
-        if base_bucket:
-            stats[nombre][base_bucket] += 1
+    def _normalize_categoria(value: str | None) -> str:
+        if value is None:
+            return "Sin categoria"
+        cleaned = value.strip()
+        return cleaned or "Sin categoria"
+
+    def _normalize_tipo(value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip().lower()
+        if cleaned in {"largo", "larga"}:
+            return "largo"
+        if cleaned in {"unico", "único", "corta", "corto", "unica"}:
+            return "unico"
+        return None
 
     for row in rows:
         multiplica = row[0] or 0
-        apostantes = row[1:4]
-        ganadores = row[4:6]
-        perdedores = row[6:8]
+        categoria = _normalize_categoria(row[1])
+        tipo_key = _normalize_tipo(row[2])
+        apostantes = row[3:6]
+        ganadores = row[6:8]
+        perdedores = row[8:10]
+
+        categories_seen.add(categoria)
+        if tipo_key:
+            category_totals[categoria][tipo_key] += 1
 
         for apostante in apostantes:
             nombre = _empty_to_none(apostante)
             if not nombre:
                 continue
             stats[nombre]["apuestados"] += 1
+            players_by_category[nombre][categoria] += 1
+            if tipo_key:
+                played_by_type[tipo_key][nombre][categoria] += 1
 
         for ganador in ganadores:
-            _sum_player(ganador, "ganados", amount=multiplica, base_bucket="ganados_base")
+            nombre = _empty_to_none(ganador)
+            if not nombre:
+                continue
+            stats[nombre]["ganados"] += multiplica
+            stats[nombre]["ganados_base"] += 1
+            if tipo_key:
+                wins_by_type[tipo_key][nombre][categoria] += 1
 
         for perdedor in perdedores:
-            _sum_player(perdedor, "perdidos")
+            nombre = _empty_to_none(perdedor)
+            if not nombre:
+                continue
+            stats[nombre]["perdidos"] += 1
+            if tipo_key:
+                losses_by_type[tipo_key][nombre][categoria] += 1
 
     usuarios_ldap = auth_ldap.fetch_all_user_uids()
 
     for usuario in usuarios_ldap:
-        _ = stats[usuario]  # ensure presence
+        _ = stats[usuario]
+        _ = players_by_category[usuario]
+        for tipo_key in tipo_keys:
+            _ = played_by_type[tipo_key][usuario]
+            _ = wins_by_type[tipo_key][usuario]
+            _ = losses_by_type[tipo_key][usuario]
+
+    categories_seen.update(CATEGORIAS_PREDEFINIDAS)
+    category_order: list[str] = []
+    seen_categories: set[str] = set()
+    for categoria in CATEGORIAS_PREDEFINIDAS:
+        if categoria not in seen_categories:
+            category_order.append(categoria)
+            seen_categories.add(categoria)
+    for categoria in sorted(categories_seen):
+        if categoria not in seen_categories:
+            category_order.append(categoria)
+            seen_categories.add(categoria)
+
+    category_summary: list[dict[str, int | str]] = []
+    totals_row = {"categoria": "Total", "largo": 0, "unico": 0, "total": 0}
+    for categoria in category_order:
+        counts = category_totals.get(categoria, {key: 0 for key in tipo_keys})
+        largo_val = counts.get("largo", 0)
+        unico_val = counts.get("unico", 0)
+        total_val = largo_val + unico_val
+        category_summary.append(
+            {
+                "categoria": categoria,
+                "largo": largo_val,
+                "unico": unico_val,
+                "total": total_val,
+            }
+        )
+        totals_row["largo"] += largo_val
+        totals_row["unico"] += unico_val
+    totals_row["total"] = totals_row["largo"] + totals_row["unico"]
+
+    def _build_player_table(source: dict[str, dict[str, int]]) -> list[dict[str, object]]:
+        rows_out: list[dict[str, object]] = []
+        for nombre in sorted(source.keys(), key=str.lower):
+            category_counts = [source[nombre].get(cat, 0) for cat in category_order]
+            total_count = sum(category_counts)
+            if total_count == 0:
+                continue
+            rows_out.append({
+                "nombre": nombre,
+                "counts": category_counts,
+                "total": total_count,
+            })
+        return rows_out
+
+    player_category_rows = _build_player_table(players_by_category)
+    type_tables = []
+    for tipo_key in tipo_keys:
+        type_tables.append({
+            "key": tipo_key,
+            "label": tipo_labels[tipo_key],
+            "jugados": _build_player_table(played_by_type[tipo_key]),
+            "ganados": _build_player_table(wins_by_type[tipo_key]),
+            "perdidos": _build_player_table(losses_by_type[tipo_key]),
+        })
 
     clasificacion_datos = []
     for nombre, datos in stats.items():
@@ -306,13 +442,29 @@ def clasificacion(request: Request):
             "request": request,
             "clasificacion": clasificacion_datos,
             "usuarios": usuarios_ldap,
+            "category_order": category_order,
+            "category_summary": category_summary,
+            "category_summary_totals": totals_row,
+            "player_category_rows": player_category_rows,
+            "type_tables": type_tables,
         },
     )
 
 @app.post("/apuestas/{apuesta_id}/borrar")
-def borrar_apuesta(apuesta_id: int = Path(...)):
+def borrar_apuesta(request: Request, apuesta_id: int = Path(...)):
+    is_admin = _is_admin_request(request)
     conn = pool.getconn()
     try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT locked FROM apuestas WHERE id = %s", (apuesta_id,))
+            row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Apuesta no encontrada")
+
+        locked = bool(row[0])
+        if locked and not is_admin:
+            raise HTTPException(status_code=403, detail="La apuesta está bloqueada para borrado")
+
         with conn, conn.cursor() as cur:
             cur.execute("DELETE FROM apuestas WHERE id = %s", (apuesta_id,))
     finally:
@@ -330,7 +482,8 @@ def editar_apuesta_form(request: Request, apuesta_id: int = Path(...)):
                 SELECT id, apuesta, categoria, tipo, multiplica,
                        apostante1, apostante2, apostante3,
                        apostado1, apostado2, apostado3,
-                       ganador1, ganador2, perdedor1, perdedor2
+                       ganador1, ganador2, perdedor1, perdedor2,
+                       locked
                 FROM apuestas
                 WHERE id = %s
                 """,
@@ -359,6 +512,7 @@ def editar_apuesta_form(request: Request, apuesta_id: int = Path(...)):
         "ganador2": row[12],
         "perdedor1": row[13],
         "perdedor2": row[14],
+        "locked": bool(row[15]),
     }
 
     usuarios = auth_ldap.fetch_all_user_uids()
@@ -371,6 +525,7 @@ def editar_apuesta_form(request: Request, apuesta_id: int = Path(...)):
             "usuarios": usuarios,
             "categorias": CATEGORIAS_PREDEFINIDAS,
             "multiplica_opciones": MULTIPLICA_OPCIONES,
+            "is_admin": _is_admin_request(request),
         },
     )
 
@@ -384,6 +539,7 @@ def _empty_to_none(value: str | None) -> str | None:
 
 @app.post("/apuestas/{apuesta_id}/editar")
 def actualizar_apuesta(
+    request: Request,
     apuesta_id: int = Path(...),
     apuesta: str = Form(...),
     categoria: str = Form(...),
@@ -399,9 +555,25 @@ def actualizar_apuesta(
     ganador2: str | None = Form(None),
     perdedor1: str | None = Form(None),
     perdedor2: str | None = Form(None),
+    bloqueo: str | None = Form(None),
 ):
+    is_admin = _is_admin_request(request)
     conn = pool.getconn()
     try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT locked FROM apuestas WHERE id = %s", (apuesta_id,))
+            row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Apuesta no encontrada")
+
+        current_locked = bool(row[0])
+        if current_locked and not is_admin:
+            raise HTTPException(status_code=403, detail="La apuesta está bloqueada para edición")
+
+        desired_locked = current_locked
+        if is_admin:
+            desired_locked = _parse_locked_value(bloqueo, current_locked)
+
         with conn, conn.cursor() as cur:
             cur.execute(
                 """
@@ -419,7 +591,8 @@ def actualizar_apuesta(
                     ganador1 = %s,
                     ganador2 = %s,
                     perdedor1 = %s,
-                    perdedor2 = %s
+                    perdedor2 = %s,
+                    locked = %s
                 WHERE id = %s
                 """,
                 (
@@ -437,6 +610,7 @@ def actualizar_apuesta(
                     _empty_to_none(ganador2),
                     _empty_to_none(perdedor1),
                     _empty_to_none(perdedor2),
+                    desired_locked,
                     apuesta_id,
                 ),
             )
