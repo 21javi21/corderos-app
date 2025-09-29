@@ -70,7 +70,7 @@
     }
     th, td {
       border-bottom: 1px solid rgba(59, 76, 99, 0.4);
-      padding: 14px 16px;
+      padding: 10px 14px;
       vertical-align: middle;
       text-align: center;
     }
@@ -98,53 +98,66 @@
     }
     .actions-cell {
       display: flex;
-      flex-direction: column;
       align-items: center;
-      gap: 10px;
+      justify-content: center;
+      padding: 10px 12px;
     }
     .locked-note {
-      font-size: 0.9rem;
+      font-size: 1rem;
       color: #c19d4f;
       font-weight: 600;
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      justify-content: center;
+      text-align: center;
     }
-    .actions-cell form {
-      margin: 0;
+    .action-content {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
     }
-    .actions-cell a,
-    .actions-cell button {
+    .action-content a,
+    .action-content button {
       display: inline-flex;
       justify-content: center;
       align-items: center;
-      padding: 9px 16px;
+      padding: 8px 14px;
       border-radius: 8px;
       text-decoration: none;
       border: none;
       cursor: pointer;
       transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-      width: 150px;
-      max-width: 150px;
-      text-align: center;
-      font: 600 0.95rem/1.2 'Segoe UI', sans-serif;
+      min-width: 0;
+      font: 600 0.9rem/1.2 'Segoe UI', sans-serif;
       color: #f7fbff;
     }
-    .actions-cell a {
+    .action-content a {
       background: linear-gradient(135deg, #1f6db5, #2980b9);
     }
-    .actions-cell a:hover {
+    .action-content a:hover {
       background: linear-gradient(135deg, #215c92, #2472a3);
       transform: translateY(-2px);
       box-shadow: 0 16px 28px rgba(18, 78, 130, 0.55);
     }
-    .actions-cell button {
+    .action-content button {
       background: linear-gradient(135deg, #9b2f24, #c0392b);
     }
-    .actions-cell button:hover {
+    .action-content button:hover {
       background: linear-gradient(135deg, #7c241c, #a12f23);
       transform: translateY(-2px);
       box-shadow: 0 16px 28px rgba(124, 36, 28, 0.55);
+    }
+    .action-content .delete-button {
+      padding: 8px;
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+    .action-content form {
+      margin: 0;
+      display: inline-flex;
     }
     .multi-line {
       display: inline-flex;
@@ -205,6 +218,33 @@
       border-radius: 6px;
       background: transparent;
       color: #aebcd1 !important;
+    }
+    .estado-filter {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: 12px;
+    }
+    .estado-filter label {
+      color: #aebcd1;
+      font-weight: 600;
+      font-size: 0.85rem;
+      letter-spacing: 0.02em;
+    }
+    .estado-filter button {
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(59, 76, 99, 0.4);
+      background: rgba(18, 32, 48, 0.8);
+      color: #dce6f7;
+      cursor: pointer;
+      transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+      font: 600 0.8rem/1 'Segoe UI', sans-serif;
+    }
+    .estado-filter button.active {
+      background: rgba(103, 152, 210, 0.3);
+      border-color: rgba(103, 152, 210, 0.6);
+      color: #ffffff;
     }
     .dataTables_wrapper .dataTables_paginate .paginate_button.current,
     .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
@@ -286,16 +326,22 @@
             {% endif %}
           </td>
           <td class="actions-cell">
-            {% if is_admin or not a.effective_locked %}
-              <a href="/apuestas/{{ a.id }}/editar">✏️ Modificar</a>
-              <form method="post"
-                    action="/apuestas/{{ a.id }}/borrar"
-                    onsubmit="return confirm('¿Borrar apuesta #{{ a.id }}?');">
-                <button type="submit">🗑️ Borrar</button>
-              </form>
-            {% else %}
-              <span class="locked-note">🔒 {{ a.estado_label }}</span>
-            {% endif %}
+            <div class="action-content">
+              {% if a.effective_locked %}
+                <span class="locked-note">🔒 Bloqueada</span>
+              {% endif %}
+
+              {% if is_admin or not a.effective_locked %}
+                <a href="/apuestas/{{ a.id }}/editar">✏️ Modificar</a>
+                <form method="post"
+                      action="/apuestas/{{ a.id }}/borrar"
+                      onsubmit="return confirm('¿Borrar apuesta #{{ a.id }}?');">
+                  <button type="submit" class="delete-button" aria-label="Borrar apuesta">
+                    ✖
+                  </button>
+                </form>
+              {% endif %}
+            </div>
           </td>
         </tr>
         {% endfor %}
@@ -324,6 +370,34 @@
           { targets: -1, orderable: false, searchable: false }
         ]
       });
+
+      const wrapper = tableElement.closest('.dataTables_wrapper');
+      const lengthContainer = wrapper.find('.dataTables_length');
+      if (lengthContainer.length) {
+        const estadoFilter = $('<div class="estado-filter" role="group" aria-label="Filtrar por estado"></div>');
+        estadoFilter.append('<label>Estado:</label>');
+
+        const buttonsConfig = [
+          { label: 'Todos', value: '', regex: false },
+          { label: 'Activa', value: '^ACTIVA$', regex: true },
+          { label: 'Cerrada', value: '^CERRADA$', regex: true }
+        ];
+
+        buttonsConfig.forEach(function(config, index) {
+          const button = $('<button type="button"></button>').text(config.label);
+          if (index === 0) {
+            button.addClass('active');
+          }
+          button.on('click', function() {
+            estadoFilter.find('button').removeClass('active');
+            button.addClass('active');
+            table.column(9).search(config.value, config.regex, false).draw();
+          });
+          estadoFilter.append(button);
+        });
+
+        lengthContainer.append(estadoFilter);
+      }
 
       table.on('order.dt search.dt', function() {
         let i = 1;
