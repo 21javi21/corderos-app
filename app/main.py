@@ -100,6 +100,10 @@ def _compute_auto_locked(
     return auto_locked, effective_locked
 
 
+def _compute_estado_label(winners: tuple[str | None, ...], losers: tuple[str | None, ...]) -> str:
+    return "CERRADA" if _has_result_fields(winners, losers) else "ACTIVA"
+
+
 def _slugify(name: str) -> str:
     return _HALL_SLUG_PATTERN.sub("_", name.lower()).strip("_")
 
@@ -197,7 +201,7 @@ def bets_home(request: Request):
         )
         apuesta["auto_locked"] = auto_locked
         apuesta["effective_locked"] = effective_locked
-        apuesta["estado_label"] = "CERRADA" if effective_locked else "ACTIVA"
+        apuesta["estado_label"] = _compute_estado_label(winners, losers)
 
     return templates.TemplateResponse(
         "bets.html",
@@ -613,7 +617,7 @@ def editar_apuesta_form(request: Request, apuesta_id: int = Path(...)):
 
     apuesta["auto_locked"] = auto_locked
     apuesta["effective_locked"] = effective_locked
-    apuesta["estado_label"] = "CERRADA" if effective_locked else "ACTIVA"
+    apuesta["estado_label"] = _compute_estado_label(winners, losers)
 
     return templates.TemplateResponse(
         "edit_apuesta.html",

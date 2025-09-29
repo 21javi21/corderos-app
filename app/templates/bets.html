@@ -97,30 +97,18 @@
       text-align: left;
     }
     .actions-cell {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 10px 12px;
-    }
-    .locked-note {
-      font-size: 1rem;
-      color: #c19d4f;
-      font-weight: 600;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      justify-content: center;
+      padding: 12px 16px;
       text-align: center;
+      vertical-align: middle;
     }
     .action-content {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 12px;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
     }
-    .action-content a,
-    .action-content button {
+    .action-button {
       display: inline-flex;
       justify-content: center;
       align-items: center;
@@ -130,34 +118,52 @@
       border: none;
       cursor: pointer;
       transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-      min-width: 0;
       font: 600 0.9rem/1.2 'Segoe UI', sans-serif;
       color: #f7fbff;
+      min-width: 0;
     }
-    .action-content a {
+    .action-button.edit {
       background: linear-gradient(135deg, #1f6db5, #2980b9);
     }
-    .action-content a:hover {
+    .action-button.edit:hover {
       background: linear-gradient(135deg, #215c92, #2472a3);
       transform: translateY(-2px);
       box-shadow: 0 16px 28px rgba(18, 78, 130, 0.55);
     }
-    .action-content button {
+    .action-button.delete-button {
       background: linear-gradient(135deg, #9b2f24, #c0392b);
-    }
-    .action-content button:hover {
-      background: linear-gradient(135deg, #7c241c, #a12f23);
-      transform: translateY(-2px);
-      box-shadow: 0 16px 28px rgba(124, 36, 28, 0.55);
-    }
-    .action-content .delete-button {
       padding: 8px;
       font-size: 1.1rem;
       line-height: 1;
     }
+    .action-button.delete-button:hover {
+      background: linear-gradient(135deg, #7c241c, #a12f23);
+      transform: translateY(-2px);
+      box-shadow: 0 16px 28px rgba(124, 36, 28, 0.55);
+    }
     .action-content form {
       margin: 0;
       display: inline-flex;
+    }
+    .action-button.disabled,
+    .action-button[aria-disabled="true"],
+    .action-button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+      box-shadow: none;
+      transform: none;
+      background: linear-gradient(135deg, rgba(67, 88, 112, 0.6), rgba(56, 74, 96, 0.6));
+    }
+    .action-button.disabled:hover,
+    .action-button[aria-disabled="true"]:hover,
+    .action-button:disabled:hover {
+      transform: none;
+      box-shadow: none;
+    }
+    .status-icon {
+      margin-left: 6px;
+      font-size: 1.05rem;
+      line-height: 1;
     }
     .multi-line {
       display: inline-flex;
@@ -286,7 +292,7 @@
           <td>{{ a.apuesta }}</td>
           <td>{{ a.creacion }}</td>
           <td>{{ a.categoria }}</td>
-        <td>{{ a.tipo|title }}</td>
+          <td>{{ a.tipo|title }}</td>
           <td>{{ a.multiplica }}</td>
           <td>
             {% set parts = [a.apostante1, a.apostante2, a.apostante3] | select | list %}
@@ -319,27 +325,27 @@
             </div>
           </td>
           <td>
+            {% set status_icon = "🔒" if a.effective_locked else "🔓" %}
             {% if a.estado_label == "CERRADA" %}
-              <span class="status-badge locked">CERRADA</span>
+              <span class="status-badge locked">{{ a.estado_label }}<span class="status-icon" aria-hidden="true">{{ status_icon }}</span></span>
             {% else %}
-              <span class="status-badge unlocked">ACTIVA</span>
+              <span class="status-badge unlocked">{{ a.estado_label }}<span class="status-icon" aria-hidden="true">{{ status_icon }}</span></span>
             {% endif %}
           </td>
           <td class="actions-cell">
             <div class="action-content">
-              {% if a.effective_locked %}
-                <span class="locked-note">🔒 Bloqueada</span>
-              {% endif %}
-
               {% if is_admin or not a.effective_locked %}
-                <a href="/apuestas/{{ a.id }}/editar">✏️ Modificar</a>
+                <a class="action-button edit" href="/apuestas/{{ a.id }}/editar">✏️ Modificar</a>
                 <form method="post"
                       action="/apuestas/{{ a.id }}/borrar"
                       onsubmit="return confirm('¿Borrar apuesta #{{ a.id }}?');">
-                  <button type="submit" class="delete-button" aria-label="Borrar apuesta">
-                    ✖
-                  </button>
+                  <button type="submit"
+                          class="action-button delete-button"
+                          aria-label="Borrar apuesta">✖</button>
                 </form>
+              {% else %}
+                <span class="action-button edit disabled" aria-disabled="true">✏️ Modificar</span>
+                <span class="action-button delete-button disabled" aria-disabled="true">✖</span>
               {% endif %}
             </div>
           </td>
