@@ -7,7 +7,7 @@ from pathlib import Path as PathlibPath
 from fastapi import FastAPI, Request, Form, Path, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from starlette.middleware.proxy_headers import ProxyHeadersMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.staticfiles import StaticFiles
 import psycopg2
 from psycopg2.pool import SimpleConnectionPool
@@ -38,8 +38,46 @@ HALL_OF_HATE_NAMES = [
 HALL_OF_HATE_DIR = PathlibPath("app/images/hall_of_hate")
 _HALL_SLUG_PATTERN = re.compile(r"[^a-z0-9]+")
 
+
+class ForwardedHeadersMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app):
+        super().__init__(app)
+
+    async def dispatch(self, request, call_next):
+        scope = request.scope
+        headers = request.headers
+        proto = headers.get("x-forwarded-proto")
+        if proto:
+            scope["scheme"] = proto.split(",")[0].strip()
+        host_header = headers.get("x-forwarded-host")
+        port_header = headers.get("x-forwarded-port")
+        if host_header:
+            host_value = host_header.split(",")[0].strip()
+            if ":" in host_value:
+                host, port_str = host_value.rsplit(":", 1)
+                try:
+                    port = int(port_str)
+                except ValueError:
+                    port = None
+            else:
+                host = host_value
+                port = None
+            if port is None and port_header:
+                port_token = port_header.split(",")[0].strip()
+                try:
+                    port = int(port_token)
+                except ValueError:
+                    port = None
+            if port is None:
+                default_port = scope.get("server", ("", 0))[1]
+                if not default_port:
+                    default_port = 443 if scope.get("scheme") == "https" else 80
+                port = default_port
+            scope["server"] = (host, port)
+        return await call_next(request)
+
 app = FastAPI()
-app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
+app.add_middleware(ForwardedHeadersMiddleware)
 templates = Jinja2Templates(directory="app/templates")
 app.include_router(auth_ldap.router)
 app.mount("/static", StaticFiles(directory="app/images"), name="static")
