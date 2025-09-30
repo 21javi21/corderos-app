@@ -1,20 +1,22 @@
 import os
 import re
+import secrets
 from collections import defaultdict
 from datetime import date, timedelta
 from pathlib import Path as PathlibPath
 
-from fastapi import Depends, FastAPI, Form, HTTPException, Path, Request
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Path, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.staticfiles import StaticFiles
 import psycopg2
+from psycopg2 import errors
 from psycopg2.pool import SimpleConnectionPool
 
 from app import auth_ldap
-from app.security import SessionUser, optional_user, require_user
+from app.security import SessionUser, optional_user, require_admin, require_user
 
 CATEGORIAS_PREDEFINIDAS = [
     "Futbol",
@@ -107,6 +109,22 @@ app.mount("/static", StaticFiles(directory="app/images"), name="static")
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 pool: SimpleConnectionPool | None = None
+
+
+def _ensure_schema(conn) -> None:
+    with conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS hall_of_hate (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE,
+                image_filename TEXT NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            )
+            """
+        )
+
+
 def _parse_locked_value(value: str | None, current: bool) -> bool:
     if value is None:
         return current
@@ -153,10 +171,80 @@ def _slugify(name: str) -> str:
     return _HALL_SLUG_PATTERN.sub("_", name.lower()).strip("_")
 
 
+def _fetch_hall_of_hate_db_entries() -> list[dict[str, str | None]]:
+    if not pool:
+        return []
+    conn = pool.getconn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT name, image_filename
+                FROM hall_of_hate
+                ORDER BY created_at DESC, id DESC
+                """
+            )
+            rows = cur.fetchall()
+    finally:
+        pool.putconn(conn)
+
+    entries: list[dict[str, str | None]] = []
+    for name, image_filename in rows:
+        image_path = f"hall_of_hate/{image_filename}" if image_filename else None
+        entries.append({
+            "name": name,
+            "image": image_path,
+        })
+    return entries
+
+
+def _insert_hall_of_hate_entry(name: str, image_filename: str) -> None:
+    if not pool:
+        raise HTTPException(status_code=500, detail="Conexión a base de datos no inicializada")
+    conn = pool.getconn()
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO hall_of_hate (name, image_filename)
+                VALUES (%s, %s)
+                """,
+                (name, image_filename),
+            )
+    finally:
+        pool.putconn(conn)
+
+
+def _save_hall_of_hate_image(upload: UploadFile, display_name: str) -> str:
+    content_type = (upload.content_type or "").lower()
+    if content_type != "image/png":
+        raise HTTPException(status_code=400, detail="Solo se permiten imágenes PNG")
+
+    data = upload.file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="El archivo está vacío")
+    if not data.startswith(b"\x89PNG\r\n\x1a\n"):
+        raise HTTPException(status_code=400, detail="El archivo no es un PNG válido")
+
+    HALL_OF_HATE_DIR.mkdir(parents=True, exist_ok=True)
+    base_slug = _slugify(display_name) or f"entry_{secrets.token_hex(2)}"
+    filename = f"{base_slug}_{secrets.token_hex(4)}.png"
+    destination = HALL_OF_HATE_DIR / filename
+    with destination.open("wb") as out_file:
+        out_file.write(data)
+    upload.file.close()
+    return filename
+
 def _hall_of_hate_entries() -> list[dict[str, str | None]]:
     entries: list[dict[str, str | None]] = []
-    files_by_slug: dict[str, str] = {}
+    seen_names: set[str] = set()
 
+    db_entries = _fetch_hall_of_hate_db_entries()
+    for item in db_entries:
+        entries.append(item)
+        seen_names.add(item["name"].strip().lower())
+
+    files_by_slug: dict[str, str] = {}
     if HALL_OF_HATE_DIR.exists():
         for image_path in HALL_OF_HATE_DIR.iterdir():
             if not image_path.is_file():
@@ -164,6 +252,9 @@ def _hall_of_hate_entries() -> list[dict[str, str | None]]:
             files_by_slug[_slugify(image_path.stem)] = image_path.name
 
     for name in HALL_OF_HATE_NAMES:
+        normalized = name.strip().lower()
+        if normalized in seen_names:
+            continue
         slug = _slugify(name)
         filename = files_by_slug.get(slug)
         entries.append({
@@ -180,6 +271,12 @@ def startup_db():
         # Usa el ConfigMap ya desplegado en K8s; localmente puedes exportar DATABASE_URL
         raise RuntimeError("DATABASE_URL no está definido")
     pool = SimpleConnectionPool(minconn=1, maxconn=5, dsn=DATABASE_URL)
+    HALL_OF_HATE_DIR.mkdir(parents=True, exist_ok=True)
+    conn = pool.getconn()
+    try:
+        _ensure_schema(conn)
+    finally:
+        pool.putconn(conn)
 
 @app.on_event("shutdown")
 def shutdown_db():
@@ -265,11 +362,53 @@ def bets_home(request: Request, current_user: SessionUser = Depends(require_user
 
 
 @app.get("/hall-of-hate", response_class=HTMLResponse)
-def hall_of_hate(request: Request):
+def hall_of_hate(request: Request, current_user: SessionUser | None = Depends(optional_user)):
+    is_admin = bool(current_user and current_user["is_admin"])
     return templates.TemplateResponse(
         "hall_of_hate.html",
-        {"request": request, "entries": _hall_of_hate_entries()}
+        {
+            "request": request,
+            "entries": _hall_of_hate_entries(),
+            "is_admin": is_admin,
+        }
     )
+
+
+@app.get("/hall-of-hate/nuevo", response_class=HTMLResponse)
+def hall_of_hate_new(request: Request, current_admin: SessionUser = Depends(require_admin)):
+    return templates.TemplateResponse(
+        "hall_of_hate_new.html",
+        {
+            "request": request,
+            "is_admin": current_admin["is_admin"],
+        }
+    )
+
+
+@app.post("/hall-of-hate/nuevo")
+def hall_of_hate_create(
+    request: Request,
+    nombre: str = Form(...),
+    imagen: UploadFile = File(...),
+    current_admin: SessionUser = Depends(require_admin),
+):
+    clean_name = nombre.strip()
+    if not clean_name:
+        raise HTTPException(status_code=400, detail="El nombre es obligatorio")
+
+    filename = _save_hall_of_hate_image(imagen, clean_name)
+    try:
+        _insert_hall_of_hate_entry(clean_name, filename)
+    except psycopg2.Error as exc:
+        # Limpia el archivo recién creado si la inserción falla
+        file_path = HALL_OF_HATE_DIR / filename
+        if file_path.exists():
+            file_path.unlink(missing_ok=True)
+        if isinstance(exc, errors.UniqueViolation):
+            raise HTTPException(status_code=400, detail="Ya existe un villano con ese nombre") from exc
+        raise HTTPException(status_code=500, detail="No se pudo guardar el registro") from exc
+
+    return RedirectResponse(url="/hall-of-hate", status_code=303)
 
 
 @app.get("/apuestas/nueva", response_class=HTMLResponse)

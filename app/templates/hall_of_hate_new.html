@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Añadir villano - Hall Of Hate</title>
+  <link rel="icon" href="{{ request.url_for('static', path='favicon.ico') }}" type="image/x-icon">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(165deg, rgba(5, 13, 24, 0.92) 0%, rgba(12, 24, 39, 0.95) 55%, rgba(4, 10, 18, 0.97) 100%),
+        url("{{ request.url_for('static', path='main_back.png') }}") center/cover fixed;
+      color: #e6edf7;
+      position: relative;
+    }
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: url("{{ request.url_for('static', path='corderos_logo_white.png') }}") center calc(100% - 44px)/clamp(200px, 32vw, 280px) auto no-repeat;
+      opacity: 0.16;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .card {
+      position: relative;
+      z-index: 1;
+      width: min(460px, 90vw);
+      padding: 36px 40px;
+      border-radius: 18px;
+      background: rgba(12, 23, 36, 0.94);
+      box-shadow: 0 28px 64px rgba(2, 6, 12, 0.78);
+      border: 1px solid rgba(70, 104, 146, 0.28);
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      backdrop-filter: blur(3px);
+    }
+    h1 {
+      margin: 0 0 8px;
+      text-align: center;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #f4f8ff;
+    }
+    p.subtitle {
+      margin: 0 0 16px;
+      text-align: center;
+      color: #9fb4cf;
+      letter-spacing: 0.05em;
+    }
+    label {
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      color: #aebcd1;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid #28384c;
+      background: #0f1b2a;
+      color: #f7fbff;
+    }
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #3a7bd5;
+      box-shadow: 0 0 0 3px rgba(58, 123, 213, 0.24);
+    }
+    .file-input {
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px dashed rgba(70, 104, 146, 0.4);
+      background: rgba(15, 27, 42, 0.8);
+      color: #c7d4e6;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 0.85rem;
+    }
+    .actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+      gap: 12px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 11px 18px;
+      border-radius: 12px;
+      text-decoration: none;
+      cursor: pointer;
+      font-weight: 600;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      color: #f7fbff;
+      border: none;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #1f6db5, #2980b9);
+      box-shadow: 0 18px 32px rgba(18, 78, 130, 0.55);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      background: linear-gradient(135deg, #215c92, #2472a3);
+      box-shadow: 0 20px 36px rgba(18, 78, 130, 0.6);
+    }
+    .btn-secondary {
+      background: linear-gradient(135deg, rgba(67, 88, 112, 0.55), rgba(56, 74, 96, 0.55));
+    }
+    .btn-secondary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 20px 36px rgba(5, 12, 22, 0.45);
+    }
+  </style>
+</head>
+<body>
+  <form class="card" method="post" action="/hall-of-hate/nuevo" enctype="multipart/form-data">
+    <h1>Nuevo villano</h1>
+    <p class="subtitle">Añade un miembro al Hall Of Hate</p>
+    <label for="nombre">Nombre</label>
+    <input id="nombre" name="nombre" type="text" placeholder="Nombre del villano" required>
+    <label for="imagen">Imagen (PNG)</label>
+    <div class="file-input">
+      <input id="imagen" name="imagen" type="file" accept="image/png" required>
+      <span>Solo se aceptan archivos PNG. ¿Necesitas uno? Descárgalo en
+        <a href="https://pngdownload.io/" target="_blank" rel="noopener">pngdownload.io</a>
+        y súbelo aquí.</span>
+    </div>
+    <div class="actions">
+      <a class="btn btn-secondary" href="/hall-of-hate">⟵ Volver</a>
+      <button type="submit" class="btn btn-primary">Guardar</button>
+    </div>
+  </form>
+  <script>
+    (function () {
+      function notifyParent() {
+        if (window.parent && window.parent !== window) {
+          const payload = { type: 'corderos:set-title', title: document.title || '' };
+          try { window.parent.postMessage(payload, '*'); } catch (error) { /* ignore */ }
+        }
+      }
+      window.addEventListener('DOMContentLoaded', notifyParent);
+      window.addEventListener('load', notifyParent);
+    })();
+  </script>
+</body>
+</html>
