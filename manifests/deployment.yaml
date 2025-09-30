@@ -45,9 +45,13 @@ spec:
             configMapKeyRef:
               name: corderos-app-config
               key: DATABASE_URL
+        - name: SESSION_COOKIE_SECURE
+          value: "true"
         envFrom:
         - secretRef:
             name: corderos-app-ldap
+        - secretRef:
+            name: corderos-app-session
         ports:
         - containerPort: 8000
         livenessProbe:
