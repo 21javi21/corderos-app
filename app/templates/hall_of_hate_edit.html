@@ -89,12 +89,21 @@
       gap: 10px;
       margin-top: 6px;
     }
-    .preview img {
+    .preview .image-frame {
       width: clamp(160px, 40vw, 220px);
-      height: clamp(160px, 40vw, 220px);
+      aspect-ratio: 1 / 1;
       border-radius: 16px;
-      object-fit: cover;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(6, 16, 28, 0.85);
       box-shadow: 0 18px 32px rgba(3, 8, 15, 0.6);
+    }
+    .preview .image-frame img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
     }
     .actions {
       display: flex;
@@ -142,7 +151,9 @@
     <label for="nombre">Nombre</label>
     <input id="nombre" name="nombre" type="text" value="{{ entry.name }}" required>
     <div class="preview">
-      <img src="{{ request.url_for('static', path='hall_of_hate/' + entry.image_filename) }}" alt="{{ entry.name }}">
+      <div class="image-frame">
+        <img src="{{ request.url_for('static', path='hall_of_hate/' + entry.image_filename) }}" alt="{{ entry.name }}">
+      </div>
       <small>Imagen actual</small>
     </div>
     <label for="nueva_imagen">Nueva imagen (PNG opcional)</label>
