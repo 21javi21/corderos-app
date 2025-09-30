@@ -15,8 +15,7 @@
             justify-content: flex-start;
             position: relative;
             overflow: hidden;
-            background: linear-gradient(185deg, rgba(4, 10, 18, 0.82) 0%, rgba(7, 16, 27, 0.92) 52%, rgba(2, 7, 12, 0.96) 100%),
-                url("{{ request.url_for('static', path='main_back.png') }}") center/cover fixed;
+            background: linear-gradient(185deg, rgba(4, 10, 18, 0.82) 0%, rgba(7, 16, 27, 0.92) 52%, rgba(2, 7, 12, 0.96) 100%);
             color: #e6edf7;
         }
         body::before {
@@ -24,8 +23,7 @@
             position: fixed;
             inset: 0;
             background:
-                linear-gradient(188deg, rgba(2, 8, 16, 0.45) 0%, rgba(5, 16, 28, 0.65) 45%, rgba(1, 6, 12, 0.78) 100%),
-                url("{{ request.url_for('static', path='main_back.png') }}") center/cover fixed;
+                linear-gradient(188deg, rgba(2, 8, 16, 0.45) 0%, rgba(5, 16, 28, 0.65) 45%, rgba(1, 6, 12, 0.78) 100%);
             transform: scale(1.02);
             z-index: -2;
         }
