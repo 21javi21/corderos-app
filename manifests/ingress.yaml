@@ -4,7 +4,8 @@ metadata:
   name: corderos-app
   namespace: corderos
   annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod  
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "6m"
 spec:
   ingressClassName: nginx
   tls:
