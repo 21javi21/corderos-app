@@ -7,6 +7,7 @@ from pathlib import Path as PathlibPath
 from fastapi import FastAPI, Request, Form, Path, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.proxy_headers import ProxyHeadersMiddleware
 from fastapi.staticfiles import StaticFiles
 import psycopg2
 from psycopg2.pool import SimpleConnectionPool
@@ -38,6 +39,7 @@ HALL_OF_HATE_DIR = PathlibPath("app/images/hall_of_hate")
 _HALL_SLUG_PATTERN = re.compile(r"[^a-z0-9]+")
 
 app = FastAPI()
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
 templates = Jinja2Templates(directory="app/templates")
 app.include_router(auth_ldap.router)
 app.mount("/static", StaticFiles(directory="app/images"), name="static")
