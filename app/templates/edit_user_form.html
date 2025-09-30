@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Editar usuario</title>
+    <title>Editar usuario - Corderos League</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -127,5 +127,21 @@
             <button type="submit">Guardar cambios</button>
         </form>
     </section>
+  <script>
+    (function () {
+      function notifyParent() {
+        if (window.parent && window.parent !== window) {
+          var payload = { type: 'corderos:set-title', title: document.title || '' };
+          try {
+            window.parent.postMessage(payload, '*');
+          } catch (error) {
+            // ignore
+          }
+        }
+      }
+      window.addEventListener('DOMContentLoaded', notifyParent);
+      window.addEventListener('load', notifyParent);
+    })();
+  </script>
 </body>
 </html>

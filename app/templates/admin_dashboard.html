@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Admin Dashboard</title>
-  <link rel="icon" href="{{ request.url_for('static', path='corderos_logo_white.png') }}" type="image/png">
+  <title>Apuestas - Corderos League</title>
+  <link rel="icon" href="{{ request.url_for('static', path='favicon.ico') }}" type="image/x-icon">
   <style>
     body {
       margin: 0;
@@ -25,9 +25,9 @@
       box-shadow: 8px 0 32px rgba(2, 6, 12, 0.7);
     }
     .sidebar h2 {
-      font-size: 1.32em;
+      font-size: 1.30em;
       margin: 0;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.08em;
     }
     .sidebar h2.brand-title {
       display: flex;
@@ -56,6 +56,12 @@
       background: rgba(255, 255, 255, 0.08);
       font-weight: 500;
       transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+    .sidebar a .link-logo {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.35));
     }
     .sidebar a:hover {
       background: rgba(255, 255, 255, 0.22);
@@ -93,10 +99,13 @@
   <aside class="sidebar">
     <h2 class="brand-title">
       <img src="{{ request.url_for('static', path='corderos_logo_white.png') }}" alt="Logo de la Liga de los Corderos" />
-      <span>Corderos</span>
+      <span>Corderos App</span>
     </h2>
     <div class="sidebar-nav">
-      <a href="/bets" target="main_frame">🐑 Corderos App</a>
+      <a href="/bets" target="main_frame">
+        <img class="link-logo" src="{{ request.url_for('static', path='corderos_logo_white.png') }}" alt="Logo Corderos League" />
+        Corderos League
+      </a>
       <a href="/hall-of-hate" target="main_frame">😡 Hall Of Hate</a>
       <a href="/auth/panel" target="main_frame">🛠️ Gestion De Usuarios</a>
     </div>
@@ -108,5 +117,55 @@
     </div>
   </aside>
   <iframe name="main_frame" class="content" src="/bets"></iframe>
+  <script>
+    (function () {
+      var iframe = document.querySelector('iframe[name="main_frame"]');
+      var defaultTitle = document.title;
+      function applyTitle(value) {
+        if (value && typeof value === 'string') {
+          var trimmed = value.trim();
+          if (trimmed.length) {
+            document.title = trimmed;
+            return;
+          }
+        }
+        document.title = defaultTitle;
+      }
+      function updateFromIframe() {
+        if (!iframe) {
+          return;
+        }
+        try {
+          var innerDoc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+          var innerTitle = innerDoc && innerDoc.title ? innerDoc.title : '';
+          applyTitle(innerTitle);
+        } catch (error) {
+          applyTitle();
+        }
+      }
+      window.addEventListener('message', function (event) {
+        if (!event || event.source === window) {
+          return;
+        }
+        var data = event.data;
+        if (typeof data === 'string') {
+          try {
+            data = JSON.parse(data);
+          } catch (err) {
+            data = null;
+          }
+        }
+        if (data && data.type === 'corderos:set-title') {
+          applyTitle(data.title || '');
+        }
+      });
+      window.addEventListener('DOMContentLoaded', updateFromIframe);
+      if (iframe) {
+        iframe.addEventListener('load', function () {
+          updateFromIframe();
+        });
+      }
+    })();
+  </script>
 </body>
 </html>

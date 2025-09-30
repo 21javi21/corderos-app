@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Corderos — Apuestas</title>
-  <link rel="icon" href="{{ request.url_for('static', path='corderos_logo_white.png') }}" type="image/png">
+  <title>Apuestas - Corderos League</title>
+  <link rel="icon" href="{{ request.url_for('static', path='favicon.ico') }}" type="image/x-icon">
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
   <style>
     body {
@@ -412,6 +412,22 @@
         });
       }).draw();
     });
+  </script>
+  <script>
+    (function () {
+      function notifyParent() {
+        if (window.parent && window.parent !== window) {
+          var payload = { type: 'corderos:set-title', title: document.title || '' };
+          try {
+            window.parent.postMessage(payload, '*');
+          } catch (error) {
+            // ignore
+          }
+        }
+      }
+      window.addEventListener('DOMContentLoaded', notifyParent);
+      window.addEventListener('load', notifyParent);
+    })();
   </script>
 </body>
 </html>

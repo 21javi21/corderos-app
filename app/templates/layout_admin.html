@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Admin Dashboard</title>
-  <link rel="icon" href="{{ request.url_for('static', path='corderos_logo_white.png') }}" type="image/png">
+  <title>Admin Dashboard - Corderos League</title>
+  <link rel="icon" href="{{ request.url_for('static', path='favicon.ico') }}" type="image/x-icon">
   <style>
     body {
       margin: 0;
@@ -47,6 +47,7 @@
     }
     .sidebar a {
       display: flex;
+      gap: 10px;
       align-items: center;
       justify-content: center;
       color: white;
@@ -56,6 +57,12 @@
       background: rgba(255, 255, 255, 0.08);
       font-weight: 500;
       transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+    .sidebar a .link-logo {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.35));
     }
     .sidebar a:hover {
       background: rgba(255, 255, 255, 0.2);
@@ -81,7 +88,10 @@
       <span>Corderos</span>
     </h2>
     <div class="sidebar-nav">
-      <a href="/bets" target="main_frame">🐑 Corderos App</a>
+      <a href="/bets" target="main_frame">
+        <img class="link-logo" src="{{ request.url_for('static', path='corderos_logo_white.png') }}" alt="Logo Corderos League" />
+        Corderos App
+      </a>
       <a href="/hall-of-hate" target="main_frame">😡 Hall Of Hate</a>
       <a href="/auth/add_user_form" target="main_frame">➕ Añadir usuario</a>
       <a href="/auth/list_users" target="main_frame">👥 Listado de usuarios</a>
@@ -90,5 +100,55 @@
   </div>
 
   <iframe name="main_frame" class="content" src="/bets"></iframe>
+    <script>
+    (function () {
+      var iframe = document.querySelector('iframe[name="main_frame"]');
+      var defaultTitle = document.title;
+      function applyTitle(value) {
+        if (value && typeof value === 'string') {
+          var trimmed = value.trim();
+          if (trimmed.length) {
+            document.title = trimmed;
+            return;
+          }
+        }
+        document.title = defaultTitle;
+      }
+      function updateFromIframe() {
+        if (!iframe) {
+          return;
+        }
+        try {
+          var innerDoc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+          var innerTitle = innerDoc && innerDoc.title ? innerDoc.title : '';
+          applyTitle(innerTitle);
+        } catch (error) {
+          applyTitle();
+        }
+      }
+      window.addEventListener('message', function (event) {
+        if (!event || event.source === window) {
+          return;
+        }
+        var data = event.data;
+        if (typeof data === 'string') {
+          try {
+            data = JSON.parse(data);
+          } catch (err) {
+            data = null;
+          }
+        }
+        if (data && data.type === 'corderos:set-title') {
+          applyTitle(data.title || '');
+        }
+      });
+      window.addEventListener('DOMContentLoaded', updateFromIframe);
+      if (iframe) {
+        iframe.addEventListener('load', function () {
+          updateFromIframe();
+        });
+      }
+    })();
+  </script>
 </body>
 </html>

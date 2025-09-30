@@ -2,8 +2,8 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Clasificación de corderos</title>
-  <link rel="icon" href="{{ request.url_for('static', path='corderos_logo_white.png') }}" type="image/png">
+  <title>Clasificación - Corderos League</title>
+  <link rel="icon" href="{{ request.url_for('static', path='favicon.ico') }}" type="image/x-icon">
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -330,5 +330,21 @@
       {% endif %}
     {% endfor %}
   </main>
+  <script>
+    (function () {
+      function notifyParent() {
+        if (window.parent && window.parent !== window) {
+          var payload = { type: 'corderos:set-title', title: document.title || '' };
+          try {
+            window.parent.postMessage(payload, '*');
+          } catch (error) {
+            // ignore
+          }
+        }
+      }
+      window.addEventListener('DOMContentLoaded', notifyParent);
+      window.addEventListener('load', notifyParent);
+    })();
+  </script>
 </body>
 </html>
