@@ -16,7 +16,7 @@ from psycopg2 import errors
 from psycopg2.pool import SimpleConnectionPool
 
 from app import auth_ldap
-from app.security import SessionUser, optional_user, require_admin, require_user
+from app.security import SessionUser, optional_user, require_user
 
 CATEGORIAS_PREDEFINIDAS = [
     "Futbol",
@@ -112,17 +112,34 @@ pool: SimpleConnectionPool | None = None
 
 
 def _ensure_schema(conn) -> None:
-    with conn, conn.cursor() as cur:
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS hall_of_hate (
-                id SERIAL PRIMARY KEY,
-                name TEXT NOT NULL UNIQUE,
-                image_filename TEXT NOT NULL,
-                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    with conn.cursor() as cur:
+        try:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS hall_of_hate (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT NOT NULL UNIQUE,
+                    image_filename TEXT NOT NULL,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                )
+                """
             )
-            """
-        )
+            conn.commit()
+            return
+        except errors.InsufficientPrivilege:
+            conn.rollback()
+            cur.execute(
+                """
+                SELECT 1 FROM information_schema.tables
+                WHERE table_schema = 'public' AND table_name = 'hall_of_hate'
+                """
+            )
+            exists = cur.fetchone() is not None
+            if not exists:
+                raise
+        except Exception:
+            conn.rollback()
+            raise
 
 
 def _parse_locked_value(value: str | None, current: bool) -> bool:
@@ -179,7 +196,7 @@ def _fetch_hall_of_hate_db_entries() -> list[dict[str, str | None]]:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT name, image_filename
+                SELECT id, name, image_filename
                 FROM hall_of_hate
                 ORDER BY created_at DESC, id DESC
                 """
@@ -189,9 +206,10 @@ def _fetch_hall_of_hate_db_entries() -> list[dict[str, str | None]]:
         pool.putconn(conn)
 
     entries: list[dict[str, str | None]] = []
-    for name, image_filename in rows:
+    for entry_id, name, image_filename in rows:
         image_path = f"hall_of_hate/{image_filename}" if image_filename else None
         entries.append({
+            "id": entry_id,
             "name": name,
             "image": image_path,
         })
@@ -235,6 +253,77 @@ def _save_hall_of_hate_image(upload: UploadFile, display_name: str) -> str:
     upload.file.close()
     return filename
 
+
+def _get_hall_of_hate_entry(entry_id: int) -> dict[str, str | int] | None:
+    if not pool:
+        return None
+    conn = pool.getconn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, name, image_filename
+                FROM hall_of_hate
+                WHERE id = %s
+                """,
+                (entry_id,),
+            )
+            row = cur.fetchone()
+    finally:
+        pool.putconn(conn)
+    if not row:
+        return None
+    return {"id": row[0], "name": row[1], "image_filename": row[2]}
+
+
+def _update_hall_of_hate_entry(entry_id: int, name: str, image_filename: str | None) -> None:
+    if not pool:
+        raise HTTPException(status_code=500, detail="Conexión a base de datos no inicializada")
+    conn = pool.getconn()
+    try:
+        with conn, conn.cursor() as cur:
+            if image_filename is None:
+                cur.execute(
+                    """
+                    UPDATE hall_of_hate
+                    SET name = %s
+                    WHERE id = %s
+                    """,
+                    (name, entry_id),
+                )
+            else:
+                cur.execute(
+                    """
+                    UPDATE hall_of_hate
+                    SET name = %s,
+                        image_filename = %s
+                    WHERE id = %s
+                    """,
+                    (name, image_filename, entry_id),
+                )
+    finally:
+        pool.putconn(conn)
+
+
+def _delete_hall_of_hate_entry(entry_id: int) -> str | None:
+    if not pool:
+        raise HTTPException(status_code=500, detail="Conexión a base de datos no inicializada")
+    conn = pool.getconn()
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT image_filename FROM hall_of_hate WHERE id = %s",
+                (entry_id,),
+            )
+            row = cur.fetchone()
+            if not row:
+                return None
+            image_filename: str | None = row[0]
+            cur.execute("DELETE FROM hall_of_hate WHERE id = %s", (entry_id,))
+    finally:
+        pool.putconn(conn)
+    return image_filename
+
 def _hall_of_hate_entries() -> list[dict[str, str | None]]:
     entries: list[dict[str, str | None]] = []
     seen_names: set[str] = set()
@@ -258,6 +347,7 @@ def _hall_of_hate_entries() -> list[dict[str, str | None]]:
         slug = _slugify(name)
         filename = files_by_slug.get(slug)
         entries.append({
+            "id": None,
             "name": name,
             "image": f"hall_of_hate/{filename}" if filename else None,
         })
@@ -363,24 +453,24 @@ def bets_home(request: Request, current_user: SessionUser = Depends(require_user
 
 @app.get("/hall-of-hate", response_class=HTMLResponse)
 def hall_of_hate(request: Request, current_user: SessionUser | None = Depends(optional_user)):
-    is_admin = bool(current_user and current_user["is_admin"])
+    can_manage = bool(current_user)
     return templates.TemplateResponse(
         "hall_of_hate.html",
         {
             "request": request,
             "entries": _hall_of_hate_entries(),
-            "is_admin": is_admin,
+            "can_manage": can_manage,
         }
     )
 
 
 @app.get("/hall-of-hate/nuevo", response_class=HTMLResponse)
-def hall_of_hate_new(request: Request, current_admin: SessionUser = Depends(require_admin)):
+def hall_of_hate_new(request: Request, current_user: SessionUser = Depends(require_user)):
     return templates.TemplateResponse(
         "hall_of_hate_new.html",
         {
             "request": request,
-            "is_admin": current_admin["is_admin"],
+            "current_user": current_user,
         }
     )
 
@@ -390,7 +480,7 @@ def hall_of_hate_create(
     request: Request,
     nombre: str = Form(...),
     imagen: UploadFile = File(...),
-    current_admin: SessionUser = Depends(require_admin),
+    current_user: SessionUser = Depends(require_user),
 ):
     clean_name = nombre.strip()
     if not clean_name:
@@ -408,6 +498,82 @@ def hall_of_hate_create(
             raise HTTPException(status_code=400, detail="Ya existe un villano con ese nombre") from exc
         raise HTTPException(status_code=500, detail="No se pudo guardar el registro") from exc
 
+    return RedirectResponse(url="/hall-of-hate", status_code=303)
+
+
+@app.get("/hall-of-hate/{entry_id}/editar", response_class=HTMLResponse)
+def hall_of_hate_edit_form(
+    request: Request,
+    entry_id: int = Path(..., ge=1),
+    current_user: SessionUser = Depends(require_user),
+):
+    entry = _get_hall_of_hate_entry(entry_id)
+    if not entry:
+        raise HTTPException(status_code=404, detail="Villano no encontrado")
+    return templates.TemplateResponse(
+        "hall_of_hate_edit.html",
+        {
+            "request": request,
+            "entry": entry,
+            "current_user": current_user,
+        }
+    )
+
+
+@app.post("/hall-of-hate/{entry_id}/editar")
+def hall_of_hate_update(
+    request: Request,
+    entry_id: int = Path(..., ge=1),
+    nombre: str = Form(...),
+    nueva_imagen: UploadFile | None = File(None),
+    current_user: SessionUser = Depends(require_user),
+):
+    entry = _get_hall_of_hate_entry(entry_id)
+    if not entry:
+        raise HTTPException(status_code=404, detail="Villano no encontrado")
+
+    clean_name = nombre.strip()
+    if not clean_name:
+        raise HTTPException(status_code=400, detail="El nombre es obligatorio")
+
+    new_filename: str | None = None
+    old_filename = entry["image_filename"]
+    try:
+        if nueva_imagen is not None:
+            if nueva_imagen.filename:
+                new_filename = _save_hall_of_hate_image(nueva_imagen, clean_name)
+            else:
+                nueva_imagen.file.close()
+        _update_hall_of_hate_entry(entry_id, clean_name, new_filename)
+    except psycopg2.Error as exc:
+        if new_filename:
+            file_path = HALL_OF_HATE_DIR / new_filename
+            if file_path.exists():
+                file_path.unlink(missing_ok=True)
+        if isinstance(exc, errors.UniqueViolation):
+            raise HTTPException(status_code=400, detail="Ya existe un villano con ese nombre") from exc
+        raise HTTPException(status_code=500, detail="No se pudo actualizar el villano") from exc
+
+    if new_filename and old_filename and old_filename != new_filename:
+        old_path = HALL_OF_HATE_DIR / old_filename
+        if old_path.exists():
+            old_path.unlink(missing_ok=True)
+
+    return RedirectResponse(url="/hall-of-hate", status_code=303)
+
+
+@app.post("/hall-of-hate/{entry_id}/borrar")
+def hall_of_hate_delete(
+    request: Request,
+    entry_id: int = Path(..., ge=1),
+    current_user: SessionUser = Depends(require_user),
+):
+    image_filename = _delete_hall_of_hate_entry(entry_id)
+    if image_filename is None:
+        raise HTTPException(status_code=404, detail="Villano no encontrado")
+    file_path = HALL_OF_HATE_DIR / image_filename
+    if file_path.exists():
+        file_path.unlink(missing_ok=True)
     return RedirectResponse(url="/hall-of-hate", status_code=303)
 
 

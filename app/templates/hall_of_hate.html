@@ -92,6 +92,8 @@
       gap: 14px;
       box-shadow: 0 26px 54px rgba(2, 6, 12, 0.7);
       backdrop-filter: blur(2px);
+      position: relative;
+      overflow: hidden;
     }
     .card img {
       width: clamp(180px, 27vw, 240px);
@@ -99,6 +101,56 @@
       object-fit: cover;
       border-radius: 16px;
       box-shadow: 0 18px 32px rgba(3, 8, 15, 0.6);
+    }
+    .card-actions {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(160deg, rgba(5, 13, 24, 0.78), rgba(12, 24, 39, 0.82));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    .card:hover .card-actions {
+      opacity: 1;
+    }
+    .card-actions form,
+    .card-actions a {
+      margin: 0;
+    }
+    .card-action-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      border: none;
+      cursor: pointer;
+      font-size: 1.3rem;
+      color: #f7fbff;
+      text-decoration: none;
+      background: linear-gradient(135deg, #1f6db5, #2980b9);
+      box-shadow: 0 16px 28px rgba(18, 78, 130, 0.55);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+    .card-action-button:hover {
+      transform: translateY(-2px);
+      background: linear-gradient(135deg, #215c92, #2472a3);
+      box-shadow: 0 18px 32px rgba(18, 78, 130, 0.6);
+    }
+    .card-action-button.delete {
+      background: linear-gradient(135deg, #9b2f24, #c0392b);
+      box-shadow: 0 16px 28px rgba(124, 36, 28, 0.55);
+    }
+    .card-action-button.delete:hover {
+      background: linear-gradient(135deg, #7c241c, #a12f23);
+      box-shadow: 0 18px 32px rgba(124, 36, 28, 0.6);
+    }
+    .card-actions.disabled {
+      display: none;
     }
     .card h3 {
       margin: 0;
@@ -133,7 +185,7 @@
 </head>
 <body>
   <section class="content">
-    {% if is_admin %}
+    {% if can_manage %}
     <a class="add-button" href="/hall-of-hate/nuevo">➕ Añadir villano</a>
     {% endif %}
     <div>
@@ -143,6 +195,14 @@
     <div class="gallery">
       {% for item in entries %}
         <article class="card">
+          {% if can_manage and item.id %}
+          <div class="card-actions">
+            <a class="card-action-button" href="/hall-of-hate/{{ item.id }}/editar" title="Editar villano" aria-label="Editar villano">✏️</a>
+            <form method="post" action="/hall-of-hate/{{ item.id }}/borrar" onsubmit="return confirm('¿Borrar villano {{ item.name }}?');">
+              <button type="submit" class="card-action-button delete" title="Borrar villano" aria-label="Borrar villano">✖</button>
+            </form>
+          </div>
+          {% endif %}
           {% if item.image %}
             <img src="{{ request.url_for('static', path=item.image) }}" alt="{{ item.name }}" />
           {% else %}
