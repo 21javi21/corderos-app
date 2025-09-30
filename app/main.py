@@ -30,13 +30,15 @@ MULTIPLICA_OPCIONES = [1, 2, 3, 4, 5]
 
 AUTO_LOCK_DAYS = 3
 
-HALL_OF_HATE_NAMES = [
-    "Lebron James",
-    "Luka Doncic",
-    "Carlo Ancelotti",
-    "\"El Cholo\" Simeone",
-    "Vinicius",
-    "Xabi Alonso",
+HALL_OF_HATE_MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
+
+DEFAULT_HALL_OF_HATE_ENTRIES = [
+    {"name": "Lebron James", "image_filename": "Lebron James.png"},
+    {"name": "Luka Doncic", "image_filename": "Luka Doncic.png"},
+    {"name": "Carlo Ancelotti", "image_filename": "Carlo Ancelotti.png"},
+    {"name": "\"El Cholo\" Simeone", "image_filename": "El Cholo Simeone.png"},
+    {"name": "Vinicius", "image_filename": "Vinicius.png"},
+    {"name": "Xabi Alonso", "image_filename": "Xabi Alonso.png"},
 ]
 
 HALL_OF_HATE_DIR = PathlibPath("app/images/hall_of_hate")
@@ -188,6 +190,49 @@ def _slugify(name: str) -> str:
     return _HALL_SLUG_PATTERN.sub("_", name.lower()).strip("_")
 
 
+def _resolve_default_image_filename(filename: str | None) -> str | None:
+    if not filename:
+        return None
+    expected_path = HALL_OF_HATE_DIR / filename
+    if expected_path.exists():
+        return filename
+    target_slug = _slugify(PathlibPath(filename).stem)
+    for image_path in HALL_OF_HATE_DIR.glob("*.png"):
+        if _slugify(image_path.stem) == target_slug:
+            return image_path.name
+    return None
+
+
+def _seed_hall_of_hate_defaults(conn) -> None:
+    try:
+        with conn.cursor() as cur:
+            for entry in DEFAULT_HALL_OF_HATE_ENTRIES:
+                name = entry["name"]
+                cur.execute(
+                    "SELECT id, image_filename FROM hall_of_hate WHERE lower(name) = lower(%s)",
+                    (name,),
+                )
+                row = cur.fetchone()
+                resolved_image = _resolve_default_image_filename(entry.get("image_filename"))
+                if row:
+                    entry_id, current_image = row
+                    if current_image or not resolved_image:
+                        continue
+                    cur.execute(
+                        "UPDATE hall_of_hate SET image_filename = %s WHERE id = %s",
+                        (resolved_image, entry_id),
+                    )
+                    continue
+                cur.execute(
+                    "INSERT INTO hall_of_hate (name, image_filename) VALUES (%s, %s)",
+                    (name, resolved_image),
+                )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
+
 def _fetch_hall_of_hate_db_entries() -> list[dict[str, str | None]]:
     if not pool:
         return []
@@ -238,9 +283,16 @@ def _save_hall_of_hate_image(upload: UploadFile, display_name: str) -> str:
     if content_type != "image/png":
         raise HTTPException(status_code=400, detail="Solo se permiten imágenes PNG")
 
-    data = upload.file.read()
+    try:
+        data = upload.file.read(HALL_OF_HATE_MAX_UPLOAD_BYTES + 1)
+    finally:
+        upload.file.close()
+
     if not data:
         raise HTTPException(status_code=400, detail="El archivo está vacío")
+    if len(data) > HALL_OF_HATE_MAX_UPLOAD_BYTES:
+        max_mb = HALL_OF_HATE_MAX_UPLOAD_BYTES // (1024 * 1024)
+        raise HTTPException(status_code=413, detail=f"La imagen supera el tamaño máximo de {max_mb} MB")
     if not data.startswith(b"\x89PNG\r\n\x1a\n"):
         raise HTTPException(status_code=400, detail="El archivo no es un PNG válido")
 
@@ -250,7 +302,6 @@ def _save_hall_of_hate_image(upload: UploadFile, display_name: str) -> str:
     destination = HALL_OF_HATE_DIR / filename
     with destination.open("wb") as out_file:
         out_file.write(data)
-    upload.file.close()
     return filename
 
 
@@ -325,34 +376,7 @@ def _delete_hall_of_hate_entry(entry_id: int) -> str | None:
     return image_filename
 
 def _hall_of_hate_entries() -> list[dict[str, str | None]]:
-    entries: list[dict[str, str | None]] = []
-    seen_names: set[str] = set()
-
-    db_entries = _fetch_hall_of_hate_db_entries()
-    for item in db_entries:
-        entries.append(item)
-        seen_names.add(item["name"].strip().lower())
-
-    files_by_slug: dict[str, str] = {}
-    if HALL_OF_HATE_DIR.exists():
-        for image_path in HALL_OF_HATE_DIR.iterdir():
-            if not image_path.is_file():
-                continue
-            files_by_slug[_slugify(image_path.stem)] = image_path.name
-
-    for name in HALL_OF_HATE_NAMES:
-        normalized = name.strip().lower()
-        if normalized in seen_names:
-            continue
-        slug = _slugify(name)
-        filename = files_by_slug.get(slug)
-        entries.append({
-            "id": None,
-            "name": name,
-            "image": f"hall_of_hate/{filename}" if filename else None,
-        })
-
-    return entries
+    return _fetch_hall_of_hate_db_entries()
 
 @app.on_event("startup")
 def startup_db():
@@ -365,6 +389,7 @@ def startup_db():
     conn = pool.getconn()
     try:
         _ensure_schema(conn)
+        _seed_hall_of_hate_defaults(conn)
     finally:
         pool.putconn(conn)
 
