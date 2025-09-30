@@ -7,7 +7,7 @@ from pathlib import Path as PathlibPath
 from fastapi import FastAPI, Request, Form, Path, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.middleware.proxy_headers import ProxyHeadersMiddleware
+from starlette.middleware.proxy_headers import ProxyHeadersMiddleware
 from fastapi.staticfiles import StaticFiles
 import psycopg2
 from psycopg2.pool import SimpleConnectionPool
