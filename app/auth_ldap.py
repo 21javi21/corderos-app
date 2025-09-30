@@ -2,8 +2,17 @@ import os
 import base64
 import hashlib
 from ldap3 import Server, Connection, ALL, SUBTREE, MODIFY_ADD, MODIFY_DELETE, MODIFY_REPLACE
-from fastapi import Depends, HTTPException, Form, APIRouter, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
+
+from app.security import (
+    SessionUser,
+    clear_session,
+    establish_session,
+    optional_user,
+    require_admin,
+    require_user,
+)
 from fastapi.templating import Jinja2Templates
 
 templates = Jinja2Templates(directory="app/templates")
@@ -49,8 +58,14 @@ def fetch_all_user_uids() -> list[str]:
     return sorted(set(user_ids))
 
 @router.get("/dashboard", response_class=HTMLResponse)
-def dashboard(request: Request):
-    return templates.TemplateResponse("layout.html", {"request": request})
+def dashboard(request: Request, current_user: SessionUser = Depends(require_user)):
+    return templates.TemplateResponse(
+        "layout.html",
+        {
+            "request": request,
+            "is_admin": current_user["is_admin"],
+        },
+    )
 
 def make_ssha(password: str) -> str:
     """Genera un hash {SSHA} compatible con slappasswd."""
@@ -93,7 +108,10 @@ def is_admin(conn, user_dn: str) -> bool:
     return len(conn.entries) > 0
 
 @router.get("/login", response_class=HTMLResponse)
-def login_form(request: Request):
+def login_form(request: Request, current_user: SessionUser | None = Depends(optional_user)):
+    if current_user:
+        target = "/auth/dashboard_admin" if current_user["is_admin"] else "/auth/dashboard_user"
+        return RedirectResponse(url=target)
     return templates.TemplateResponse("login.html", {"request": request})
 
 @router.post("/login", response_class=HTMLResponse)
@@ -105,27 +123,40 @@ def login(request: Request, username: str = Form(...), password: str = Form(...)
                 search_base=LDAP_BASE_DN,
                 search_filter=f"(uid={username})",
                 search_scope=SUBTREE,
-                attributes=["cn", "sn", "mail", "uid"]
+                attributes=["cn", "sn", "mail", "uid"],
             )
             if not conn.entries:
                 raise HTTPException(status_code=401, detail="Invalid user")
 
-            user_dn = conn.entries[0].entry_dn
+            entry = conn.entries[0]
+            user_dn = entry.entry_dn
+            uid_value = str(entry.uid) if "uid" in entry and str(entry.uid) else username
 
-        # Intento de login con usuario real
         with Connection(server, user_dn, password, auto_bind=True):
             with Connection(server, LDAP_BIND_DN, LDAP_BIND_PASSWORD, auto_bind=True) as check_conn:
-                if is_admin(check_conn, user_dn):
-                    response = RedirectResponse(url="/auth/dashboard_admin", status_code=303)
-                    response.set_cookie("is_admin", "true", max_age=60 * 60 * 12, samesite="lax", httponly=True)
-                else:
-                    response = RedirectResponse(url="/auth/dashboard_user", status_code=303)
-                    response.set_cookie("is_admin", "false", max_age=60 * 60 * 12, samesite="lax", httponly=True)
-                return response
+                is_user_admin = is_admin(check_conn, user_dn)
 
+        clear_session(request)
+        establish_session(request, uid=uid_value, is_admin=is_user_admin)
+        redirect_target = "/auth/dashboard_admin" if is_user_admin else "/auth/dashboard_user"
+        return RedirectResponse(url=redirect_target, status_code=303)
+
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"❌ Exception: {e}")
         raise HTTPException(status_code=401, detail="Invalid credentials")
+
+
+def _logout_response(request: Request) -> RedirectResponse:
+    clear_session(request)
+    request.session.clear()
+    return RedirectResponse(url="/login", status_code=303)
+
+
+@router.post("/logout")
+def logout_post(request: Request) -> RedirectResponse:
+    return _logout_response(request)
 
 @router.post("/add_user")
 def add_user(
@@ -134,7 +165,9 @@ def add_user(
     cn: str = Form(...),
     sn: str = Form(...),
     mail: str = Form(...),
+    current_admin: SessionUser = Depends(require_admin),
 ):
+    _ = current_admin  # dependency enforces autorización
     server = Server(LDAP_URI, get_info=ALL)
     try:
         with Connection(server, LDAP_BIND_DN, LDAP_BIND_PASSWORD, auto_bind=True) as conn:
@@ -169,15 +202,27 @@ def add_user(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/panel", response_class=HTMLResponse)
-def show_panel(request: Request):
-    return templates.TemplateResponse("user_panel.html", {"request": request})
+def show_panel(request: Request, current_user: SessionUser = Depends(require_user)):
+    return templates.TemplateResponse(
+        "user_panel.html",
+        {
+            "request": request,
+            "is_admin": current_user["is_admin"],
+        },
+    )
 
 @router.get("/add_user_form", response_class=HTMLResponse)
-def add_user_form(request: Request):
-    return templates.TemplateResponse("add_user_form.html", {"request": request})
+def add_user_form(request: Request, current_admin: SessionUser = Depends(require_admin)):
+    return templates.TemplateResponse(
+        "add_user_form.html",
+        {
+            "request": request,
+            "is_admin": current_admin["is_admin"],
+        },
+    )
 
 @router.get("/list_users", response_class=HTMLResponse)
-def list_users(request: Request):
+def list_users(request: Request, current_admin: SessionUser = Depends(require_admin)):
     server = Server(LDAP_URI, get_info=ALL)
     users = []
     try:
@@ -209,11 +254,22 @@ def list_users(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    return templates.TemplateResponse("list_users.html", {"request": request, "users": users})
+    return templates.TemplateResponse(
+        "list_users.html",
+        {
+            "request": request,
+            "users": users,
+            "is_admin": current_admin["is_admin"],
+        },
+    )
 
 
 @router.get("/edit_user/{username}", response_class=HTMLResponse)
-def edit_user_form(request: Request, username: str):
+def edit_user_form(
+    request: Request,
+    username: str,
+    current_admin: SessionUser = Depends(require_admin),
+):
     server = Server(LDAP_URI, get_info=ALL)
     try:
         with Connection(server, LDAP_BIND_DN, LDAP_BIND_PASSWORD, auto_bind=True) as conn:
@@ -242,11 +298,25 @@ def edit_user_form(request: Request, username: str):
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
-    return templates.TemplateResponse("edit_user_form.html", {"request": request, "user": user})
+    return templates.TemplateResponse(
+        "edit_user_form.html",
+        {
+            "request": request,
+            "user": user,
+            "is_admin": current_admin["is_admin"],
+        },
+    )
 
 
 @router.post("/edit_user/{username}")
-def edit_user(username: str, cn: str = Form(...), sn: str = Form(...), mail: str = Form(...)):
+def edit_user(
+    username: str,
+    cn: str = Form(...),
+    sn: str = Form(...),
+    mail: str = Form(...),
+    current_admin: SessionUser = Depends(require_admin),
+):
+    _ = current_admin
     server = Server(LDAP_URI, get_info=ALL)
     user_dn = _user_dn(username)
 
@@ -267,7 +337,8 @@ def edit_user(username: str, cn: str = Form(...), sn: str = Form(...), mail: str
     return RedirectResponse(url="/auth/list_users", status_code=303)
 
 @router.post("/delete_user")
-def delete_user(username: str = Form(...)):
+def delete_user(username: str = Form(...), current_admin: SessionUser = Depends(require_admin)):
+    _ = current_admin
     server = Server(LDAP_URI, get_info=ALL)
     try:
         with Connection(server, LDAP_BIND_DN, LDAP_BIND_PASSWORD, auto_bind=True) as conn:
@@ -280,7 +351,12 @@ def delete_user(username: str = Form(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/change_group")
-def change_group(username: str = Form(...), group: str = Form(...)):
+def change_group(
+    username: str = Form(...),
+    group: str = Form(...),
+    current_admin: SessionUser = Depends(require_admin),
+):
+    _ = current_admin
     server = Server(LDAP_URI, get_info=ALL)
     user_dn = _user_dn(username)
 
@@ -305,12 +381,24 @@ def change_group(username: str = Form(...), group: str = Form(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/dashboard_admin", response_class=HTMLResponse)
-def dashboard_admin(request: Request):
-    return templates.TemplateResponse("admin_dashboard.html", {"request": request})
+def dashboard_admin(request: Request, current_admin: SessionUser = Depends(require_admin)):
+    return templates.TemplateResponse(
+        "admin_dashboard.html",
+        {
+            "request": request,
+            "is_admin": current_admin["is_admin"],
+        },
+    )
 
 @router.get("/dashboard_user", response_class=HTMLResponse)
-def dashboard_user(request: Request):
-    return templates.TemplateResponse("user_dashboard.html", {"request": request})
+def dashboard_user(request: Request, current_user: SessionUser = Depends(require_user)):
+    return templates.TemplateResponse(
+        "user_dashboard.html",
+        {
+            "request": request,
+            "is_admin": current_user["is_admin"],
+        },
+    )
 
 
 def _user_dn(username: str) -> str:

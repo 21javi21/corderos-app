@@ -46,6 +46,26 @@
       flex-direction: column;
       gap: 12px;
     }
+    .logout-form {
+      margin: 0;
+      display: flex;
+    }
+    .logout-button {
+      width: 100%;
+      border: none;
+      border-radius: 12px;
+      padding: 11px 14px;
+      background: rgba(255, 99, 132, 0.2);
+      color: #ffe4e8;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+    .logout-button:hover {
+      background: rgba(255, 99, 132, 0.32);
+      transform: translateY(-2px);
+      box-shadow: 0 14px 28px rgba(5, 12, 22, 0.48);
+    }
     .sidebar a {
       display: flex;
       align-items: center;
@@ -109,6 +129,9 @@
       </a>
       <a href="/hall-of-hate" target="main_frame">😡 Hall Of Hate</a>
       <a href="/auth/panel" target="main_frame">🛠️ Gestion De Usuarios</a>
+      <form class="logout-form" action="/auth/logout" method="post" target="_top">
+        <button type="submit" class="logout-button">⏏️ Cerrar sesión</button>
+      </form>
     </div>
     <div class="league-icons">
       <img src="{{ request.url_for('static', path='la-liga_white.png') }}" alt="La Liga logo">

@@ -6,6 +6,7 @@ jinja2
 python-multipart
 bcrypt
 python-jose[cryptography]
+itsdangerous
 ldap3
 jinja2
 pycryptodome

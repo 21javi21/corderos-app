@@ -12,9 +12,11 @@ Local development setup for the FastAPI application that uses PostgreSQL.
    ```bash
    docker compose -f docker-compose.postgres.yml ps
    ```
-3. Export the connection string so the app can reach the database:
+3. Export the connection string so the app can reach the database and configure the session secret:
    ```bash
    export DATABASE_URL="postgresql://corderos_app:corderos_pass@localhost:55432/corderos"
+   export SESSION_SECRET="change-me"  # use a long, random value in production
+   export SESSION_COOKIE_SECURE="false"  # allow HTTP during local development
    ```
 4. Run the FastAPI server:
    ```bash

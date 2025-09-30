@@ -49,6 +49,26 @@
       flex-direction: column;
       gap: 12px;
     }
+    .logout-form {
+      margin: 0;
+      display: flex;
+    }
+    .logout-button {
+      width: 100%;
+      border: none;
+      border-radius: 12px;
+      padding: 10px 14px;
+      background: rgba(255, 99, 132, 0.18);
+      color: #ffe4e8;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+    .logout-button:hover {
+      background: rgba(255, 99, 132, 0.35);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px rgba(5, 12, 22, 0.45);
+    }
     .sidebar a {
       display: flex;
       align-items: center;
@@ -93,18 +113,21 @@
       <span>Corderos</span>
     </h2>
     <div class="sidebar-nav">
-      <a href="/bets" target="main_frame">
+      <a href="/bets" data-frame-target="/bets">
         <img class="link-logo" src="{{ request.url_for('static', path='corderos_logo_white.png') }}" alt="Logo Corderos League" />
         Corderos App
       </a>
-      <a href="/hall-of-hate" target="main_frame">😡 Hall Of Hate</a>
+      <a href="/hall-of-hate" data-frame-target="/hall-of-hate">😡 Hall Of Hate</a>
+      <form class="logout-form" action="/auth/logout" method="post" target="_top">
+        <button type="submit" class="logout-button">⏏️ Cerrar sesión</button>
+      </form>
     </div>
   </div>
 
-  <iframe name="main_frame" class="content"></iframe>
+  <iframe id="main-frame" name="main_frame" class="content" src="/bets"></iframe>
     <script>
     (function () {
-      var iframe = document.querySelector('iframe[name="main_frame"]');
+      var iframe = document.getElementById('main-frame');
       var defaultTitle = document.title;
       function applyTitle(value) {
         if (value && typeof value === 'string') {
@@ -128,6 +151,16 @@
           applyTitle();
         }
       }
+      document.querySelectorAll('.sidebar-nav a[data-frame-target]').forEach(function (link) {
+        link.addEventListener('click', function (event) {
+          event.preventDefault();
+          var targetUrl = link.getAttribute('data-frame-target') || link.getAttribute('href');
+          if (iframe && targetUrl) {
+            iframe.setAttribute('src', targetUrl);
+          }
+        });
+      });
+
       window.addEventListener('message', function (event) {
         if (!event || event.source === window) {
           return;

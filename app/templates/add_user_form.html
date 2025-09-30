@@ -62,19 +62,23 @@
             border-color: #3a7bd5;
             box-shadow: 0 0 0 3px rgba(58, 123, 213, 0.25);
         }
-        button {
-            margin-top: 12px;
-            padding: 12px;
+        .actions {
+            margin-top: 18px;
+            display: flex;
+            justify-content: center;
+        }
+        .action-button {
+            width: 46px;
+            height: 46px;
+            border-radius: 14px;
             border: none;
-            border-radius: 12px;
             background: linear-gradient(135deg, rgba(50, 86, 128, 0.95), rgba(37, 64, 98, 0.95));
             color: #f2f7ff;
-            font-size: 1rem;
-            font-weight: 600;
+            font-size: 1.35rem;
             cursor: pointer;
             transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
         }
-        button:hover {
+        .action-button:hover {
             transform: translateY(-2px);
             box-shadow: 0 20px 36px rgba(3, 8, 15, 0.6);
             background: linear-gradient(135deg, rgba(64, 104, 149, 0.98), rgba(42, 72, 112, 0.98));
@@ -105,7 +109,9 @@
         <input type="text" name="sn" required>
         <label>Email</label>
         <input type="email" name="mail" required>
-        <button type="submit">Create User</button>
+        <div class="actions">
+            <button type="submit" class="action-button" title="Crear usuario" aria-label="Crear usuario">➕</button>
+        </div>
     </form>
     </main>
   <script>

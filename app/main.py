@@ -4,15 +4,17 @@ from collections import defaultdict
 from datetime import date, timedelta
 from pathlib import Path as PathlibPath
 
-from fastapi import FastAPI, Request, Form, Path, HTTPException
+from fastapi import Depends, FastAPI, Form, HTTPException, Path, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from fastapi.staticfiles import StaticFiles
 import psycopg2
 from psycopg2.pool import SimpleConnectionPool
 
 from app import auth_ldap
+from app.security import SessionUser, optional_user, require_user
 
 CATEGORIAS_PREDEFINIDAS = [
     "Futbol",
@@ -76,8 +78,28 @@ class ForwardedHeadersMiddleware(BaseHTTPMiddleware):
             scope["server"] = (host, port)
         return await call_next(request)
 
+SESSION_SECRET = os.environ.get("SESSION_SECRET")
+if not SESSION_SECRET:
+    raise RuntimeError("SESSION_SECRET no está definido")
+
+SESSION_COOKIE_NAME = os.environ.get("SESSION_COOKIE_NAME", "corderos_session")
+SESSION_COOKIE_SAMESITE = os.environ.get("SESSION_COOKIE_SAMESITE", "strict").lower()
+SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "true").lower() not in {"0", "false", "no"}
+try:
+    SESSION_MAX_AGE = int(os.environ.get("SESSION_MAX_AGE", str(60 * 60 * 12)))
+except (TypeError, ValueError):
+    SESSION_MAX_AGE = 60 * 60 * 12
+
 app = FastAPI()
 app.add_middleware(ForwardedHeadersMiddleware)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SESSION_SECRET,
+    session_cookie=SESSION_COOKIE_NAME,
+    same_site=SESSION_COOKIE_SAMESITE,
+    https_only=SESSION_COOKIE_SECURE,
+    max_age=SESSION_MAX_AGE,
+)
 templates = Jinja2Templates(directory="app/templates")
 app.include_router(auth_ldap.router)
 app.mount("/static", StaticFiles(directory="app/images"), name="static")
@@ -85,23 +107,6 @@ app.mount("/static", StaticFiles(directory="app/images"), name="static")
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 pool: SimpleConnectionPool | None = None
-
-
-def _is_admin_request(request: Request) -> bool:
-    token_sources = (
-        request.cookies.get("is_admin"),
-        request.query_params.get("admin"),
-        request.headers.get("x-admin"),
-    )
-    for raw in token_sources:
-        if not raw:
-            continue
-        value = raw.strip().lower()
-        if value in {"1", "true", "yes", "y", "admin"}:
-            return True
-    return False
-
-
 def _parse_locked_value(value: str | None, current: bool) -> bool:
     if value is None:
         return current
@@ -184,12 +189,18 @@ def shutdown_db():
         pool = None
 
 @app.get("/", response_class=HTMLResponse)
-def root_redirect():
-    # always send users to the login page
+def root_redirect(current_user: SessionUser | None = Depends(optional_user)):
+    # redirect logged users to their dashboard, others to login
+    if current_user:
+        target = "/auth/dashboard_admin" if current_user["is_admin"] else "/auth/dashboard_user"
+        return RedirectResponse(url=target)
     return RedirectResponse(url="/login")
 
 @app.get("/login", response_class=HTMLResponse)
-def login_page(request: Request):
+def login_page(request: Request, current_user: SessionUser | None = Depends(optional_user)):
+    if current_user:
+        target = "/auth/dashboard_admin" if current_user["is_admin"] else "/auth/dashboard_user"
+        return RedirectResponse(url=target)
     # render the login form
     return templates.TemplateResponse("login.html", {"request": request})
 
@@ -198,8 +209,8 @@ def dashboard(request: Request):
     return templates.TemplateResponse("user_dashboard.html", {"request": request})
 
 @app.get("/bets", response_class=HTMLResponse)
-def bets_home(request: Request):
-    is_admin = _is_admin_request(request)
+def bets_home(request: Request, current_user: SessionUser = Depends(require_user)):
+    is_admin = current_user["is_admin"]
     conn = pool.getconn()
     try:
         with conn.cursor() as cur:
@@ -262,7 +273,7 @@ def hall_of_hate(request: Request):
 
 
 @app.get("/apuestas/nueva", response_class=HTMLResponse)
-def nueva_apuesta_form(request: Request):
+def nueva_apuesta_form(request: Request, current_user: SessionUser = Depends(require_user)):
     usuarios = auth_ldap.fetch_all_user_uids()
     return templates.TemplateResponse(
         "add_apuesta.html",
@@ -271,6 +282,7 @@ def nueva_apuesta_form(request: Request):
             "usuarios": usuarios,
             "categorias": CATEGORIAS_PREDEFINIDAS,
             "multiplica_opciones": MULTIPLICA_OPCIONES,
+            "is_admin": current_user["is_admin"],
         },
     )
 
@@ -295,7 +307,9 @@ def crear_apuesta(
     ganador2: str | None = Form(None),
     perdedor1: str | None = Form(None),
     perdedor2: str | None = Form(None),
+    current_user: SessionUser = Depends(require_user),
 ):
+    _ = current_user  # enforce sesión activa
     clean_apostante1 = _empty_to_none(apostante1)
     clean_apostante2 = _empty_to_none(apostante2)
     clean_apostante3 = _empty_to_none(apostante3)
@@ -357,7 +371,7 @@ def crear_apuesta(
 
 
 @app.get("/clasificacion", response_class=HTMLResponse)
-def clasificacion(request: Request):
+def clasificacion(request: Request, current_user: SessionUser = Depends(require_user)):
     conn = pool.getconn()
     try:
         with conn.cursor() as cur:
@@ -554,12 +568,17 @@ def clasificacion(request: Request):
             "category_summary_totals": totals_row,
             "player_category_rows": player_category_rows,
             "type_tables": type_tables,
+            "is_admin": current_user["is_admin"],
         },
     )
 
 @app.post("/apuestas/{apuesta_id}/borrar")
-def borrar_apuesta(request: Request, apuesta_id: int = Path(...)):
-    is_admin = _is_admin_request(request)
+def borrar_apuesta(
+    request: Request,
+    apuesta_id: int = Path(...),
+    current_user: SessionUser = Depends(require_user),
+):
+    is_admin = current_user["is_admin"]
     conn = pool.getconn()
     try:
         with conn.cursor() as cur:
@@ -595,7 +614,11 @@ def borrar_apuesta(request: Request, apuesta_id: int = Path(...)):
 
 
 @app.get("/apuestas/{apuesta_id}/editar", response_class=HTMLResponse)
-def editar_apuesta_form(request: Request, apuesta_id: int = Path(...)):
+def editar_apuesta_form(
+    request: Request,
+    apuesta_id: int = Path(...),
+    current_user: SessionUser = Depends(require_user),
+):
     conn = pool.getconn()
     try:
         with conn.cursor() as cur:
@@ -651,7 +674,7 @@ def editar_apuesta_form(request: Request, apuesta_id: int = Path(...)):
         losers,
     )
 
-    is_admin = _is_admin_request(request)
+    is_admin = current_user["is_admin"]
     if effective_locked and not is_admin:
         raise HTTPException(status_code=403, detail="La apuesta está bloqueada")
 
@@ -690,8 +713,9 @@ def actualizar_apuesta(
     perdedor1: str | None = Form(None),
     perdedor2: str | None = Form(None),
     bloqueo: str | None = Form(None),
+    current_user: SessionUser = Depends(require_user),
 ):
-    is_admin = _is_admin_request(request)
+    is_admin = current_user["is_admin"]
     conn = pool.getconn()
     try:
         with conn.cursor() as cur:

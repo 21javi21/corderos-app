@@ -65,6 +65,11 @@
             gap: 16px;
             backdrop-filter: blur(3px);
         }
+        .edit-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
         h2 {
             margin: 0;
             color: #f2f7ff;
@@ -92,40 +97,70 @@
             background: rgba(15, 26, 41, 0.85);
             color: #9fb4cf;
         }
-        button {
-            margin-top: 12px;
-            padding: 12px;
+        .actions {
+            margin-top: 18px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            justify-content: center;
+        }
+        .action-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 46px;
+            height: 46px;
+            border-radius: 14px;
             border: none;
-            border-radius: 12px;
             background: linear-gradient(135deg, rgba(50, 86, 128, 0.95), rgba(37, 64, 98, 0.95));
             color: #f2f7ff;
-            font-size: 1rem;
-            font-weight: 600;
+            font-size: 1.35rem;
             cursor: pointer;
             transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
         }
-        button:hover {
+        .action-button:hover {
             transform: translateY(-2px);
             box-shadow: 0 20px 36px rgba(3, 8, 15, 0.6);
             background: linear-gradient(135deg, rgba(64, 104, 149, 0.98), rgba(42, 72, 112, 0.98));
+        }
+        .action-button.delete {
+            background: linear-gradient(135deg, rgba(155, 47, 36, 0.95), rgba(192, 57, 43, 0.95));
+        }
+        .action-button.delete:hover {
+            box-shadow: 0 20px 36px rgba(124, 36, 28, 0.6);
+            background: linear-gradient(135deg, rgba(124, 36, 28, 0.98), rgba(161, 47, 35, 0.98));
+        }
+        .delete-form {
+            margin: 0;
+        }
+        .delete-form input[type="hidden"] {
+            display: none;
         }
     </style>
 </head>
 <body>
     <section class="content-area">
         <a class="back-link" href="/auth/list_users">⬅️ Volver a listado de usuarios</a>
-        <form class="card" method="post" action="/auth/edit_user/{{ user.uid }}">
+        <div class="card">
             <h2>✏️ Editar {{ user.uid }}</h2>
-            <label>UID</label>
-            <input type="text" value="{{ user.uid }}" readonly>
-            <label>First Name (cn)</label>
-            <input type="text" name="cn" value="{{ user.cn }}" required>
-            <label>Last Name (sn)</label>
-            <input type="text" name="sn" value="{{ user.sn }}" required>
-            <label>Email</label>
-            <input type="email" name="mail" value="{{ user.mail }}" required>
-            <button type="submit">Guardar cambios</button>
-        </form>
+            <form id="edit-user-form" class="edit-form" method="post" action="/auth/edit_user/{{ user.uid }}">
+                <label>UID</label>
+                <input type="text" value="{{ user.uid }}" readonly>
+                <label>First Name (cn)</label>
+                <input type="text" name="cn" value="{{ user.cn }}" required>
+                <label>Last Name (sn)</label>
+                <input type="text" name="sn" value="{{ user.sn }}" required>
+                <label>Email</label>
+                <input type="email" name="mail" value="{{ user.mail }}" required>
+            </form>
+            <div class="actions">
+                <button type="submit" form="edit-user-form" class="action-button" title="Guardar cambios" aria-label="Guardar cambios">💾</button>
+                <form class="delete-form" method="post" action="/auth/delete_user" onsubmit="return confirm('¿Eliminar usuario {{ user.uid }}?');">
+                    <input type="hidden" name="username" value="{{ user.uid }}">
+                    <button type="submit" class="action-button delete" title="Borrar usuario" aria-label="Borrar usuario">🗑️</button>
+                </form>
+            </div>
+        </div>
     </section>
   <script>
     (function () {
