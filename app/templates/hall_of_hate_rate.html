@@ -98,14 +98,14 @@
     .frame-preview .preview-image img {
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      object-fit: contain;
     }
     .frame-preview .hate-meter {
       position: absolute;
-      left: var(--score-box-left);
-      bottom: var(--score-box-bottom);
-      width: var(--score-box-width, 22%);
-      height: var(--score-box-height, 14%);
+      left: var(--score-left);
+      top: var(--score-top);
+      width: var(--score-width, 22%);
+      height: var(--score-height, 14%);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -115,6 +115,7 @@
       z-index: 4;
       background: var(--score-bg, rgba(0, 0, 0, 0.55));
       border-radius: var(--score-border-radius, 16px);
+      transform: translate(-50%, -50%);
     }
     .frame-preview .hate-meter span {
       font-size: var(--score-font-size, clamp(1.6rem, 3.8vw, 2.6rem));
@@ -198,10 +199,10 @@
              --image-box-left: {{ frame.image_box_left }};
              --image-box-width: {{ frame.image_box_width }};
              --image-box-height: {{ frame.image_box_height }};
-             --score-box-left: {{ frame.score_box_left }};
-             --score-box-bottom: {{ frame.score_box_bottom }};
-             --score-box-width: {{ frame.score_box_width | default('22%') }};
-             --score-box-height: {{ frame.score_box_height | default('14%') }};
+             --score-left: {{ frame.score_left | default('18%') }};
+             --score-top: {{ frame.score_top | default('82%') }};
+             --score-width: {{ frame.score_width | default('22%') }};
+             --score-height: {{ frame.score_height | default('14%') }};
              --score-font-size: {{ frame.score_font_size | default('clamp(1.6rem, 3.6vw, 2.6rem)') }};
              --score-border-radius: {{ frame.score_border_radius | default('16px') }};
              --score-bg: {{ frame.score_background | default('rgba(0, 0, 0, 0.55)') }};">

@@ -49,10 +49,10 @@ HALL_OF_HATE_FRAMES: dict[str, dict[str, str]] = {
         "image_box_left": "9%",
         "image_box_width": "82%",
         "image_box_height": "58%",
-        "score_box_bottom": "13%",
-        "score_box_left": "12%",
-        "score_box_width": "22%",
-        "score_box_height": "16%",
+        "score_top": "82%",
+        "score_left": "19%",
+        "score_width": "22%",
+        "score_height": "22%",
         "score_font_size": "clamp(1.6rem, 3.8vw, 2.6rem)",
         "score_background": "transparent",
         "score_border_radius": "50%",
@@ -60,13 +60,13 @@ HALL_OF_HATE_FRAMES: dict[str, dict[str, str]] = {
         "name_box_left": "12%",
         "name_box_width": "76%",
         "name_box_height": "8%",
-        "name_background": "rgba(4, 12, 24, 0.65)",
+        "name_background": "transparent",
         "name_color": "#f7fbff",
         "user_box_top": "77%",
         "user_box_left": "12%",
         "user_box_width": "76%",
         "user_box_height": "7%",
-        "user_background": "rgba(4, 12, 24, 0.7)",
+        "user_background": "transparent",
         "user_color": "#ffc857",
     },
     "devil": {
@@ -76,11 +76,11 @@ HALL_OF_HATE_FRAMES: dict[str, dict[str, str]] = {
         "image_box_left": "9%",
         "image_box_width": "82%",
         "image_box_height": "54%",
-        "score_box_bottom": "11%",
-        "score_box_left": "13%",
-        "score_box_width": "26%",
-        "score_box_height": "14%",
-        "score_font_size": "clamp(1.8rem, 3.8vw, 2.6rem)",
+        "score_top": "82%",
+        "score_left": "32%",
+        "score_width": "32%",
+        "score_height": "16%",
+        "score_font_size": "clamp(1.9rem, 3.8vw, 2.8rem)",
         "score_background": "rgba(21, 8, 8, 0.75)",
         "score_border_radius": "12px",
         "name_box_top": "67%",
@@ -555,8 +555,6 @@ def _insert_hall_of_hate_entry(name: str, image_filename: str, frame_key: str) -
     finally:
         pool.putconn(conn)
     return entry_id
-    finally:
-        pool.putconn(conn)
 
 
 def _save_hall_of_hate_image(upload: UploadFile, display_name: str) -> str:

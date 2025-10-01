@@ -109,8 +109,10 @@
       --image-box-left: 10%;
       --image-box-width: 80%;
       --image-box-height: 60%;
-      --score-box-left: 12%;
-      --score-box-bottom: 10%;
+      --score-left: 18%;
+      --score-top: 82%;
+      --score-width: 22%;
+      --score-height: 16%;
       --name-bg: rgba(4, 12, 24, 0.55);
       --name-color: #f7fbff;
       --user-bg: rgba(4, 12, 24, 0.55);
@@ -143,10 +145,10 @@
     }
     .frame-card .hate-meter {
       position: absolute;
-      left: var(--score-box-left);
-      bottom: var(--score-box-bottom);
-      width: var(--score-box-width, 20%);
-      height: var(--score-box-height, 12%);
+      left: var(--score-left);
+      top: var(--score-top);
+      width: var(--score-width, 20%);
+      height: var(--score-height, 12%);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -156,6 +158,7 @@
       z-index: 4;
       background: var(--score-bg, rgba(0, 0, 0, 0.55));
       border-radius: var(--score-border-radius, 16px);
+      transform: translate(-50%, -50%);
     }
     .frame-card .hate-meter span {
       font-size: var(--score-font-size, clamp(1.6rem, 3.6vw, 2.6rem));
@@ -301,10 +304,10 @@
                    --image-box-left: {{ frame.image_box_left }};
                    --image-box-width: {{ frame.image_box_width }};
                    --image-box-height: {{ frame.image_box_height }};
-                   --score-box-left: {{ frame.score_box_left }};
-                   --score-box-bottom: {{ frame.score_box_bottom }};
-                   --score-box-width: {{ frame.score_box_width | default('20%') }};
-                   --score-box-height: {{ frame.score_box_height | default('12%') }};
+      --score-left: {{ frame.score_left | default('18%') }};
+      --score-top: {{ frame.score_top | default('82%') }};
+      --score-width: {{ frame.score_width | default('20%') }};
+      --score-height: {{ frame.score_height | default('12%') }};
                    --score-font-size: {{ frame.score_font_size | default('clamp(1.6rem, 3.6vw, 2.6rem)') }};
                    --score-bg: {{ frame.score_background | default('rgba(0, 0, 0, 0.55)') }};
                    --score-border-radius: {{ frame.score_border_radius | default('16px') }};
@@ -324,10 +327,10 @@
               {% endif %}
             </div>
             <div class="hate-meter"
-              style="--score-box-width: {{ frame.score_box_width | default('20%') }};
-                     --score-box-height: {{ frame.score_box_height | default('12%') }};
+              style="--score-width: {{ frame.score_width | default('20%') }};
+                     --score-height: {{ frame.score_height | default('12%') }};
                      --score-font-size: {{ frame.score_font_size | default('clamp(1.6rem, 3.6vw, 2.6rem)') }};
-                     --score-background: {{ frame.score_background | default('rgba(0, 0, 0, 0.55)') }};
+                     --score-bg: {{ frame.score_background | default('rgba(0, 0, 0, 0.55)') }};
                      --score-border-radius: {{ frame.score_border_radius | default('16px') }};">
               <span>{{ avg_value }}</span>
             </div>

@@ -150,10 +150,10 @@
     }
     .frame-preview .preview-score {
       position: absolute;
-      left: var(--score-box-left);
-      bottom: var(--score-box-bottom);
-      width: var(--score-box-width, 20%);
-      height: var(--score-box-height, 12%);
+      left: var(--score-left);
+      top: var(--score-top);
+      width: var(--score-width, 20%);
+      height: var(--score-height, 12%);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -163,6 +163,7 @@
       text-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
       background: var(--score-bg, rgba(0, 0, 0, 0.55));
       border-radius: var(--score-border-radius, 16px);
+      transform: translate(-50%, -50%);
     }
     .frame-preview .preview-score span {
       font-size: var(--score-font-size, clamp(1.6rem, 3.6vw, 2.6rem));
@@ -223,10 +224,10 @@
         data-image-left="{{ frame.image_box_left }}"
         data-image-width="{{ frame.image_box_width }}"
         data-image-height="{{ frame.image_box_height }}"
-        data-score-left="{{ frame.score_box_left }}"
-        data-score-bottom="{{ frame.score_box_bottom }}"
-        data-score-width="{{ frame.score_box_width | default('20%') }}"
-        data-score-height="{{ frame.score_box_height | default('12%') }}"
+        data-score-left="{{ frame.score_left | default('18%') }}"
+        data-score-top="{{ frame.score_top | default('82%') }}"
+        data-score-width="{{ frame.score_width | default('20%') }}"
+        data-score-height="{{ frame.score_height | default('12%') }}"
         data-score-font="{{ frame.score_font_size | default('clamp(1.6rem, 3.6vw, 2.6rem)') }}"
         data-score-bg="{{ frame.score_background | default('rgba(0, 0, 0, 0.55)') }}"
         data-score-radius="{{ frame.score_border_radius | default('16px') }}"
@@ -241,10 +242,10 @@
              --image-box-left: {{ default_frame.image_box_left }};
              --image-box-width: {{ default_frame.image_box_width }};
              --image-box-height: {{ default_frame.image_box_height }};
-             --score-box-left: {{ default_frame.score_box_left }};
-             --score-box-bottom: {{ default_frame.score_box_bottom }};
-             --score-box-width: {{ default_frame.score_box_width | default('20%') }};
-             --score-box-height: {{ default_frame.score_box_height | default('12%') }};
+             --score-left: {{ default_frame.score_left | default('18%') }};
+             --score-top: {{ default_frame.score_top | default('82%') }};
+             --score-width: {{ default_frame.score_width | default('20%') }};
+             --score-height: {{ default_frame.score_height | default('12%') }};
              --score-font-size: {{ default_frame.score_font_size | default('clamp(1.6rem, 3.6vw, 2.6rem)') }};
              --score-border-radius: {{ default_frame.score_border_radius | default('16px') }};
              --score-bg: {{ default_frame.score_background | default('rgba(0, 0, 0, 0.55)') }};">
@@ -288,10 +289,10 @@
         preview.style.setProperty('--image-box-left', option.dataset.imageLeft || '10%');
         preview.style.setProperty('--image-box-width', option.dataset.imageWidth || '80%');
         preview.style.setProperty('--image-box-height', option.dataset.imageHeight || '60%');
-        preview.style.setProperty('--score-box-left', option.dataset.scoreLeft || '12%');
-        preview.style.setProperty('--score-box-bottom', option.dataset.scoreBottom || '10%');
-        preview.style.setProperty('--score-box-width', option.dataset.scoreWidth || '20%');
-        preview.style.setProperty('--score-box-height', option.dataset.scoreHeight || '12%');
+        preview.style.setProperty('--score-left', option.dataset.scoreLeft || '18%');
+        preview.style.setProperty('--score-top', option.dataset.scoreTop || '82%');
+        preview.style.setProperty('--score-width', option.dataset.scoreWidth || '20%');
+        preview.style.setProperty('--score-height', option.dataset.scoreHeight || '12%');
         preview.style.setProperty('--score-font-size', option.dataset.scoreFont || 'clamp(1.6rem, 3.6vw, 2.6rem)');
         preview.style.setProperty('--score-border-radius', option.dataset.scoreRadius || '16px');
         preview.style.setProperty('--score-bg', option.dataset.scoreBg || 'rgba(0, 0, 0, 0.55)');
