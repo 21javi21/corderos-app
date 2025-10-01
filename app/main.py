@@ -106,6 +106,7 @@ HALL_OF_HATE_UPLOAD_DIR = PathlibPath(
 _HALL_SLUG_PATTERN = re.compile(r"[^a-z0-9]+")
 
 FRAME_STORAGE_MODE = "column"
+RATINGS_ENABLED = True
 
 
 class ForwardedHeadersMiddleware(BaseHTTPMiddleware):
@@ -318,6 +319,11 @@ def _ensure_schema(conn) -> None:
                 """
             )
             conn.commit()
+        except errors.InsufficientPrivilege:
+            conn.rollback()
+            print("[HallOfHate] No privileges to manage hall_of_hate_ratings; disabling ratings.")
+            global RATINGS_ENABLED
+            RATINGS_ENABLED = False
         except Exception:
             conn.rollback()
             raise
@@ -505,22 +511,32 @@ def _fetch_hall_of_hate_db_entries(current_uid: str | None) -> list[dict[str, st
                 frame_expr = "'default'"
                 join_clause = ""
                 group_columns = "h.id, h.name, h.image_filename, h.created_at"
+
+            if RATINGS_ENABLED:
+                ratings_join = "LEFT JOIN hall_of_hate_ratings r ON r.entry_id = h.id"
+                select_ratings = "COALESCE(AVG(r.rating), 99) AS avg_rating, COUNT(r.rating) AS rating_count, COALESCE(MAX(CASE WHEN r.uid = %s THEN r.rating END), 99) AS current_user_rating"
+                group_by = group_columns
+                params = (current_uid,)
+            else:
+                ratings_join = ""
+                select_ratings = "99 AS avg_rating, 0 AS rating_count, 99 AS current_user_rating"
+                group_by = group_columns
+                params = tuple()
+
             query = f"""
                 SELECT
                     h.id,
                     h.name,
                     h.image_filename,
                     {frame_expr} AS frame_key,
-                    COALESCE(AVG(r.rating), 99) AS avg_rating,
-                    COUNT(r.rating) AS rating_count,
-                    COALESCE(MAX(CASE WHEN r.uid = %s THEN r.rating END), 99) AS current_user_rating
+                    {select_ratings}
                 FROM hall_of_hate h
                 {join_clause}
-                LEFT JOIN hall_of_hate_ratings r ON r.entry_id = h.id
-                GROUP BY {group_columns}
+                {ratings_join}
+                GROUP BY {group_by}
                 ORDER BY h.created_at DESC, h.id DESC
             """
-            cur.execute(query, (current_uid,))
+            cur.execute(query, params)
             rows = cur.fetchall()
     finally:
         pool.putconn(conn)
@@ -719,7 +735,7 @@ def _delete_hall_of_hate_entry(entry_id: int) -> str | None:
 
 
 def _get_hall_of_hate_rating(entry_id: int, uid: str) -> int | None:
-    if not pool:
+    if not pool or not RATINGS_ENABLED:
         return None
     conn = pool.getconn()
     try:
@@ -743,6 +759,8 @@ def _get_hall_of_hate_rating(entry_id: int, uid: str) -> int | None:
 def _set_hall_of_hate_rating(entry_id: int, uid: str, rating: int) -> None:
     if not pool:
         raise HTTPException(status_code=500, detail="Conexión a base de datos no inicializada")
+    if not RATINGS_ENABLED:
+        raise HTTPException(status_code=503, detail="El registro de odio no está disponible en este momento")
     conn = pool.getconn()
     try:
         with conn, conn.cursor() as cur:
@@ -1009,6 +1027,8 @@ def hall_of_hate_rate_form(
     entry = _get_hall_of_hate_entry(entry_id)
     if not entry:
         raise HTTPException(status_code=404, detail="Villano no encontrado")
+    if not RATINGS_ENABLED:
+        raise HTTPException(status_code=503, detail="El registro de odio no está disponible")
     current_rating = _get_hall_of_hate_rating(entry_id, current_user["uid"]) or 99
     return templates.TemplateResponse(
         "hall_of_hate_rate.html",
@@ -1035,6 +1055,8 @@ def hall_of_hate_rate_submit(
     entry = _get_hall_of_hate_entry(entry_id)
     if not entry:
         raise HTTPException(status_code=404, detail="Villano no encontrado")
+    if not RATINGS_ENABLED:
+        raise HTTPException(status_code=503, detail="El registro de odio no está disponible")
     _set_hall_of_hate_rating(entry_id, current_user["uid"], odio)
     return RedirectResponse(url="/hall-of-hate", status_code=303)
 
