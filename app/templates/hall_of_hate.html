@@ -168,8 +168,7 @@
       font-size: 0.9rem;
       letter-spacing: 0.12em;
     }
-    .frame-card .name-label,
-    .frame-card .user-label {
+    .frame-card .name-label {
       position: absolute;
       left: 12%;
       width: 76%;
@@ -187,19 +186,10 @@
       text-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
       z-index: 5;
     }
-    .frame-card .name-label {
       top: 68%;
       height: 8%;
       font-size: clamp(0.95rem, 1.8vw, 1.25rem);
       text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-    .frame-card .user-label {
-      top: 78%;
-      height: 7%;
-      font-size: clamp(0.75rem, 1.4vw, 0.95rem);
-      color: var(--user-color);
-      background: var(--user-bg);
       letter-spacing: 0.08em;
     }
     .card-actions {
@@ -304,21 +294,15 @@
                    --image-box-left: {{ frame.image_box_left }};
                    --image-box-width: {{ frame.image_box_width }};
                    --image-box-height: {{ frame.image_box_height }};
-      --score-left: {{ frame.score_left | default('18%') }};
-      --score-top: {{ frame.score_top | default('82%') }};
-      --score-width: {{ frame.score_width | default('20%') }};
-      --score-height: {{ frame.score_height | default('12%') }};
+                   --score-left: {{ frame.score_left | default('18%') }};
+                   --score-top: {{ frame.score_top | default('82%') }};
+                   --score-width: {{ frame.score_width | default('20%') }};
+                   --score-height: {{ frame.score_height | default('12%') }};
                    --score-font-size: {{ frame.score_font_size | default('clamp(1.6rem, 3.6vw, 2.6rem)') }};
                    --score-bg: {{ frame.score_background | default('rgba(0, 0, 0, 0.55)') }};
                    --score-border-radius: {{ frame.score_border_radius | default('16px') }};
                    --name-bg: {{ frame.name_background | default('rgba(4, 12, 24, 0.55)') }};
-                   --name-color: {{ frame.name_color | default('#f7fbff') }};
-                   --user-bg: {{ frame.user_background | default('rgba(4, 12, 24, 0.55)') }};
-                   --user-color: {{ frame.user_color | default('#ffc857') }};">
-                   --name-bg: {{ frame.name_background | default('rgba(4, 12, 24, 0.55)') }};
-                   --name-color: {{ frame.name_color | default('#f7fbff') }};
-                   --user-bg: {{ frame.user_background | default('rgba(4, 12, 24, 0.55)') }};
-                   --user-color: {{ frame.user_color | default('#ffc857') }};">
+                   --name-color: {{ frame.name_color | default('#f7fbff') }};">
             <div class="villain-image">
               {% if item.image %}
                 <img src="{{ request.url_for('static', path=item.image) }}" alt="{{ item.name }}">
@@ -326,21 +310,12 @@
                 <div class="missing">Foto no disponible</div>
               {% endif %}
             </div>
-            <div class="hate-meter"
-              style="--score-width: {{ frame.score_width | default('20%') }};
-                     --score-height: {{ frame.score_height | default('12%') }};
-                     --score-font-size: {{ frame.score_font_size | default('clamp(1.6rem, 3.6vw, 2.6rem)') }};
-                     --score-bg: {{ frame.score_background | default('rgba(0, 0, 0, 0.55)') }};
-                     --score-border-radius: {{ frame.score_border_radius | default('16px') }};">
+            <div class="hate-meter">
               <span>{{ avg_value }}</span>
             </div>
             <div class="name-label"
               style="top: {{ frame.name_box_top }}; left: {{ frame.name_box_left }}; width: {{ frame.name_box_width }}; height: {{ frame.name_box_height }};">
               {{ item.name }}
-            </div>
-            <div class="user-label"
-              style="top: {{ frame.user_box_top }}; left: {{ frame.user_box_left }}; width: {{ frame.user_box_width }}; height: {{ frame.user_box_height }};">
-              TU ODIO: {{ item.user_rating if item.user_rating is not none else 99 }}
             </div>
           </div>
           {% if has_edit or can_rate %}
