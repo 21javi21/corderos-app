@@ -42,6 +42,9 @@ DEFAULT_HALL_OF_HATE_ENTRIES = [
 ]
 
 HALL_OF_HATE_DIR = PathlibPath("app/images/hall_of_hate")
+HALL_OF_HATE_UPLOAD_DIR = PathlibPath(
+    os.environ.get("HALL_OF_HATE_UPLOAD_DIR", str(HALL_OF_HATE_DIR / "uploads"))
+)
 _HALL_SLUG_PATTERN = re.compile(r"[^a-z0-9]+")
 
 
@@ -297,12 +300,19 @@ def _save_hall_of_hate_image(upload: UploadFile, display_name: str) -> str:
         raise HTTPException(status_code=400, detail="El archivo no es un PNG válido")
 
     HALL_OF_HATE_DIR.mkdir(parents=True, exist_ok=True)
+    HALL_OF_HATE_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     base_slug = _slugify(display_name) or f"entry_{secrets.token_hex(2)}"
     filename = f"{base_slug}_{secrets.token_hex(4)}.png"
-    destination = HALL_OF_HATE_DIR / filename
+    destination = HALL_OF_HATE_UPLOAD_DIR / filename
     with destination.open("wb") as out_file:
         out_file.write(data)
-    return filename
+    try:
+        relative_prefix = HALL_OF_HATE_UPLOAD_DIR.relative_to(HALL_OF_HATE_DIR)
+    except ValueError:
+        return filename
+    if relative_prefix == PathlibPath("."):
+        return filename
+    return str(relative_prefix / filename)
 
 
 def _get_hall_of_hate_entry(entry_id: int) -> dict[str, str | int] | None:
@@ -386,6 +396,7 @@ def startup_db():
         raise RuntimeError("DATABASE_URL no está definido")
     pool = SimpleConnectionPool(minconn=1, maxconn=5, dsn=DATABASE_URL)
     HALL_OF_HATE_DIR.mkdir(parents=True, exist_ok=True)
+    HALL_OF_HATE_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     conn = pool.getconn()
     try:
         _ensure_schema(conn)
