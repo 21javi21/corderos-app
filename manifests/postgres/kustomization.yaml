@@ -6,5 +6,5 @@ resources:
   - secret-postgres.yaml
   - statefulset-postgres.yaml
   - service-postgres.yaml
+  - service-postgres-external.yaml
   - postgres-certificate.yaml
-
