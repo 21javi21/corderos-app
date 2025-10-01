@@ -221,6 +221,7 @@ def _ensure_schema(conn) -> None:
         )
         has_frame_column = cur.fetchone() is not None
 
+    global FRAME_STORAGE_MODE
     if has_frame_column:
         FRAME_STORAGE_MODE = "column"
         with conn.cursor() as cur:
@@ -231,22 +232,20 @@ def _ensure_schema(conn) -> None:
                     ADD COLUMN IF NOT EXISTS frame_key TEXT NOT NULL DEFAULT 'default'
                     """
                 )
+                cur.execute(
+                    "UPDATE hall_of_hate SET frame_key = 'default' WHERE frame_key IS NULL"
+                )
+                conn.commit()
             except errors.InsufficientPrivilege:
                 conn.rollback()
+                FRAME_STORAGE_MODE = "table"
             except Exception:
                 conn.rollback()
                 raise
-            else:
-                try:
-                    cur.execute(
-                        "UPDATE hall_of_hate SET frame_key = 'default' WHERE frame_key IS NULL"
-                    )
-                except Exception:
-                    conn.rollback()
-                    raise
-                conn.commit()
     else:
         FRAME_STORAGE_MODE = "table"
+
+    if FRAME_STORAGE_MODE == "table":
         with conn.cursor() as cur:
             try:
                 cur.execute(
@@ -265,11 +264,14 @@ def _ensure_schema(conn) -> None:
                     ON CONFLICT (entry_id) DO NOTHING
                     """
                 )
+                conn.commit()
+            except errors.InsufficientPrivilege:
+                conn.rollback()
+                FRAME_STORAGE_MODE = "none"
+                print("[HallOfHate] No privileges to manage frame metadata; falling back to default frame only.")
             except Exception:
                 conn.rollback()
                 raise
-            else:
-                conn.commit()
 
     # Ensure ratings table and trigger exist
     with conn.cursor() as cur:
@@ -353,20 +355,35 @@ def _normalize_frame_key(value: str | None) -> str:
 
 def _store_frame_key(cur, entry_id: int, frame_key: str) -> None:
     key = _normalize_frame_key(frame_key)
+    global FRAME_STORAGE_MODE
     if FRAME_STORAGE_MODE == "column":
-        cur.execute(
-            "UPDATE hall_of_hate SET frame_key = %s WHERE id = %s",
-            (key, entry_id),
-        )
-    else:
-        cur.execute(
-            """
-            INSERT INTO hall_of_hate_frames (entry_id, frame_key)
-            VALUES (%s, %s)
-            ON CONFLICT (entry_id) DO UPDATE SET frame_key = EXCLUDED.frame_key
-            """,
-            (entry_id, key),
-        )
+        try:
+            cur.execute(
+                "UPDATE hall_of_hate SET frame_key = %s WHERE id = %s",
+                (key, entry_id),
+            )
+        except errors.InsufficientPrivilege:
+            FRAME_STORAGE_MODE = "none"
+            print("[HallOfHate] Lost privilege to update hall_of_hate.frame_key; using default frame only.")
+        except Exception as exc:
+            raise
+        return
+    if FRAME_STORAGE_MODE == "table":
+        try:
+            cur.execute(
+                """
+                INSERT INTO hall_of_hate_frames (entry_id, frame_key)
+                VALUES (%s, %s)
+                ON CONFLICT (entry_id) DO UPDATE SET frame_key = EXCLUDED.frame_key
+                """,
+                (entry_id, key),
+            )
+        except errors.InsufficientPrivilege:
+            FRAME_STORAGE_MODE = "none"
+            print("[HallOfHate] No privileges to maintain hall_of_hate_frames; using default frame only.")
+        except Exception as exc:
+            raise
+    # If FRAME_STORAGE_MODE == "none", do nothing (default frame only)
 
 
 def _empty_to_none(value: str | None) -> str | None:
@@ -478,10 +495,14 @@ def _fetch_hall_of_hate_db_entries(current_uid: str | None) -> list[dict[str, st
                 frame_expr = "COALESCE(h.frame_key, 'default')"
                 join_clause = ""
                 group_columns = "h.id, h.name, h.image_filename, h.frame_key, h.created_at"
-            else:
+            elif FRAME_STORAGE_MODE == "table":
                 frame_expr = "COALESCE(f.frame_key, 'default')"
                 join_clause = "LEFT JOIN hall_of_hate_frames f ON f.entry_id = h.id"
                 group_columns = "h.id, h.name, h.image_filename, f.frame_key, h.created_at"
+            else:  # none
+                frame_expr = "'default'"
+                join_clause = ""
+                group_columns = "h.id, h.name, h.image_filename, h.created_at"
             query = f"""
                 SELECT
                     h.id,
@@ -541,7 +562,8 @@ def _insert_hall_of_hate_entry(name: str, image_filename: str, frame_key: str) -
                     (name, image_filename, _normalize_frame_key(frame_key)),
                 )
                 entry_id = cur.fetchone()[0]
-            else:
+                _store_frame_key(cur, entry_id, frame_key)
+            elif FRAME_STORAGE_MODE == "table":
                 cur.execute(
                     """
                     INSERT INTO hall_of_hate (name, image_filename)
@@ -552,6 +574,16 @@ def _insert_hall_of_hate_entry(name: str, image_filename: str, frame_key: str) -
                 )
                 entry_id = cur.fetchone()[0]
                 _store_frame_key(cur, entry_id, frame_key)
+            else:  # FRAME_STORAGE_MODE == "none"
+                cur.execute(
+                    """
+                    INSERT INTO hall_of_hate (name, image_filename)
+                    VALUES (%s, %s)
+                    RETURNING id
+                    """,
+                    (name, image_filename),
+                )
+                entry_id = cur.fetchone()[0]
     finally:
         pool.putconn(conn)
     return entry_id
