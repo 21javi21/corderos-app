@@ -272,6 +272,8 @@ def _ensure_schema(conn) -> None:
             except Exception:
                 conn.rollback()
                 raise
+    if FRAME_STORAGE_MODE == "none":
+        print("[HallOfHate] Frames will not persist; default frame will be used for all entries.")
 
     # Ensure ratings table and trigger exist
     with conn.cursor() as cur:
