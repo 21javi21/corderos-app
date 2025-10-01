@@ -33,19 +33,79 @@ AUTO_LOCK_DAYS = 3
 HALL_OF_HATE_MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
 
 DEFAULT_HALL_OF_HATE_ENTRIES = [
-    {"name": "Lebron James", "image_filename": "Lebron James.png"},
-    {"name": "Luka Doncic", "image_filename": "Luka Doncic.png"},
-    {"name": "Carlo Ancelotti", "image_filename": "Carlo Ancelotti.png"},
-    {"name": "\"El Cholo\" Simeone", "image_filename": "El Cholo Simeone.png"},
-    {"name": "Vinicius", "image_filename": "Vinicius.png"},
-    {"name": "Xabi Alonso", "image_filename": "Xabi Alonso.png"},
+    {"name": "Lebron James", "image_filename": "Lebron James.png", "frame_key": "default"},
+    {"name": "Luka Doncic", "image_filename": "Luka Doncic.png", "frame_key": "default"},
+    {"name": "Carlo Ancelotti", "image_filename": "Carlo Ancelotti.png", "frame_key": "default"},
+    {"name": "\"El Cholo\" Simeone", "image_filename": "El Cholo Simeone.png", "frame_key": "default"},
+    {"name": "Vinicius", "image_filename": "Vinicius.png", "frame_key": "default"},
+    {"name": "Xabi Alonso", "image_filename": "Xabi Alonso.png", "frame_key": "default"},
 ]
 
-HALL_OF_HATE_DIR = PathlibPath("app/images/hall_of_hate")
+HALL_OF_HATE_FRAMES: dict[str, dict[str, str]] = {
+    "default": {
+        "label": "Default",
+        "image_path": "hall_of_hate/frames/frame-default.png",
+        "image_box_top": "18%",
+        "image_box_left": "9%",
+        "image_box_width": "82%",
+        "image_box_height": "58%",
+        "score_box_bottom": "13%",
+        "score_box_left": "12%",
+        "score_box_width": "22%",
+        "score_box_height": "16%",
+        "score_font_size": "clamp(1.6rem, 3.8vw, 2.6rem)",
+        "score_background": "transparent",
+        "score_border_radius": "50%",
+        "name_box_top": "68%",
+        "name_box_left": "12%",
+        "name_box_width": "76%",
+        "name_box_height": "8%",
+        "name_background": "rgba(4, 12, 24, 0.65)",
+        "name_color": "#f7fbff",
+        "user_box_top": "77%",
+        "user_box_left": "12%",
+        "user_box_width": "76%",
+        "user_box_height": "7%",
+        "user_background": "rgba(4, 12, 24, 0.7)",
+        "user_color": "#ffc857",
+    },
+    "devil": {
+        "label": "Devil",
+        "image_path": "hall_of_hate/frames/frame-devil.png",
+        "image_box_top": "14%",
+        "image_box_left": "9%",
+        "image_box_width": "82%",
+        "image_box_height": "54%",
+        "score_box_bottom": "11%",
+        "score_box_left": "13%",
+        "score_box_width": "26%",
+        "score_box_height": "14%",
+        "score_font_size": "clamp(1.8rem, 3.8vw, 2.6rem)",
+        "score_background": "rgba(21, 8, 8, 0.75)",
+        "score_border_radius": "12px",
+        "name_box_top": "67%",
+        "name_box_left": "18%",
+        "name_box_width": "64%",
+        "name_box_height": "7%",
+        "name_background": "rgba(18, 6, 6, 0.7)",
+        "name_color": "#f5e6c7",
+        "user_box_top": "76%",
+        "user_box_left": "18%",
+        "user_box_width": "64%",
+        "user_box_height": "7%",
+        "user_background": "rgba(18, 6, 6, 0.7)",
+        "user_color": "#ff4d5a",
+    },
+}
+
+STATIC_ROOT = PathlibPath("app/images")
+HALL_OF_HATE_DIR = STATIC_ROOT / "hall_of_hate"
 HALL_OF_HATE_UPLOAD_DIR = PathlibPath(
     os.environ.get("HALL_OF_HATE_UPLOAD_DIR", str(HALL_OF_HATE_DIR / "uploads"))
 )
 _HALL_SLUG_PATTERN = re.compile(r"[^a-z0-9]+")
+
+FRAME_STORAGE_MODE = "column"
 
 
 class ForwardedHeadersMiddleware(BaseHTTPMiddleware):
@@ -117,6 +177,8 @@ pool: SimpleConnectionPool | None = None
 
 
 def _ensure_schema(conn) -> None:
+    global FRAME_STORAGE_MODE
+    # Ensure main table exists
     with conn.cursor() as cur:
         try:
             cur.execute(
@@ -129,19 +191,129 @@ def _ensure_schema(conn) -> None:
                 )
                 """
             )
-            conn.commit()
-            return
         except errors.InsufficientPrivilege:
             conn.rollback()
             cur.execute(
                 """
-                SELECT 1 FROM information_schema.tables
+                SELECT 1 FROM information_schema.columns
                 WHERE table_schema = 'public' AND table_name = 'hall_of_hate'
                 """
             )
             exists = cur.fetchone() is not None
             if not exists:
                 raise
+        except Exception:
+            conn.rollback()
+            raise
+        else:
+            conn.commit()
+
+    # Determine storage for frame metadata
+    has_frame_column = False
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'hall_of_hate'
+              AND column_name = 'frame_key'
+            """
+        )
+        has_frame_column = cur.fetchone() is not None
+
+    if has_frame_column:
+        FRAME_STORAGE_MODE = "column"
+        with conn.cursor() as cur:
+            try:
+                cur.execute(
+                    """
+                    ALTER TABLE hall_of_hate
+                    ADD COLUMN IF NOT EXISTS frame_key TEXT NOT NULL DEFAULT 'default'
+                    """
+                )
+            except errors.InsufficientPrivilege:
+                conn.rollback()
+            except Exception:
+                conn.rollback()
+                raise
+            else:
+                try:
+                    cur.execute(
+                        "UPDATE hall_of_hate SET frame_key = 'default' WHERE frame_key IS NULL"
+                    )
+                except Exception:
+                    conn.rollback()
+                    raise
+                conn.commit()
+    else:
+        FRAME_STORAGE_MODE = "table"
+        with conn.cursor() as cur:
+            try:
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS hall_of_hate_frames (
+                        entry_id INTEGER PRIMARY KEY REFERENCES hall_of_hate(id) ON DELETE CASCADE,
+                        frame_key TEXT NOT NULL DEFAULT 'default'
+                    )
+                    """
+                )
+                cur.execute(
+                    """
+                    INSERT INTO hall_of_hate_frames (entry_id, frame_key)
+                    SELECT id, 'default'
+                    FROM hall_of_hate
+                    ON CONFLICT (entry_id) DO NOTHING
+                    """
+                )
+            except Exception:
+                conn.rollback()
+                raise
+            else:
+                conn.commit()
+
+    # Ensure ratings table and trigger exist
+    with conn.cursor() as cur:
+        try:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS hall_of_hate_ratings (
+                    id SERIAL PRIMARY KEY,
+                    entry_id INTEGER NOT NULL REFERENCES hall_of_hate(id) ON DELETE CASCADE,
+                    uid TEXT NOT NULL,
+                    rating INTEGER NOT NULL CHECK (rating >= 0 AND rating <= 100),
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                )
+                """
+            )
+            cur.execute(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS hall_of_hate_ratings_entry_uid_idx
+                ON hall_of_hate_ratings(entry_id, uid)
+                """
+            )
+            cur.execute(
+                """
+                CREATE OR REPLACE FUNCTION touch_hall_of_hate_rating_updated_at() RETURNS TRIGGER AS $$
+                BEGIN
+                    NEW.updated_at = NOW();
+                    RETURN NEW;
+                END;
+                    $$ LANGUAGE plpgsql
+                """
+            )
+            cur.execute(
+                "DROP TRIGGER IF EXISTS hall_of_hate_ratings_touch_updated_at ON hall_of_hate_ratings"
+            )
+            cur.execute(
+                """
+                CREATE TRIGGER hall_of_hate_ratings_touch_updated_at
+                BEFORE UPDATE ON hall_of_hate_ratings
+                FOR EACH ROW
+                EXECUTE FUNCTION touch_hall_of_hate_rating_updated_at()
+                """
+            )
+            conn.commit()
         except Exception:
             conn.rollback()
             raise
@@ -156,6 +328,45 @@ def _parse_locked_value(value: str | None, current: bool) -> bool:
     if normalized in {"false", "0", "no", "n", "unlocked", "desbloqueada", "off"}:
         return False
     return current
+
+
+def _static_path_exists(relative_path: str) -> bool:
+    return (STATIC_ROOT / relative_path).exists()
+
+
+def _resolve_frame_assets() -> dict[str, str | None]:
+    assets: dict[str, str | None] = {}
+    for key, frame in HALL_OF_HATE_FRAMES.items():
+        path = frame.get("image_path")
+        if path and _static_path_exists(path):
+            assets[key] = path
+        else:
+            assets[key] = None
+    return assets
+
+
+def _normalize_frame_key(value: str | None) -> str:
+    if not value:
+        return "default"
+    return value if value in HALL_OF_HATE_FRAMES else "default"
+
+
+def _store_frame_key(cur, entry_id: int, frame_key: str) -> None:
+    key = _normalize_frame_key(frame_key)
+    if FRAME_STORAGE_MODE == "column":
+        cur.execute(
+            "UPDATE hall_of_hate SET frame_key = %s WHERE id = %s",
+            (key, entry_id),
+        )
+    else:
+        cur.execute(
+            """
+            INSERT INTO hall_of_hate_frames (entry_id, frame_key)
+            VALUES (%s, %s)
+            ON CONFLICT (entry_id) DO UPDATE SET frame_key = EXCLUDED.frame_key
+            """,
+            (entry_id, key),
+        )
 
 
 def _empty_to_none(value: str | None) -> str | None:
@@ -211,6 +422,7 @@ def _seed_hall_of_hate_defaults(conn) -> None:
         with conn.cursor() as cur:
             for entry in DEFAULT_HALL_OF_HATE_ENTRIES:
                 name = entry["name"]
+                frame_key = _normalize_frame_key(entry.get("frame_key"))
                 cur.execute(
                     "SELECT id, image_filename FROM hall_of_hate WHERE lower(name) = lower(%s)",
                     (name,),
@@ -219,16 +431,36 @@ def _seed_hall_of_hate_defaults(conn) -> None:
                 resolved_image = _resolve_default_image_filename(entry.get("image_filename"))
                 if row:
                     entry_id, current_image = row
-                    if current_image or not resolved_image:
-                        continue
-                    cur.execute(
-                        "UPDATE hall_of_hate SET image_filename = %s WHERE id = %s",
-                        (resolved_image, entry_id),
-                    )
+                    if not current_image and resolved_image:
+                        cur.execute(
+                            "UPDATE hall_of_hate SET image_filename = %s WHERE id = %s",
+                            (resolved_image, entry_id),
+                        )
+                    _store_frame_key(cur, entry_id, frame_key)
                     continue
+                if FRAME_STORAGE_MODE == "column":
+                    cur.execute(
+                        "INSERT INTO hall_of_hate (name, image_filename, frame_key) VALUES (%s, %s, %s) RETURNING id",
+                        (name, resolved_image, frame_key),
+                    )
+                    entry_id = cur.fetchone()[0]
+                    _store_frame_key(cur, entry_id, frame_key)
+                else:
+                    cur.execute(
+                        "INSERT INTO hall_of_hate (name, image_filename) VALUES (%s, %s) RETURNING id",
+                        (name, resolved_image),
+                    )
+                    entry_id = cur.fetchone()[0]
+                    _store_frame_key(cur, entry_id, frame_key)
+            if FRAME_STORAGE_MODE == "column":
                 cur.execute(
-                    "INSERT INTO hall_of_hate (name, image_filename) VALUES (%s, %s)",
-                    (name, resolved_image),
+                    """
+                    UPDATE hall_of_hate
+                    SET frame_key = 'default'
+                    WHERE frame_key IS NULL
+                       OR NOT (frame_key = ANY(%s))
+                    """,
+                    (list(HALL_OF_HATE_FRAMES.keys()),),
                 )
         conn.commit()
     except Exception:
@@ -236,47 +468,93 @@ def _seed_hall_of_hate_defaults(conn) -> None:
         raise
 
 
-def _fetch_hall_of_hate_db_entries() -> list[dict[str, str | None]]:
+def _fetch_hall_of_hate_db_entries(current_uid: str | None) -> list[dict[str, str | None | float | int]]:
     if not pool:
         return []
     conn = pool.getconn()
     try:
         with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT id, name, image_filename
-                FROM hall_of_hate
-                ORDER BY created_at DESC, id DESC
-                """
-            )
+            if FRAME_STORAGE_MODE == "column":
+                frame_expr = "COALESCE(h.frame_key, 'default')"
+                join_clause = ""
+                group_columns = "h.id, h.name, h.image_filename, h.frame_key, h.created_at"
+            else:
+                frame_expr = "COALESCE(f.frame_key, 'default')"
+                join_clause = "LEFT JOIN hall_of_hate_frames f ON f.entry_id = h.id"
+                group_columns = "h.id, h.name, h.image_filename, f.frame_key, h.created_at"
+            query = f"""
+                SELECT
+                    h.id,
+                    h.name,
+                    h.image_filename,
+                    {frame_expr} AS frame_key,
+                    COALESCE(AVG(r.rating), 99) AS avg_rating,
+                    COUNT(r.rating) AS rating_count,
+                    COALESCE(MAX(CASE WHEN r.uid = %s THEN r.rating END), 99) AS current_user_rating
+                FROM hall_of_hate h
+                {join_clause}
+                LEFT JOIN hall_of_hate_ratings r ON r.entry_id = h.id
+                GROUP BY {group_columns}
+                ORDER BY h.created_at DESC, h.id DESC
+            """
+            cur.execute(query, (current_uid,))
             rows = cur.fetchall()
     finally:
         pool.putconn(conn)
 
-    entries: list[dict[str, str | None]] = []
-    for entry_id, name, image_filename in rows:
-        image_path = f"hall_of_hate/{image_filename}" if image_filename else None
+    entries: list[dict[str, str | None | float | int]] = []
+    for entry_id, name, image_filename, frame_key, avg_rating, rating_count, user_rating in rows:
+        image_path = None
+        if image_filename:
+            candidate = f"hall_of_hate/{image_filename}"
+            if _static_path_exists(candidate):
+                image_path = candidate
+        frame_key = _normalize_frame_key(frame_key)
+        avg_value = float(avg_rating) if avg_rating is not None else 99.0
+        count_value = int(rating_count or 0)
+        user_rating_value = int(user_rating) if user_rating is not None else 99
         entries.append({
             "id": entry_id,
             "name": name,
             "image": image_path,
+            "frame_key": frame_key,
+            "average_hate": avg_value,
+            "ratings_count": count_value,
+            "user_rating": user_rating_value,
         })
     return entries
 
 
-def _insert_hall_of_hate_entry(name: str, image_filename: str) -> None:
+def _insert_hall_of_hate_entry(name: str, image_filename: str, frame_key: str) -> int:
     if not pool:
         raise HTTPException(status_code=500, detail="Conexión a base de datos no inicializada")
     conn = pool.getconn()
     try:
         with conn, conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO hall_of_hate (name, image_filename)
-                VALUES (%s, %s)
-                """,
-                (name, image_filename),
-            )
+            if FRAME_STORAGE_MODE == "column":
+                cur.execute(
+                    """
+                    INSERT INTO hall_of_hate (name, image_filename, frame_key)
+                    VALUES (%s, %s, %s)
+                    RETURNING id
+                    """,
+                    (name, image_filename, _normalize_frame_key(frame_key)),
+                )
+                entry_id = cur.fetchone()[0]
+            else:
+                cur.execute(
+                    """
+                    INSERT INTO hall_of_hate (name, image_filename)
+                    VALUES (%s, %s)
+                    RETURNING id
+                    """,
+                    (name, image_filename),
+                )
+                entry_id = cur.fetchone()[0]
+                _store_frame_key(cur, entry_id, frame_key)
+    finally:
+        pool.putconn(conn)
+    return entry_id
     finally:
         pool.putconn(conn)
 
@@ -321,23 +599,44 @@ def _get_hall_of_hate_entry(entry_id: int) -> dict[str, str | int] | None:
     conn = pool.getconn()
     try:
         with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT id, name, image_filename
-                FROM hall_of_hate
-                WHERE id = %s
-                """,
-                (entry_id,),
-            )
+            if FRAME_STORAGE_MODE == "column":
+                cur.execute(
+                    """
+                    SELECT id, name, image_filename, frame_key
+                    FROM hall_of_hate
+                    WHERE id = %s
+                    """,
+                    (entry_id,),
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT
+                        h.id,
+                        h.name,
+                        h.image_filename,
+                        COALESCE(f.frame_key, 'default')
+                    FROM hall_of_hate h
+                    LEFT JOIN hall_of_hate_frames f ON f.entry_id = h.id
+                    WHERE h.id = %s
+                    """,
+                    (entry_id,),
+                )
             row = cur.fetchone()
     finally:
         pool.putconn(conn)
     if not row:
         return None
-    return {"id": row[0], "name": row[1], "image_filename": row[2]}
+    frame_key = _normalize_frame_key(row[3])
+    return {
+        "id": row[0],
+        "name": row[1],
+        "image_filename": row[2],
+        "frame_key": frame_key,
+    }
 
 
-def _update_hall_of_hate_entry(entry_id: int, name: str, image_filename: str | None) -> None:
+def _update_hall_of_hate_entry(entry_id: int, name: str, image_filename: str | None, frame_key: str) -> None:
     if not pool:
         raise HTTPException(status_code=500, detail="Conexión a base de datos no inicializada")
     conn = pool.getconn()
@@ -362,6 +661,7 @@ def _update_hall_of_hate_entry(entry_id: int, name: str, image_filename: str | N
                     """,
                     (name, image_filename, entry_id),
                 )
+            _store_frame_key(cur, entry_id, frame_key)
     finally:
         pool.putconn(conn)
 
@@ -385,8 +685,51 @@ def _delete_hall_of_hate_entry(entry_id: int) -> str | None:
         pool.putconn(conn)
     return image_filename
 
-def _hall_of_hate_entries() -> list[dict[str, str | None]]:
-    return _fetch_hall_of_hate_db_entries()
+
+def _get_hall_of_hate_rating(entry_id: int, uid: str) -> int | None:
+    if not pool:
+        return None
+    conn = pool.getconn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT rating
+                FROM hall_of_hate_ratings
+                WHERE entry_id = %s AND uid = %s
+                """,
+                (entry_id, uid),
+            )
+            row = cur.fetchone()
+    finally:
+        pool.putconn(conn)
+    if not row:
+        return None
+    return int(row[0])
+
+
+def _set_hall_of_hate_rating(entry_id: int, uid: str, rating: int) -> None:
+    if not pool:
+        raise HTTPException(status_code=500, detail="Conexión a base de datos no inicializada")
+    conn = pool.getconn()
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO hall_of_hate_ratings (entry_id, uid, rating)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (entry_id, uid)
+                DO UPDATE SET rating = EXCLUDED.rating
+                """,
+                (entry_id, uid, rating),
+            )
+    finally:
+        pool.putconn(conn)
+
+
+def _hall_of_hate_entries(current_user: SessionUser | None) -> list[dict[str, str | None | float | int]]:
+    uid = current_user["uid"] if current_user else None
+    return _fetch_hall_of_hate_db_entries(uid)
 
 @app.on_event("startup")
 def startup_db():
@@ -494,8 +837,11 @@ def hall_of_hate(request: Request, current_user: SessionUser | None = Depends(op
         "hall_of_hate.html",
         {
             "request": request,
-            "entries": _hall_of_hate_entries(),
+            "entries": _hall_of_hate_entries(current_user),
             "can_manage": can_manage,
+            "frames": HALL_OF_HATE_FRAMES,
+            "current_user": current_user,
+            "frame_assets": _resolve_frame_assets(),
         }
     )
 
@@ -507,6 +853,8 @@ def hall_of_hate_new(request: Request, current_user: SessionUser = Depends(requi
         {
             "request": request,
             "current_user": current_user,
+            "frames": HALL_OF_HATE_FRAMES,
+            "frame_assets": _resolve_frame_assets(),
         }
     )
 
@@ -516,15 +864,18 @@ def hall_of_hate_create(
     request: Request,
     nombre: str = Form(...),
     imagen: UploadFile = File(...),
+    marco: str = Form("default"),
     current_user: SessionUser = Depends(require_user),
 ):
     clean_name = nombre.strip()
     if not clean_name:
         raise HTTPException(status_code=400, detail="El nombre es obligatorio")
 
+    frame_key = _normalize_frame_key(marco)
+
     filename = _save_hall_of_hate_image(imagen, clean_name)
     try:
-        _insert_hall_of_hate_entry(clean_name, filename)
+        _insert_hall_of_hate_entry(clean_name, filename, frame_key)
     except psycopg2.Error as exc:
         # Limpia el archivo recién creado si la inserción falla
         file_path = HALL_OF_HATE_DIR / filename
@@ -552,6 +903,8 @@ def hall_of_hate_edit_form(
             "request": request,
             "entry": entry,
             "current_user": current_user,
+            "frames": HALL_OF_HATE_FRAMES,
+            "frame_assets": _resolve_frame_assets(),
         }
     )
 
@@ -562,6 +915,7 @@ def hall_of_hate_update(
     entry_id: int = Path(..., ge=1),
     nombre: str = Form(...),
     nueva_imagen: UploadFile | None = File(None),
+    marco: str = Form("default"),
     current_user: SessionUser = Depends(require_user),
 ):
     entry = _get_hall_of_hate_entry(entry_id)
@@ -573,6 +927,7 @@ def hall_of_hate_update(
         raise HTTPException(status_code=400, detail="El nombre es obligatorio")
 
     new_filename: str | None = None
+    frame_key = _normalize_frame_key(marco) if marco else entry.get("frame_key", "default")
     old_filename = entry["image_filename"]
     try:
         if nueva_imagen is not None:
@@ -580,7 +935,7 @@ def hall_of_hate_update(
                 new_filename = _save_hall_of_hate_image(nueva_imagen, clean_name)
             else:
                 nueva_imagen.file.close()
-        _update_hall_of_hate_entry(entry_id, clean_name, new_filename)
+        _update_hall_of_hate_entry(entry_id, clean_name, new_filename, frame_key)
     except psycopg2.Error as exc:
         if new_filename:
             file_path = HALL_OF_HATE_DIR / new_filename
@@ -610,6 +965,45 @@ def hall_of_hate_delete(
     file_path = HALL_OF_HATE_DIR / image_filename
     if file_path.exists():
         file_path.unlink(missing_ok=True)
+    return RedirectResponse(url="/hall-of-hate", status_code=303)
+
+
+@app.get("/hall-of-hate/{entry_id}/odio", response_class=HTMLResponse)
+def hall_of_hate_rate_form(
+    request: Request,
+    entry_id: int = Path(..., ge=1),
+    current_user: SessionUser = Depends(require_user),
+):
+    entry = _get_hall_of_hate_entry(entry_id)
+    if not entry:
+        raise HTTPException(status_code=404, detail="Villano no encontrado")
+    current_rating = _get_hall_of_hate_rating(entry_id, current_user["uid"]) or 99
+    return templates.TemplateResponse(
+        "hall_of_hate_rate.html",
+        {
+            "request": request,
+            "entry": entry,
+            "current_rating": current_rating,
+            "frames": HALL_OF_HATE_FRAMES,
+            "frame": HALL_OF_HATE_FRAMES.get(entry["frame_key"], HALL_OF_HATE_FRAMES["default"]),
+            "frame_assets": _resolve_frame_assets(),
+        },
+    )
+
+
+@app.post("/hall-of-hate/{entry_id}/odio")
+def hall_of_hate_rate_submit(
+    request: Request,
+    entry_id: int = Path(..., ge=1),
+    odio: int = Form(...),
+    current_user: SessionUser = Depends(require_user),
+):
+    if odio < 1 or odio > 99:
+        raise HTTPException(status_code=400, detail="El nivel de odio debe estar entre 1 y 99")
+    entry = _get_hall_of_hate_entry(entry_id)
+    if not entry:
+        raise HTTPException(status_code=404, detail="Villano no encontrado")
+    _set_hall_of_hate_rating(entry_id, current_user["uid"], odio)
     return RedirectResponse(url="/hall-of-hate", status_code=303)
 
 
