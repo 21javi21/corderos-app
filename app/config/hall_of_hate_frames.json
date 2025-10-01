@@ -1,0 +1,28 @@
+{
+  "default": {
+    "score_left": "34%",
+    "score_top": "82%",
+    "score_width": "24%",
+    "score_height": "24%",
+    "score_font_size": "clamp(1.6rem, 3.8vw, 2.6rem)",
+    "name_top": "86%",
+    "name_left": "62%",
+    "name_width": "48%",
+    "name_align": "left",
+    "name_color": "#eef6ff"
+  },
+  "devil": {
+    "score_left": "42%",
+    "score_top": "82%",
+    "score_width": "26%",
+    "score_height": "26%",
+    "score_font_size": "clamp(1.9rem, 3.8vw, 2.8rem)",
+    "score_background": "rgba(21, 8, 8, 0.75)",
+    "score_border_radius": "12px",
+    "name_top": "85%",
+    "name_left": "64%",
+    "name_width": "44%",
+    "name_align": "left",
+    "name_color": "#f5e6c7"
+  }
+}

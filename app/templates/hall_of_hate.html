@@ -79,10 +79,10 @@
     .gallery {
       width: 100%;
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      column-gap: clamp(28px, 4vw, 40px);
-      row-gap: clamp(48px, 5vw, 72px);
-      justify-content: center;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      column-gap: clamp(40px, 6vw, 80px);
+      row-gap: clamp(64px, 7vw, 104px);
+      justify-items: center;
     }
     .card {
       background: rgba(12, 23, 36, 0.9);
@@ -97,15 +97,11 @@
     }
     .frame-card {
       position: relative;
-      width: clamp(210px, 22vw, 250px);
+      width: clamp(220px, 24vw, 260px);
       aspect-ratio: 3 / 5;
       border-radius: 24px;
       overflow: hidden;
-      background-color: rgba(6, 16, 28, 0.9);
-      background-image: var(--frame-image, none);
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
+      background-color: rgba(6, 16, 28, 0.92);
       box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 28px 46px rgba(0, 0, 0, 0.45);
       --image-box-top: 18%;
       --image-box-left: 10%;
@@ -115,12 +111,25 @@
       --score-top: 82%;
       --score-width: 22%;
       --score-height: 16%;
-      --name-bg: rgba(4, 12, 24, 0.55);
-      --name-color: #f7fbff;
-      --user-bg: rgba(4, 12, 24, 0.55);
-      --user-color: #ffc857;
       --score-bg: rgba(0, 0, 0, 0.55);
       --score-border-radius: 16px;
+      --stat-top: 76%;
+      --stat-left: 12%;
+      --stat-width: 76%;
+      --stat-height: 12%;
+      --stat-gap: 12px;
+    }
+
+    .frame-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: var(--frame-image, none);
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      z-index: 3;
+      pointer-events: none;
     }
     .frame-card .villain-image {
       position: absolute;
@@ -133,8 +142,8 @@
       justify-content: center;
       overflow: hidden;
       border-radius: 18px;
-      background: rgba(6, 12, 22, 0.75);
-      z-index: 1;
+      background: transparent;
+      z-index: 2;
     }
     .frame-card .villain-image img {
       width: 100%;
@@ -145,12 +154,15 @@
       object-position: center;
       transition: transform 0.2s ease;
     }
-    .frame-card .hate-meter {
+    .frame-card .stat-row {
+      display: none;
+    }
+    .frame-card .hate-badge {
       position: absolute;
-      left: var(--score-left);
-      top: var(--score-top);
-      width: var(--score-width, 20%);
-      height: var(--score-height, 12%);
+      left: var(--score-left, 24%);
+      top: var(--score-top, 82%);
+      width: var(--score-width, 24%);
+      height: var(--score-height, 24%);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -160,39 +172,32 @@
       z-index: 4;
       background: var(--score-bg, rgba(0, 0, 0, 0.55));
       border-radius: var(--score-border-radius, 16px);
-      transform: translate(-50%, -50%);
-    }
-    .frame-card .hate-meter span {
       font-size: var(--score-font-size, clamp(1.6rem, 3.6vw, 2.6rem));
-      line-height: 1;
-    }
-    .frame-card .hate-meter strong {
-      font-size: 0.9rem;
-      letter-spacing: 0.12em;
+      transform: translate(-50%, -50%);
+      min-width: 48px;
+      min-height: 48px;
     }
     .frame-card .name-label {
       position: absolute;
-      left: 12%;
-      width: 76%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 4px 8px;
-      border-radius: 12px;
-      background: var(--name-bg);
-      color: var(--name-color);
-      font-weight: 600;
-      line-height: 1.2;
-      word-break: break-word;
-      text-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
-      z-index: 5;
-    }
-      top: 68%;
-      height: 8%;
-      font-size: clamp(0.95rem, 1.8vw, 1.25rem);
+      top: var(--name-top, 88%);
+      left: var(--name-left, 60%);
+      width: var(--name-width, 50%);
+      transform: translate(-50%, -50%);
+      text-align: var(--name-align, left);
+      font-size: clamp(0.9rem, 1.6vw, 1.15rem);
       text-transform: uppercase;
+      color: var(--name-color, #f7fbff);
+      font-weight: 600;
       letter-spacing: 0.08em;
+      text-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+      white-space: normal;
+      line-height: 1.15;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      z-index: 4;
     }
     .card-actions {
       display: flex;
@@ -299,12 +304,15 @@
                    --score-left: {{ frame.score_left | default('18%') }};
                    --score-top: {{ frame.score_top | default('82%') }};
                    --score-width: {{ frame.score_width | default('20%') }};
-                   --score-height: {{ frame.score_height | default('12%') }};
-                   --score-font-size: {{ frame.score_font_size | default('clamp(1.6rem, 3.6vw, 2.6rem)') }};
-                   --score-bg: {{ frame.score_background | default('rgba(0, 0, 0, 0.55)') }};
-                   --score-border-radius: {{ frame.score_border_radius | default('16px') }};
-                   --name-bg: {{ frame.name_background | default('rgba(4, 12, 24, 0.55)') }};
-                   --name-color: {{ frame.name_color | default('#f7fbff') }};">
+                  --score-height: {{ frame.score_height | default('12%') }};
+                  --score-font-size: {{ frame.score_font_size | default('clamp(1.6rem, 3.6vw, 2.6rem)') }};
+                  --score-bg: {{ frame.score_background | default('rgba(0, 0, 0, 0.55)') }};
+                  --score-border-radius: {{ frame.score_border_radius | default('16px') }};
+                  --name-top: {{ frame.name_top | default('88%') }};
+                  --name-left: {{ frame.name_left | default('60%') }};
+                  --name-width: {{ frame.name_width | default('50%') }};
+                  --name-align: {{ frame.name_align | default('left') }};
+                  --name-color: {{ frame.name_color | default('#f7fbff') }};">
             <div class="villain-image">
               {% if item.image %}
                 <img src="{{ request.url_for('static', path=item.image) }}" alt="{{ item.name }}">
@@ -312,13 +320,8 @@
                 <div class="missing">Foto no disponible</div>
               {% endif %}
             </div>
-            <div class="hate-meter">
-              <span>{{ avg_value }}</span>
-            </div>
-            <div class="name-label"
-              style="top: {{ frame.name_box_top }}; left: {{ frame.name_box_left }}; width: {{ frame.name_box_width }}; height: {{ frame.name_box_height }};">
-              {{ item.name }}
-            </div>
+            <div class="hate-badge">{{ avg_value }}</div>
+            <div class="name-label">{{ item.name }}</div>
           </div>
           {% if has_edit or can_rate %}
           <div class="card-actions">

@@ -41,7 +41,9 @@ DEFAULT_HALL_OF_HATE_ENTRIES = [
     {"name": "Xabi Alonso", "image_filename": "Xabi Alonso.png", "frame_key": "default"},
 ]
 
-HALL_OF_HATE_FRAMES: dict[str, dict[str, str]] = {
+FRAME_CONFIG_PATH = PathlibPath("app/config/hall_of_hate_frames.json")
+
+_BASE_FRAME_DEFINITIONS: dict[str, dict[str, str]] = {
     "default": {
         "label": "Default",
         "image_path": "hall_of_hate/frames/frame-default.png",
@@ -50,17 +52,16 @@ HALL_OF_HATE_FRAMES: dict[str, dict[str, str]] = {
         "image_box_width": "82%",
         "image_box_height": "58%",
         "score_top": "82%",
-        "score_left": "24%",
+        "score_left": "34%",
         "score_width": "24%",
-        "score_height": "22%",
+        "score_height": "24%",
         "score_font_size": "clamp(1.6rem, 3.8vw, 2.6rem)",
         "score_background": "transparent",
         "score_border_radius": "50%",
-        "name_box_top": "70%",
-        "name_box_left": "13%",
-        "name_box_width": "74%",
-        "name_box_height": "8%",
-        "name_background": "transparent",
+        "name_top": "86%",
+        "name_left": "62%",
+        "name_width": "48%",
+        "name_align": "left",
         "name_color": "#eef6ff",
     },
     "devil": {
@@ -71,20 +72,49 @@ HALL_OF_HATE_FRAMES: dict[str, dict[str, str]] = {
         "image_box_width": "82%",
         "image_box_height": "54%",
         "score_top": "82%",
-        "score_left": "32%",
-        "score_width": "32%",
-        "score_height": "16%",
+        "score_left": "42%",
+        "score_width": "26%",
+        "score_height": "26%",
         "score_font_size": "clamp(1.9rem, 3.8vw, 2.8rem)",
         "score_background": "rgba(21, 8, 8, 0.75)",
         "score_border_radius": "12px",
-        "name_box_top": "67%",
-        "name_box_left": "18%",
-        "name_box_width": "64%",
-        "name_box_height": "7%",
-        "name_background": "rgba(18, 6, 6, 0.7)",
+        "name_top": "85%",
+        "name_left": "64%",
+        "name_width": "44%",
+        "name_align": "left",
         "name_color": "#f5e6c7",
     },
 }
+
+
+def _load_frame_definitions() -> dict[str, dict[str, str]]:
+    definitions: dict[str, dict[str, str]] = {
+        key: dict(value) for key, value in _BASE_FRAME_DEFINITIONS.items()
+    }
+    try:
+        with FRAME_CONFIG_PATH.open("r", encoding="utf-8") as config_file:
+            overrides = json.load(config_file)
+    except FileNotFoundError:
+        return definitions
+    except Exception as exc:  # pragma: no cover - defensive logging
+        print(f"[HallOfHate] No se pudo leer {FRAME_CONFIG_PATH}: {exc}")
+        return definitions
+
+    if not isinstance(overrides, dict):
+        print("[HallOfHate] El archivo de frames no tiene el formato esperado; usando valores por defecto")
+        return definitions
+
+    for key, data in overrides.items():
+        if not isinstance(data, dict):
+            continue
+        merged = dict(definitions.get(key, {}))
+        for opt_key, opt_value in data.items():
+            merged[opt_key] = str(opt_value)
+        definitions[key] = merged
+    return definitions
+
+
+HALL_OF_HATE_FRAMES = _load_frame_definitions()
 
 STATIC_ROOT = PathlibPath("app/images")
 HALL_OF_HATE_DIR = STATIC_ROOT / "hall_of_hate"
