@@ -293,7 +293,7 @@
         {% set name_white_space = 'nowrap' if name_lines == 1 else 'normal' %}
         {% set avg_value = (item.average_hate if item.average_hate is not none else 99)|round(0)|int %}
         {% set has_edit = can_manage and item.id %}
-        {% set can_rate = current_user and item.id %}
+        {% set can_rate = ratings_enabled and current_user and item.id %}
         <article class="card">
           <div class="frame-card"
             style="{% if frame_asset %}--frame-image: url('{{ request.url_for('static', path=frame_asset) }}');{% else %}--frame-image: none;{% endif %}

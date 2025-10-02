@@ -92,6 +92,10 @@ _BASE_FRAME_DEFINITIONS: dict[str, dict[str, str]] = {
 }
 
 
+class FrameStorageError(RuntimeError):
+    """Raised when frame metadata cannot be persisted."""
+
+
 def _load_frame_definitions() -> dict[str, dict[str, str]]:
     def normalize_align(raw: str | None) -> str:
         if not raw:
@@ -431,10 +435,12 @@ def _store_frame_key(cur, entry_id: int, frame_key: str) -> None:
                 "UPDATE hall_of_hate SET frame_key = %s WHERE id = %s",
                 (key, entry_id),
             )
-        except errors.InsufficientPrivilege:
+        except errors.InsufficientPrivilege as exc:
             _disable_frame_storage("no privilege to update hall_of_hate.frame_key column")
-        except errors.UndefinedColumn:
+            raise FrameStorageError("No privileges to update hall_of_hate.frame_key") from exc
+        except errors.UndefinedColumn as exc:
             _disable_frame_storage("hall_of_hate.frame_key column missing")
+            raise FrameStorageError("hall_of_hate.frame_key column missing") from exc
         except Exception:
             raise
         return
@@ -448,10 +454,12 @@ def _store_frame_key(cur, entry_id: int, frame_key: str) -> None:
                 """,
                 (entry_id, key),
             )
-        except errors.InsufficientPrivilege:
+        except errors.InsufficientPrivilege as exc:
             _disable_frame_storage("no privileges to maintain hall_of_hate_frames")
-        except errors.UndefinedTable:
+            raise FrameStorageError("No privileges to maintain hall_of_hate_frames") from exc
+        except errors.UndefinedTable as exc:
             _disable_frame_storage("hall_of_hate_frames table missing")
+            raise FrameStorageError("hall_of_hate_frames table missing") from exc
         except Exception:
             raise
     # If FRAME_STORAGE_MODE == "none", do nothing (default frame only)
@@ -506,54 +514,63 @@ def _resolve_default_image_filename(filename: str | None) -> str | None:
 
 
 def _seed_hall_of_hate_defaults(conn) -> None:
-    try:
-        with conn.cursor() as cur:
-            for entry in DEFAULT_HALL_OF_HATE_ENTRIES:
-                name = entry["name"]
-                frame_key = _normalize_frame_key(entry.get("frame_key"))
-                cur.execute(
-                    "SELECT id, image_filename FROM hall_of_hate WHERE lower(name) = lower(%s)",
-                    (name,),
-                )
-                row = cur.fetchone()
-                resolved_image = _resolve_default_image_filename(entry.get("image_filename"))
-                if row:
-                    entry_id, current_image = row
-                    if not current_image and resolved_image:
+    attempts = 0
+    while True:
+        attempts += 1
+        try:
+            with conn.cursor() as cur:
+                for entry in DEFAULT_HALL_OF_HATE_ENTRIES:
+                    name = entry["name"]
+                    frame_key = _normalize_frame_key(entry.get("frame_key"))
+                    cur.execute(
+                        "SELECT id, image_filename FROM hall_of_hate WHERE lower(name) = lower(%s)",
+                        (name,),
+                    )
+                    row = cur.fetchone()
+                    resolved_image = _resolve_default_image_filename(entry.get("image_filename"))
+                    if row:
+                        entry_id, current_image = row
+                        if not current_image and resolved_image:
+                            cur.execute(
+                                "UPDATE hall_of_hate SET image_filename = %s WHERE id = %s",
+                                (resolved_image, entry_id),
+                            )
+                        _store_frame_key(cur, entry_id, frame_key)
+                        continue
+                    if FRAME_STORAGE_MODE == "column":
                         cur.execute(
-                            "UPDATE hall_of_hate SET image_filename = %s WHERE id = %s",
-                            (resolved_image, entry_id),
+                            "INSERT INTO hall_of_hate (name, image_filename, frame_key) VALUES (%s, %s, %s) RETURNING id",
+                            (name, resolved_image, frame_key),
                         )
-                    _store_frame_key(cur, entry_id, frame_key)
-                    continue
+                        entry_id = cur.fetchone()[0]
+                        _store_frame_key(cur, entry_id, frame_key)
+                    else:
+                        cur.execute(
+                            "INSERT INTO hall_of_hate (name, image_filename) VALUES (%s, %s) RETURNING id",
+                            (name, resolved_image),
+                        )
+                        entry_id = cur.fetchone()[0]
+                        _store_frame_key(cur, entry_id, frame_key)
                 if FRAME_STORAGE_MODE == "column":
                     cur.execute(
-                        "INSERT INTO hall_of_hate (name, image_filename, frame_key) VALUES (%s, %s, %s) RETURNING id",
-                        (name, resolved_image, frame_key),
+                        """
+                        UPDATE hall_of_hate
+                        SET frame_key = 'default'
+                        WHERE frame_key IS NULL
+                           OR NOT (frame_key = ANY(%s))
+                        """,
+                        (list(HALL_OF_HATE_FRAMES.keys()),),
                     )
-                    entry_id = cur.fetchone()[0]
-                    _store_frame_key(cur, entry_id, frame_key)
-                else:
-                    cur.execute(
-                        "INSERT INTO hall_of_hate (name, image_filename) VALUES (%s, %s) RETURNING id",
-                        (name, resolved_image),
-                    )
-                    entry_id = cur.fetchone()[0]
-                    _store_frame_key(cur, entry_id, frame_key)
-            if FRAME_STORAGE_MODE == "column":
-                cur.execute(
-                    """
-                    UPDATE hall_of_hate
-                    SET frame_key = 'default'
-                    WHERE frame_key IS NULL
-                       OR NOT (frame_key = ANY(%s))
-                    """,
-                    (list(HALL_OF_HATE_FRAMES.keys()),),
-                )
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
+            conn.commit()
+            return
+        except FrameStorageError:
+            conn.rollback()
+            if attempts >= 2:
+                return
+            continue
+        except Exception:
+            conn.rollback()
+            raise
 
 
 def _fetch_hall_of_hate_db_entries(current_uid: str | None) -> list[dict[str, str | None | float | int]]:
@@ -636,52 +653,51 @@ def _fetch_hall_of_hate_db_entries(current_uid: str | None) -> list[dict[str, st
 def _insert_hall_of_hate_entry(name: str, image_filename: str, frame_key: str) -> int:
     if not pool:
         raise HTTPException(status_code=500, detail="Conexión a base de datos no inicializada")
-    conn = pool.getconn()
-    try:
-        with conn, conn.cursor() as cur:
-            if FRAME_STORAGE_MODE == "column":
-                cur.execute(
-                    """
-                    INSERT INTO hall_of_hate (name, image_filename, frame_key)
-                    VALUES (%s, %s, %s)
-                    RETURNING id
-                    """,
-                    (name, image_filename, _normalize_frame_key(frame_key)),
-                )
-                entry_id = cur.fetchone()[0]
-                try:
+    attempts = 0
+    while True:
+        attempts += 1
+        conn = pool.getconn()
+        try:
+            with conn, conn.cursor() as cur:
+                if FRAME_STORAGE_MODE == "column":
+                    cur.execute(
+                        """
+                        INSERT INTO hall_of_hate (name, image_filename, frame_key)
+                        VALUES (%s, %s, %s)
+                        RETURNING id
+                        """,
+                        (name, image_filename, _normalize_frame_key(frame_key)),
+                    )
+                    entry_id = cur.fetchone()[0]
                     _store_frame_key(cur, entry_id, frame_key)
-                except errors.UndefinedTable:
-                    _disable_frame_storage("hall_of_hate_frames table missing")
-                except errors.UndefinedColumn:
-                    _disable_frame_storage("hall_of_hate.frame_key column missing")
-            elif FRAME_STORAGE_MODE == "table":
-                cur.execute(
-                    """
-                    INSERT INTO hall_of_hate (name, image_filename)
-                    VALUES (%s, %s)
-                    RETURNING id
-                    """,
-                    (name, image_filename),
-                )
-                entry_id = cur.fetchone()[0]
-                try:
+                elif FRAME_STORAGE_MODE == "table":
+                    cur.execute(
+                        """
+                        INSERT INTO hall_of_hate (name, image_filename)
+                        VALUES (%s, %s)
+                        RETURNING id
+                        """,
+                        (name, image_filename),
+                    )
+                    entry_id = cur.fetchone()[0]
                     _store_frame_key(cur, entry_id, frame_key)
-                except errors.UndefinedTable:
-                    _disable_frame_storage("hall_of_hate_frames table missing")
-            else:  # FRAME_STORAGE_MODE == "none"
-                cur.execute(
-                    """
-                    INSERT INTO hall_of_hate (name, image_filename)
-                    VALUES (%s, %s)
-                    RETURNING id
-                    """,
-                    (name, image_filename),
-                )
-                entry_id = cur.fetchone()[0]
-    finally:
-        pool.putconn(conn)
-    return entry_id
+                else:  # FRAME_STORAGE_MODE == "none"
+                    cur.execute(
+                        """
+                        INSERT INTO hall_of_hate (name, image_filename)
+                        VALUES (%s, %s)
+                        RETURNING id
+                        """,
+                        (name, image_filename),
+                    )
+                    entry_id = cur.fetchone()[0]
+            return entry_id
+        except FrameStorageError:
+            if attempts >= 2:
+                raise
+            # retry with updated FRAME_STORAGE_MODE (likely "none")
+        finally:
+            pool.putconn(conn)
 
 
 def _save_hall_of_hate_image(upload: UploadFile, display_name: str) -> str:
@@ -786,36 +802,38 @@ def _get_hall_of_hate_entry(entry_id: int) -> dict[str, str | int | None] | None
 def _update_hall_of_hate_entry(entry_id: int, name: str, image_filename: str | None, frame_key: str) -> None:
     if not pool:
         raise HTTPException(status_code=500, detail="Conexión a base de datos no inicializada")
-    conn = pool.getconn()
-    try:
-        with conn, conn.cursor() as cur:
-            if image_filename is None:
-                cur.execute(
-                    """
-                    UPDATE hall_of_hate
-                    SET name = %s
-                    WHERE id = %s
-                    """,
-                    (name, entry_id),
-                )
-            else:
-                cur.execute(
-                    """
-                    UPDATE hall_of_hate
-                    SET name = %s,
-                        image_filename = %s
-                    WHERE id = %s
-                    """,
-                    (name, image_filename, entry_id),
-                )
-            try:
+    attempts = 0
+    while True:
+        attempts += 1
+        conn = pool.getconn()
+        try:
+            with conn, conn.cursor() as cur:
+                if image_filename is None:
+                    cur.execute(
+                        """
+                        UPDATE hall_of_hate
+                        SET name = %s
+                        WHERE id = %s
+                        """,
+                        (name, entry_id),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        UPDATE hall_of_hate
+                        SET name = %s,
+                            image_filename = %s
+                        WHERE id = %s
+                        """,
+                        (name, image_filename, entry_id),
+                    )
                 _store_frame_key(cur, entry_id, frame_key)
-            except errors.UndefinedTable:
-                _disable_frame_storage("hall_of_hate_frames table missing")
-            except errors.UndefinedColumn:
-                _disable_frame_storage("hall_of_hate.frame_key column missing")
-    finally:
-        pool.putconn(conn)
+            return
+        except FrameStorageError:
+            if attempts >= 2:
+                raise
+        finally:
+            pool.putconn(conn)
 
 
 def _delete_hall_of_hate_entry(entry_id: int) -> str | None:
@@ -996,6 +1014,7 @@ def hall_of_hate(request: Request, current_user: SessionUser | None = Depends(op
             "frames": HALL_OF_HATE_FRAMES,
             "current_user": current_user,
             "frame_assets": _resolve_frame_assets(),
+            "ratings_enabled": RATINGS_ENABLED,
         }
     )
 
@@ -1030,6 +1049,11 @@ def hall_of_hate_create(
     filename = _save_hall_of_hate_image(imagen, clean_name)
     try:
         _insert_hall_of_hate_entry(clean_name, filename, frame_key)
+    except FrameStorageError as exc:
+        file_path = HALL_OF_HATE_DIR / filename
+        if file_path.exists():
+            file_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=500, detail="No se pudo guardar el registro") from exc
     except psycopg2.Error as exc:
         # Limpia el archivo recién creado si la inserción falla
         file_path = HALL_OF_HATE_DIR / filename
@@ -1090,6 +1114,12 @@ def hall_of_hate_update(
             else:
                 nueva_imagen.file.close()
         _update_hall_of_hate_entry(entry_id, clean_name, new_filename, frame_key)
+    except FrameStorageError as exc:
+        if new_filename:
+            file_path = HALL_OF_HATE_DIR / new_filename
+            if file_path.exists():
+                file_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=500, detail="No se pudo actualizar el villano") from exc
     except psycopg2.Error as exc:
         if new_filename:
             file_path = HALL_OF_HATE_DIR / new_filename
