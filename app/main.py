@@ -33,14 +33,7 @@ AUTO_LOCK_DAYS = 3
 
 HALL_OF_HATE_MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
 
-DEFAULT_HALL_OF_HATE_ENTRIES = [
-    {"name": "Lebron James", "image_filename": "Lebron James.png", "frame_key": "default"},
-    {"name": "Luka Doncic", "image_filename": "Luka Doncic.png", "frame_key": "default"},
-    {"name": "Carlo Ancelotti", "image_filename": "Carlo Ancelotti.png", "frame_key": "default"},
-    {"name": "\"El Cholo\" Simeone", "image_filename": "El Cholo Simeone.png", "frame_key": "default"},
-    {"name": "Vinicius", "image_filename": "Vinicius.png", "frame_key": "default"},
-    {"name": "Xabi Alonso", "image_filename": "Xabi Alonso.png", "frame_key": "default"},
-]
+DEFAULT_HALL_OF_HATE_ENTRIES: list[dict[str, str]] = []
 
 FRAME_CONFIG_PATH = PathlibPath("app/config/hall_of_hate_frames.json")
 
