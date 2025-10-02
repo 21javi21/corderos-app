@@ -58,12 +58,12 @@
       width: clamp(240px, 46vw, 280px);
       aspect-ratio: 3 / 5;
       margin: 0 auto;
-      border-radius: 24px;
+      border-radius: var(--frame-border-radius, 24px);
       overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(6, 16, 28, 0.75);
+      background: var(--frame-background-color, rgba(6, 16, 28, 0.75));
       box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
       --frame-image: none;
       --image-box-top: 18%;
@@ -80,23 +80,6 @@
       background: var(--frame-image) center/contain no-repeat;
       pointer-events: none;
       z-index: 3;
-    }
-    .frame-preview .image-bottom {
-      position: absolute;
-      top: var(
-        --image-bottom-top,
-        calc(
-          var(--image-box-top, 0) +
-          var(--image-box-height, 0)
-        )
-      );
-      left: var(--image-bottom-left, var(--image-box-left, 0));
-      width: var(--image-bottom-width, var(--image-box-width, 0));
-      height: var(--image-bottom-height, 0);
-      border-radius: 16px;
-      background: rgba(6, 16, 28, 0.68);
-      z-index: 2;
-      pointer-events: none;
     }
     .frame-preview .preview-image {
       position: absolute;
@@ -216,9 +199,8 @@
              --image-box-left: {{ frame.image_box_left }};
              --image-box-width: {{ frame.image_box_width }};
              --image-box-height: {{ frame.image_box_height }};
-             {% if 'image_bottom_top' in frame %}--image-bottom-top: {{ frame.image_bottom_top }};{% endif %}
-             {% if 'image_bottom_left' in frame %}--image-bottom-left: {{ frame.image_bottom_left }};{% endif %}
-             --image-bottom-height: {{ frame.image_bottom_height | default(frame.image_bottom_heigth) | default('0') }};
+             --frame-background-color: {{ frame.frame_background_color | default('rgba(6, 16, 28, 0.75)') }};
+             --frame-border-radius: {{ frame.frame_border_radius | default('24px') }};
             --score-left: {{ frame.score_left | default('18%') }};
             --score-top: {{ frame.score_top | default('82%') }};
             --score-width: {{ frame.score_width | default('22%') }};
@@ -226,7 +208,6 @@
             --score-font-size: {{ frame.score_font_size | default('clamp(1.6rem, 3.6vw, 2.6rem)') }};
             --score-color: {{ frame.score_color | default('#f7fbff') }};
             --score-align: {{ frame.score_align | default('center') }};">
-      <div class="image-bottom" aria-hidden="true"></div>
       <div class="preview-image">
         <img src="{{ request.url_for('static', path='hall_of_hate/' + entry.image_filename) }}" alt="{{ entry.name }}">
       </div>

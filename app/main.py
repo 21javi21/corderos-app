@@ -63,7 +63,8 @@ _BASE_FRAME_DEFINITIONS: dict[str, dict[str, str]] = {
         "name_color": "#eef6ff",
         "name_font_size": "clamp(0.9rem, 1.6vw, 1.15rem)",
         "name_max_lines": "2",
-        "image_bottom_height": "0",
+        "frame_background_color": "rgba(6, 16, 28, 0.92)",
+        "frame_border_radius": "24px",
     },
     "devil": {
         "label": "Devil",
@@ -90,7 +91,8 @@ _BASE_FRAME_DEFINITIONS: dict[str, dict[str, str]] = {
         "name_color": "#f5e6c7",
         "name_font_size": "clamp(0.95rem, 1.8vw, 1.25rem)",
         "name_max_lines": "2",
-        "image_bottom_height": "0",
+        "frame_background_color": "rgba(6, 16, 28, 0.92)",
+        "frame_border_radius": "24px",
     },
 }
 
@@ -134,21 +136,9 @@ def _load_frame_definitions() -> dict[str, dict[str, str]]:
         merged = dict(definitions.get(key, {}))
         for opt_key, opt_value in data.items():
             merged[opt_key] = str(opt_value)
-        bottom_heigth = merged.get("image_bottom_heigth")
-        bottom_height = merged.get("image_bottom_height")
-        if bottom_heigth and not bottom_height:
-            merged["image_bottom_height"] = bottom_heigth
-        elif bottom_height and not bottom_heigth:
-            merged["image_bottom_heigth"] = bottom_height
         merged["score_align"] = normalize_align(merged.get("score_align"))
         definitions[key] = merged
     for merged in definitions.values():
-        bottom_heigth = merged.get("image_bottom_heigth")
-        bottom_height = merged.get("image_bottom_height")
-        if bottom_heigth and not bottom_height:
-            merged["image_bottom_height"] = bottom_heigth
-        elif bottom_height and not bottom_heigth:
-            merged["image_bottom_heigth"] = bottom_height
         merged["score_align"] = normalize_align(merged.get("score_align"))
     return definitions
 

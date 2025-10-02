@@ -77,15 +77,16 @@
       text-align: center;
     }
     .gallery {
+      background: transparent;
       width: 100%;
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      column-gap: clamp(48px, 6vw, 78px);
-      row-gap: clamp(46px, 5.2vw, 72px);
+      column-gap: clamp(40px, 6vw, 70px);
+      row-gap: clamp(55px, 5.2vw, 70px);
       justify-items: center;
     }
     .card {
-      background: rgba(12, 23, 36, 0.9);
+      background: transparent;
       border-radius: 22px;
       padding: 16px 18px 64px;
       width: clamp(232px, 22vw, 252px);
@@ -141,23 +142,6 @@
       background-position: center;
       background-repeat: no-repeat;
       z-index: 3;
-      pointer-events: none;
-    }
-    .frame-card .image-bottom {
-      position: absolute;
-      top: var(
-        --image-bottom-top,
-        calc(
-          var(--image-frame-top, var(--image-box-top, 0)) +
-          var(--image-frame-height, var(--image-box-height, 0))
-        )
-      );
-      left: var(--image-bottom-left, var(--image-frame-left, var(--image-box-left, 0)));
-      width: var(--image-bottom-width, var(--image-frame-width, var(--image-box-width, 0)));
-      height: var(--image-bottom-height, 0);
-      border-radius: 18px;
-      background: rgba(4, 12, 24, 0.7);
-      z-index: 2;
       pointer-events: none;
     }
     .frame-card .villain-image {
@@ -346,9 +330,6 @@
                   --image-frame-left: {{ frame.image_frame_left | default(frame.image_box_left) }};
                   --image-frame-width: {{ frame.image_frame_width | default(frame.image_box_width) }};
                   --image-frame-height: {{ frame.image_frame_height | default(frame.image_box_height) }};
-                  {% if 'image_bottom_top' in frame %}--image-bottom-top: {{ frame.image_bottom_top }};{% endif %}
-                  {% if 'image_bottom_left' in frame %}--image-bottom-left: {{ frame.image_bottom_left }};{% endif %}
-                  --image-bottom-height: {{ frame.image_bottom_height | default(frame.image_bottom_heigth) | default('0') }};
                    --score-left: {{ frame.score_left | default('18%') }};
                    --score-top: {{ frame.score_top | default('82%') }};
                    --score-width: {{ frame.score_width | default('20%') }};
@@ -364,7 +345,6 @@
                   --name-font-size: {{ frame.name_font_size | default('clamp(0.9rem, 1.6vw, 1.15rem)') }};
                   --name-line-clamp: {{ name_lines }};
                   --name-white-space: {{ name_white_space }};">
-            <div class="image-bottom" aria-hidden="true"></div>
             <div class="villain-image">
               {% if item.image %}
                 <img src="{{ request.url_for('static', path=item.image) }}" alt="{{ item.name }}">

@@ -17,10 +17,7 @@
     "image_frame_width": "84%",
     "image_frame_height": "50%",
     "image_frame_top": "27%",
-    "image_frame_left": "8%",
-    "image_bottom_top": "77%",
-    "image_bottom_left": "8%",
-    "image_bottom_height": "50"
+    "image_frame_left": "8%"
   },
   "devil": {
     "score_left": "48%",
@@ -40,9 +37,6 @@
     "image_frame_width": "78%",
     "image_frame_height": "55%",
     "image_frame_top": "15%",
-    "image_frame_left": "9%",
-    "image_bottom_top": "70%",
-    "image_bottom_left": "9%",
-    "image_bottom_height": "50"
+    "image_frame_left": "9%"
   }
 }

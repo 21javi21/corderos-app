@@ -106,12 +106,12 @@
       position: relative;
       width: clamp(220px, 40vw, 260px);
       aspect-ratio: 3 / 5;
-      border-radius: 22px;
+      border-radius: var(--frame-border-radius, 22px);
       overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(6, 16, 28, 0.75);
+      background: var(--frame-background-color, rgba(6, 16, 28, 0.75));
       box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
       --frame-image: none;
       --image-box-top: 18%;
@@ -128,23 +128,6 @@
       background: var(--frame-image) center/contain no-repeat;
       pointer-events: none;
       z-index: 2;
-    }
-    .preview .frame-preview .image-bottom {
-      position: absolute;
-      top: var(
-        --image-bottom-top,
-        calc(
-          var(--image-frame-top, var(--image-box-top, 0)) +
-          var(--image-frame-height, var(--image-box-height, 0))
-        )
-      );
-      left: var(--image-bottom-left, var(--image-frame-left, var(--image-box-left, 0)));
-      width: var(--image-bottom-width, var(--image-frame-width, var(--image-box-width, 0)));
-      height: var(--image-bottom-height, 0);
-      border-radius: 16px;
-      background: rgba(6, 16, 28, 0.68);
-      z-index: 1;
-      pointer-events: none;
     }
     .preview .frame-preview .preview-image {
       position: absolute;
@@ -279,10 +262,6 @@
         data-image-frame-left="{{ frame.image_frame_left | default(frame.image_box_left) }}"
         data-image-frame-width="{{ frame.image_frame_width | default(frame.image_box_width) }}"
         data-image-frame-height="{{ frame.image_frame_height | default(frame.image_box_height) }}"
-        {% if 'image_bottom_top' in frame %}data-image-bottom-top="{{ frame.image_bottom_top }}"{% endif %}
-        {% if 'image_bottom_left' in frame %}data-image-bottom-left="{{ frame.image_bottom_left }}"{% endif %}
-        data-image-bottom-height="{{ frame.image_bottom_height | default(frame.image_bottom_heigth) | default('0') }}"
-        data-image-bottom-heigth="{{ frame.image_bottom_heigth | default(frame.image_bottom_height) | default('0') }}"
         data-score-left="{{ frame.score_left | default('18%') }}"
         data-score-top="{{ frame.score_top | default('82%') }}"
         data-score-width="{{ frame.score_width | default('20%') }}"
@@ -297,6 +276,8 @@
         data-name-color="{{ frame.name_color | default('#f7fbff') }}"
         data-name-font="{{ frame.name_font_size | default('clamp(0.9rem, 1.6vw, 1.15rem)') }}"
         data-name-lines="{{ frame.name_max_lines | default('2') }}"
+        data-frame-background="{{ frame.frame_background_color | default('rgba(6, 16, 28, 0.75)') }}"
+        data-frame-radius="{{ frame.frame_border_radius | default('22px') }}"
         {% if key == entry.frame_key %}selected{% endif %}>{{ frame.label }}</option>
       {% endfor %}
     </select>
@@ -317,9 +298,8 @@
                --image-frame-left: {{ current_frame.image_frame_left | default(current_frame.image_box_left) }};
                --image-frame-width: {{ current_frame.image_frame_width | default(current_frame.image_box_width) }};
                --image-frame-height: {{ current_frame.image_frame_height | default(current_frame.image_box_height) }};
-               {% if 'image_bottom_top' in current_frame %}--image-bottom-top: {{ current_frame.image_bottom_top }};{% endif %}
-               {% if 'image_bottom_left' in current_frame %}--image-bottom-left: {{ current_frame.image_bottom_left }};{% endif %}
-               --image-bottom-height: {{ current_frame.image_bottom_height | default(current_frame.image_bottom_heigth) | default('0') }};
+               --frame-background-color: {{ current_frame.frame_background_color | default('rgba(6, 16, 28, 0.92)') }};
+               --frame-border-radius: {{ current_frame.frame_border_radius | default('24px') }};
                --score-left: {{ current_frame.score_left | default('18%') }};
                --score-top: {{ current_frame.score_top | default('82%') }};
                --score-width: {{ current_frame.score_width | default('20%') }};
@@ -335,7 +315,6 @@
                --name-font-size: {{ current_frame.name_font_size | default('clamp(0.9rem, 1.6vw, 1.15rem)') }};
                --name-line-clamp: {{ current_name_lines }};
                --name-white-space: {{ current_name_whitespace }};">
-        <div class="image-bottom" aria-hidden="true"></div>
         <div class="preview-image">
           {% if current_image_url %}
           <img id="preview-image" src="{{ current_image_url }}" alt="{{ entry.name }}">
@@ -387,20 +366,8 @@
         preview.style.setProperty('--image-frame-left', option.dataset.imageFrameLeft || option.dataset.imageLeft || '10%');
         preview.style.setProperty('--image-frame-width', option.dataset.imageFrameWidth || option.dataset.imageWidth || '80%');
         preview.style.setProperty('--image-frame-height', option.dataset.imageFrameHeight || option.dataset.imageHeight || '60%');
-        if (option.dataset.imageBottomTop) {
-          preview.style.setProperty('--image-bottom-top', option.dataset.imageBottomTop);
-        } else {
-          preview.style.removeProperty('--image-bottom-top');
-        }
-        if (option.dataset.imageBottomLeft) {
-          preview.style.setProperty('--image-bottom-left', option.dataset.imageBottomLeft);
-        } else {
-          preview.style.removeProperty('--image-bottom-left');
-        }
-        preview.style.setProperty(
-          '--image-bottom-height',
-          option.dataset.imageBottomHeight || option.dataset.imageBottomHeigth || '0'
-        );
+        preview.style.setProperty('--frame-background-color', option.dataset.frameBackground || 'rgba(6, 16, 28, 0.75)');
+        preview.style.setProperty('--frame-border-radius', option.dataset.frameRadius || '22px');
         preview.style.setProperty('--score-left', option.dataset.scoreLeft || '18%');
         preview.style.setProperty('--score-top', option.dataset.scoreTop || '82%');
         preview.style.setProperty('--score-width', option.dataset.scoreWidth || '20%');
