@@ -57,13 +57,15 @@ _BASE_FRAME_DEFINITIONS: dict[str, dict[str, str]] = {
         "score_width": "24%",
         "score_height": "24%",
         "score_font_size": "clamp(1.6rem, 3.8vw, 2.6rem)",
-        "score_background": "transparent",
-        "score_border_radius": "50%",
+        "score_color": "#f7fbff",
+        "score_align": "center",
         "name_top": "86%",
         "name_left": "62%",
         "name_width": "48%",
         "name_align": "left",
         "name_color": "#eef6ff",
+        "name_font_size": "clamp(0.9rem, 1.6vw, 1.15rem)",
+        "name_max_lines": "2",
     },
     "devil": {
         "label": "Devil",
@@ -77,18 +79,32 @@ _BASE_FRAME_DEFINITIONS: dict[str, dict[str, str]] = {
         "score_width": "26%",
         "score_height": "26%",
         "score_font_size": "clamp(1.9rem, 3.8vw, 2.8rem)",
-        "score_background": "rgba(21, 8, 8, 0.75)",
-        "score_border_radius": "12px",
+        "score_color": "#f7fbff",
+        "score_align": "center",
         "name_top": "85%",
         "name_left": "64%",
         "name_width": "44%",
         "name_align": "left",
         "name_color": "#f5e6c7",
+        "name_font_size": "clamp(0.95rem, 1.8vw, 1.25rem)",
+        "name_max_lines": "2",
     },
 }
 
 
 def _load_frame_definitions() -> dict[str, dict[str, str]]:
+    def normalize_align(raw: str | None) -> str:
+        if not raw:
+            return "center"
+        normalized = str(raw).strip().lower()
+        if normalized in {"flex-start", "flex-end", "center", "space-between", "space-around", "space-evenly"}:
+            return normalized
+        if normalized == "left":
+            return "flex-start"
+        if normalized == "right":
+            return "flex-end"
+        return "center"
+
     definitions: dict[str, dict[str, str]] = {
         key: dict(value) for key, value in _BASE_FRAME_DEFINITIONS.items()
     }
@@ -111,7 +127,10 @@ def _load_frame_definitions() -> dict[str, dict[str, str]]:
         merged = dict(definitions.get(key, {}))
         for opt_key, opt_value in data.items():
             merged[opt_key] = str(opt_value)
+        merged["score_align"] = normalize_align(merged.get("score_align"))
         definitions[key] = merged
+    for merged in definitions.values():
+        merged["score_align"] = normalize_align(merged.get("score_align"))
     return definitions
 
 
@@ -375,9 +394,25 @@ def _resolve_frame_assets() -> dict[str, str | None]:
 
 
 def _normalize_frame_key(value: str | None) -> str:
+    """Return a valid frame key, falling back to ``default`` when needed.
+
+    The database might contain legacy values with extra whitespace or different
+    casing, and incoming form data could also present variations. We normalise
+    those cases while still preserving any custom frame keys that match after a
+    case-insensitive comparison.
+    """
     if not value:
         return "default"
-    return value if value in HALL_OF_HATE_FRAMES else "default"
+
+    candidate = str(value).strip()
+    if candidate in HALL_OF_HATE_FRAMES:
+        return candidate
+
+    lowered = candidate.lower()
+    for key in HALL_OF_HATE_FRAMES:
+        if key.lower() == lowered:
+            return key
+    return "default"
 
 
 def _store_frame_key(cur, entry_id: int, frame_key: str) -> None:
@@ -660,7 +695,7 @@ def _save_hall_of_hate_image(upload: UploadFile, display_name: str) -> str:
     return str(relative_prefix / filename)
 
 
-def _get_hall_of_hate_entry(entry_id: int) -> dict[str, str | int] | None:
+def _get_hall_of_hate_entry(entry_id: int) -> dict[str, str | int | None] | None:
     if not pool:
         return None
     conn = pool.getconn()
@@ -695,10 +730,17 @@ def _get_hall_of_hate_entry(entry_id: int) -> dict[str, str | int] | None:
     if not row:
         return None
     frame_key = _normalize_frame_key(row[3])
+    image_filename: str | None = row[2]
+    image_path: str | None = None
+    if image_filename:
+        candidate = f"hall_of_hate/{image_filename}"
+        image_path = candidate if _static_path_exists(candidate) else None
+
     return {
         "id": row[0],
         "name": row[1],
-        "image_filename": row[2],
+        "image_filename": image_filename,
+        "image_path": image_path,
         "frame_key": frame_key,
     }
 

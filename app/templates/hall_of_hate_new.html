@@ -156,13 +156,13 @@
       height: var(--score-height, 12%);
       display: flex;
       align-items: center;
-      justify-content: center;
-      color: #f7fbff;
+      justify-content: var(--score-align, center);
+      color: var(--score-color, #f7fbff);
       font-weight: 700;
       z-index: 3;
       text-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
-      background: var(--score-bg, rgba(0, 0, 0, 0.55));
-      border-radius: var(--score-border-radius, 16px);
+      background: transparent;
+      border-radius: 16px;
       transform: translate(-50%, -50%);
     }
     .frame-preview .preview-score span {
@@ -229,14 +229,18 @@
         data-score-width="{{ frame.score_width | default('20%') }}"
         data-score-height="{{ frame.score_height | default('12%') }}"
         data-score-font="{{ frame.score_font_size | default('clamp(1.6rem, 3.6vw, 2.6rem)') }}"
-        data-score-bg="{{ frame.score_background | default('rgba(0, 0, 0, 0.55)') }}"
-        data-score-radius="{{ frame.score_border_radius | default('16px') }}"
+        data-score-color="{{ frame.score_color | default('#f7fbff') }}"
+        data-score-align="{{ frame.score_align | default('center') }}"
+        data-name-font="{{ frame.name_font_size | default('clamp(0.9rem, 1.6vw, 1.15rem)') }}"
+        data-name-lines="{{ frame.name_max_lines | default('2') }}"
         {% if key == 'default' %}selected{% endif %}>{{ frame.label }}</option>
       {% endfor %}
     </select>
     {% set default_frame = frames['default'] %}
     {% set default_asset = frame_assets.get('default') %}
     <div class="frame-preview" id="frame-preview"
+      {% set default_name_lines = (default_frame.name_max_lines | default('2')) | int %}
+      {% set default_name_whitespace = 'nowrap' if default_name_lines == 1 else 'normal' %}
       style="{% if default_asset %}--frame-image: url('{{ request.url_for('static', path=default_asset) }}');{% else %}--frame-image: none;{% endif %}
              --image-box-top: {{ default_frame.image_box_top }};
              --image-box-left: {{ default_frame.image_box_left }};
@@ -247,8 +251,11 @@
              --score-width: {{ default_frame.score_width | default('20%') }};
              --score-height: {{ default_frame.score_height | default('12%') }};
              --score-font-size: {{ default_frame.score_font_size | default('clamp(1.6rem, 3.6vw, 2.6rem)') }};
-             --score-border-radius: {{ default_frame.score_border_radius | default('16px') }};
-             --score-bg: {{ default_frame.score_background | default('rgba(0, 0, 0, 0.55)') }};">
+             --score-color: {{ default_frame.score_color | default('#f7fbff') }};
+             --score-align: {{ default_frame.score_align | default('center') }};
+             --name-font-size: {{ default_frame.name_font_size | default('clamp(0.9rem, 1.6vw, 1.15rem)') }};
+             --name-line-clamp: {{ default_name_lines }};
+             --name-white-space: {{ default_name_whitespace }};">
       <div class="preview-image">
         <img id="preview-image" src="" alt="Previsualización" style="display:none;">
         <div id="preview-placeholder" class="preview-placeholder">Sube un PNG</div>
@@ -294,8 +301,12 @@
         preview.style.setProperty('--score-width', option.dataset.scoreWidth || '20%');
         preview.style.setProperty('--score-height', option.dataset.scoreHeight || '12%');
         preview.style.setProperty('--score-font-size', option.dataset.scoreFont || 'clamp(1.6rem, 3.6vw, 2.6rem)');
-        preview.style.setProperty('--score-border-radius', option.dataset.scoreRadius || '16px');
-        preview.style.setProperty('--score-bg', option.dataset.scoreBg || 'rgba(0, 0, 0, 0.55)');
+        preview.style.setProperty('--score-color', option.dataset.scoreColor || '#f7fbff');
+        preview.style.setProperty('--score-align', option.dataset.scoreAlign || 'center');
+        preview.style.setProperty('--name-font-size', option.dataset.nameFont || 'clamp(0.9rem, 1.6vw, 1.15rem)');
+        const nameLines = option.dataset.nameLines || '2';
+        preview.style.setProperty('--name-line-clamp', nameLines);
+        preview.style.setProperty('--name-white-space', nameLines === '1' ? 'nowrap' : 'normal');
       }
 
       function handleFrameChange() {

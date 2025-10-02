@@ -111,8 +111,6 @@
       --score-top: 82%;
       --score-width: 22%;
       --score-height: 16%;
-      --score-bg: rgba(0, 0, 0, 0.55);
-      --score-border-radius: 16px;
       --stat-top: 76%;
       --stat-left: 12%;
       --stat-width: 76%;
@@ -165,13 +163,13 @@
       height: var(--score-height, 24%);
       display: flex;
       align-items: center;
-      justify-content: center;
-      color: #f7fbff;
+      justify-content: var(--score-align, center);
+      color: var(--score-color, #f7fbff);
       font-weight: 700;
       text-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
       z-index: 4;
-      background: var(--score-bg, rgba(0, 0, 0, 0.55));
-      border-radius: var(--score-border-radius, 16px);
+      background: transparent;
+      border-radius: 16px;
       font-size: var(--score-font-size, clamp(1.6rem, 3.6vw, 2.6rem));
       transform: translate(-50%, -50%);
       min-width: 48px;
@@ -184,16 +182,16 @@
       width: var(--name-width, 50%);
       transform: translate(-50%, -50%);
       text-align: var(--name-align, left);
-      font-size: clamp(0.9rem, 1.6vw, 1.15rem);
+      font-size: var(--name-font-size, clamp(0.9rem, 1.6vw, 1.15rem));
       text-transform: uppercase;
       color: var(--name-color, #f7fbff);
       font-weight: 600;
       letter-spacing: 0.08em;
       text-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
-      white-space: normal;
+      white-space: var(--name-white-space, normal);
       line-height: 1.15;
       display: -webkit-box;
-      -webkit-line-clamp: 2;
+      -webkit-line-clamp: var(--name-line-clamp, 2);
       -webkit-box-orient: vertical;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -291,6 +289,8 @@
       {% for item in entries %}
         {% set frame = frames.get(item.frame_key, frames['default']) %}
         {% set frame_asset = frame_assets.get(item.frame_key) %}
+        {% set name_lines = (frame.name_max_lines | default('2')) | int %}
+        {% set name_white_space = 'nowrap' if name_lines == 1 else 'normal' %}
         {% set avg_value = (item.average_hate if item.average_hate is not none else 99)|round(0)|int %}
         {% set has_edit = can_manage and item.id %}
         {% set can_rate = current_user and item.id %}
@@ -306,13 +306,16 @@
                    --score-width: {{ frame.score_width | default('20%') }};
                   --score-height: {{ frame.score_height | default('12%') }};
                   --score-font-size: {{ frame.score_font_size | default('clamp(1.6rem, 3.6vw, 2.6rem)') }};
-                  --score-bg: {{ frame.score_background | default('rgba(0, 0, 0, 0.55)') }};
-                  --score-border-radius: {{ frame.score_border_radius | default('16px') }};
+                  --score-color: {{ frame.score_color | default('#f7fbff') }};
+                  --score-align: {{ frame.score_align | default('center') }};
                   --name-top: {{ frame.name_top | default('88%') }};
                   --name-left: {{ frame.name_left | default('60%') }};
                   --name-width: {{ frame.name_width | default('50%') }};
                   --name-align: {{ frame.name_align | default('left') }};
-                  --name-color: {{ frame.name_color | default('#f7fbff') }};">
+                  --name-color: {{ frame.name_color | default('#f7fbff') }};
+                  --name-font-size: {{ frame.name_font_size | default('clamp(0.9rem, 1.6vw, 1.15rem)') }};
+                  --name-line-clamp: {{ name_lines }};
+                  --name-white-space: {{ name_white_space }};">
             <div class="villain-image">
               {% if item.image %}
                 <img src="{{ request.url_for('static', path=item.image) }}" alt="{{ item.name }}">

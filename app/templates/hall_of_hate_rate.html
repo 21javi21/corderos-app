@@ -108,13 +108,13 @@
       height: var(--score-height, 14%);
       display: flex;
       align-items: center;
-      justify-content: center;
-      color: #f7fbff;
+      justify-content: var(--score-align, center);
+      color: var(--score-color, #f7fbff);
       font-weight: 700;
       text-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
       z-index: 4;
-      background: var(--score-bg, rgba(0, 0, 0, 0.55));
-      border-radius: var(--score-border-radius, 16px);
+      background: transparent;
+      border-radius: 16px;
       transform: translate(-50%, -50%);
     }
     .frame-preview .hate-meter span {
@@ -199,13 +199,13 @@
              --image-box-left: {{ frame.image_box_left }};
              --image-box-width: {{ frame.image_box_width }};
              --image-box-height: {{ frame.image_box_height }};
-             --score-left: {{ frame.score_left | default('18%') }};
-             --score-top: {{ frame.score_top | default('82%') }};
-             --score-width: {{ frame.score_width | default('22%') }};
-             --score-height: {{ frame.score_height | default('14%') }};
-             --score-font-size: {{ frame.score_font_size | default('clamp(1.6rem, 3.6vw, 2.6rem)') }};
-             --score-border-radius: {{ frame.score_border_radius | default('16px') }};
-             --score-bg: {{ frame.score_background | default('rgba(0, 0, 0, 0.55)') }};">
+            --score-left: {{ frame.score_left | default('18%') }};
+            --score-top: {{ frame.score_top | default('82%') }};
+            --score-width: {{ frame.score_width | default('22%') }};
+            --score-height: {{ frame.score_height | default('14%') }};
+            --score-font-size: {{ frame.score_font_size | default('clamp(1.6rem, 3.6vw, 2.6rem)') }};
+            --score-color: {{ frame.score_color | default('#f7fbff') }};
+            --score-align: {{ frame.score_align | default('center') }};">
       <div class="preview-image">
         <img src="{{ request.url_for('static', path='hall_of_hate/' + entry.image_filename) }}" alt="{{ entry.name }}">
       </div>
