@@ -131,12 +131,12 @@
     }
     .preview .frame-preview .preview-image {
       position: absolute;
-      top: var(--image-box-top);
-      left: var(--image-box-left);
-      width: var(--image-box-width);
-      height: var(--image-box-height);
+      top: var(--image-frame-top, var(--image-box-top));
+      left: var(--image-frame-left, var(--image-box-left));
+      width: var(--image-frame-width, var(--image-box-width));
+      height: var(--image-frame-height, var(--image-box-height));
       display: flex;
-      align-items: center;
+      align-items: flex-end;
       justify-content: center;
       border-radius: 14px;
       overflow: hidden;
@@ -146,7 +146,8 @@
     .preview .frame-preview .preview-image img {
       width: 100%;
       height: 100%;
-      object-fit: contain;
+      object-fit: cover;
+      object-position: center bottom;
     }
     .preview .frame-preview .preview-placeholder {
       width: 100%;
@@ -179,6 +180,28 @@
     .preview .frame-preview .preview-score span {
       font-size: var(--score-font-size, clamp(1.6rem, 3.6vw, 2.6rem));
       line-height: 1;
+    }
+    .preview .frame-preview .preview-name {
+      position: absolute;
+      top: var(--name-top, 88%);
+      left: var(--name-left, 60%);
+      width: var(--name-width, 50%);
+      transform: translate(-50%, -50%);
+      text-align: var(--name-align, left);
+      font-size: var(--name-font-size, clamp(0.9rem, 1.6vw, 1.15rem));
+      text-transform: uppercase;
+      color: var(--name-color, #f7fbff);
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+      white-space: var(--name-white-space, normal);
+      line-height: 1.15;
+      display: -webkit-box;
+      -webkit-line-clamp: var(--name-line-clamp, 2);
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      z-index: 3;
     }
     .actions {
       display: flex;
@@ -235,6 +258,10 @@
         data-image-left="{{ frame.image_box_left }}"
         data-image-width="{{ frame.image_box_width }}"
         data-image-height="{{ frame.image_box_height }}"
+        data-image-frame-top="{{ frame.image_frame_top | default(frame.image_box_top) }}"
+        data-image-frame-left="{{ frame.image_frame_left | default(frame.image_box_left) }}"
+        data-image-frame-width="{{ frame.image_frame_width | default(frame.image_box_width) }}"
+        data-image-frame-height="{{ frame.image_frame_height | default(frame.image_box_height) }}"
         data-score-left="{{ frame.score_left | default('18%') }}"
         data-score-top="{{ frame.score_top | default('82%') }}"
         data-score-width="{{ frame.score_width | default('20%') }}"
@@ -242,6 +269,11 @@
         data-score-font="{{ frame.score_font_size | default('clamp(1.6rem, 3.6vw, 2.6rem)') }}"
         data-score-color="{{ frame.score_color | default('#f7fbff') }}"
         data-score-align="{{ frame.score_align | default('center') }}"
+        data-name-top="{{ frame.name_top | default('88%') }}"
+        data-name-left="{{ frame.name_left | default('60%') }}"
+        data-name-width="{{ frame.name_width | default('50%') }}"
+        data-name-align="{{ frame.name_align | default('left') }}"
+        data-name-color="{{ frame.name_color | default('#f7fbff') }}"
         data-name-font="{{ frame.name_font_size | default('clamp(0.9rem, 1.6vw, 1.15rem)') }}"
         data-name-lines="{{ frame.name_max_lines | default('2') }}"
         {% if key == entry.frame_key %}selected{% endif %}>{{ frame.label }}</option>
@@ -260,6 +292,10 @@
                --image-box-left: {{ current_frame.image_box_left }};
                --image-box-width: {{ current_frame.image_box_width }};
                --image-box-height: {{ current_frame.image_box_height }};
+               --image-frame-top: {{ current_frame.image_frame_top | default(current_frame.image_box_top) }};
+               --image-frame-left: {{ current_frame.image_frame_left | default(current_frame.image_box_left) }};
+               --image-frame-width: {{ current_frame.image_frame_width | default(current_frame.image_box_width) }};
+               --image-frame-height: {{ current_frame.image_frame_height | default(current_frame.image_box_height) }};
                --score-left: {{ current_frame.score_left | default('18%') }};
                --score-top: {{ current_frame.score_top | default('82%') }};
                --score-width: {{ current_frame.score_width | default('20%') }};
@@ -267,6 +303,11 @@
                --score-font-size: {{ current_frame.score_font_size | default('clamp(1.6rem, 3.6vw, 2.6rem)') }};
                --score-color: {{ current_frame.score_color | default('#f7fbff') }};
                --score-align: {{ current_frame.score_align | default('center') }};
+               --name-top: {{ current_frame.name_top | default('88%') }};
+               --name-left: {{ current_frame.name_left | default('60%') }};
+               --name-width: {{ current_frame.name_width | default('50%') }};
+               --name-align: {{ current_frame.name_align | default('left') }};
+               --name-color: {{ current_frame.name_color | default('#f7fbff') }};
                --name-font-size: {{ current_frame.name_font_size | default('clamp(0.9rem, 1.6vw, 1.15rem)') }};
                --name-line-clamp: {{ current_name_lines }};
                --name-white-space: {{ current_name_whitespace }};">
@@ -280,6 +321,7 @@
           {% endif %}
         </div>
         <div class="preview-score"><span>99</span></div>
+        <div class="preview-name" id="preview-name">{{ entry.name }}</div>
       </div>
       <small>Imagen actual</small>
     </div>
@@ -316,6 +358,10 @@
         preview.style.setProperty('--image-box-left', option.dataset.imageLeft || '10%');
         preview.style.setProperty('--image-box-width', option.dataset.imageWidth || '80%');
         preview.style.setProperty('--image-box-height', option.dataset.imageHeight || '60%');
+        preview.style.setProperty('--image-frame-top', option.dataset.imageFrameTop || option.dataset.imageTop || '18%');
+        preview.style.setProperty('--image-frame-left', option.dataset.imageFrameLeft || option.dataset.imageLeft || '10%');
+        preview.style.setProperty('--image-frame-width', option.dataset.imageFrameWidth || option.dataset.imageWidth || '80%');
+        preview.style.setProperty('--image-frame-height', option.dataset.imageFrameHeight || option.dataset.imageHeight || '60%');
         preview.style.setProperty('--score-left', option.dataset.scoreLeft || '18%');
         preview.style.setProperty('--score-top', option.dataset.scoreTop || '82%');
         preview.style.setProperty('--score-width', option.dataset.scoreWidth || '20%');
@@ -323,6 +369,11 @@
         preview.style.setProperty('--score-font-size', option.dataset.scoreFont || 'clamp(1.6rem, 3.6vw, 2.6rem)');
         preview.style.setProperty('--score-color', option.dataset.scoreColor || '#f7fbff');
         preview.style.setProperty('--score-align', option.dataset.scoreAlign || 'center');
+        preview.style.setProperty('--name-top', option.dataset.nameTop || '88%');
+        preview.style.setProperty('--name-left', option.dataset.nameLeft || '60%');
+        preview.style.setProperty('--name-width', option.dataset.nameWidth || '50%');
+        preview.style.setProperty('--name-align', option.dataset.nameAlign || 'left');
+        preview.style.setProperty('--name-color', option.dataset.nameColor || '#f7fbff');
         preview.style.setProperty('--name-font-size', option.dataset.nameFont || 'clamp(0.9rem, 1.6vw, 1.15rem)');
         const nameLines = option.dataset.nameLines || '2';
         preview.style.setProperty('--name-line-clamp', nameLines);
@@ -380,6 +431,15 @@
         if (fileInput) {
           fileInput.addEventListener('change', handleImagePreview);
           handleImagePreview(fileInput);
+        }
+        const nameInput = document.getElementById('nombre');
+        const previewName = document.getElementById('preview-name');
+        if (nameInput && previewName) {
+          const syncName = function () {
+            previewName.textContent = nameInput.value || '';
+          };
+          nameInput.addEventListener('input', syncName);
+          syncName();
         }
       });
       window.addEventListener('load', notifyParent);

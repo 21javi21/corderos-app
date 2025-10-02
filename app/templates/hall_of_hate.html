@@ -80,20 +80,33 @@
       width: 100%;
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      column-gap: clamp(40px, 6vw, 80px);
-      row-gap: clamp(64px, 7vw, 104px);
+      column-gap: clamp(48px, 6vw, 78px);
+      row-gap: clamp(46px, 5.2vw, 72px);
       justify-items: center;
     }
     .card {
       background: rgba(12, 23, 36, 0.9);
       border-radius: 22px;
-      padding: 20px 18px 24px;
+      padding: 16px 18px 64px;
+      width: clamp(232px, 22vw, 252px);
+      margin: 0 20px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 20px;
+      gap: 8px;
       box-shadow: 0 26px 54px rgba(2, 6, 12, 0.7);
       backdrop-filter: blur(2px);
+      cursor: pointer;
+      transition: transform 0.16s ease;
+      position: relative;
+    }
+    .card:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(37, 124, 188, 0.45), 0 26px 54px rgba(2, 6, 12, 0.7);
+    }
+    .card:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(37, 124, 188, 0.65), 0 26px 54px rgba(2, 6, 12, 0.7);
     }
     .frame-card {
       position: relative;
@@ -116,6 +129,7 @@
       --stat-width: 76%;
       --stat-height: 12%;
       --stat-gap: 12px;
+      margin-bottom: 2px;
     }
 
     .frame-card::before {
@@ -131,12 +145,12 @@
     }
     .frame-card .villain-image {
       position: absolute;
-      top: var(--image-box-top);
-      left: var(--image-box-left);
-      width: var(--image-box-width);
-      height: var(--image-box-height);
+      top: var(--image-frame-top, var(--image-box-top));
+      left: var(--image-frame-left, var(--image-box-left));
+      width: var(--image-frame-width, var(--image-box-width));
+      height: var(--image-frame-height, var(--image-box-height));
       display: flex;
-      align-items: center;
+      align-items: flex-end;
       justify-content: center;
       overflow: hidden;
       border-radius: 18px;
@@ -146,10 +160,8 @@
     .frame-card .villain-image img {
       width: 100%;
       height: 100%;
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-      object-position: center;
+      object-fit: cover;
+      object-position: center bottom;
       transition: transform 0.2s ease;
     }
     .frame-card .stat-row {
@@ -198,11 +210,22 @@
       z-index: 4;
     }
     .card-actions {
+      position: absolute;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%) translateY(12px);
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 12px;
-      margin-top: 6px;
+      gap: 10px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+    .card.is-expanded .card-actions {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(-50%) translateY(0);
     }
     .card-actions form,
     .card-actions a {
@@ -223,6 +246,7 @@
       background: linear-gradient(135deg, #1f6db5, #2980b9);
       box-shadow: 0 16px 28px rgba(18, 78, 130, 0.55);
       transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      margin: 0 3px;
     }
     .card-action-button:hover {
       transform: translateY(-2px);
@@ -294,13 +318,17 @@
         {% set avg_value = (item.average_hate if item.average_hate is not none else 99)|round(0)|int %}
         {% set has_edit = can_manage and item.id %}
         {% set can_rate = ratings_enabled and current_user and item.id %}
-        <article class="card">
+        <article class="card" tabindex="0" data-card aria-expanded="false">
           <div class="frame-card"
             style="{% if frame_asset %}--frame-image: url('{{ request.url_for('static', path=frame_asset) }}');{% else %}--frame-image: none;{% endif %}
                    --image-box-top: {{ frame.image_box_top }};
                    --image-box-left: {{ frame.image_box_left }};
-                   --image-box-width: {{ frame.image_box_width }};
-                   --image-box-height: {{ frame.image_box_height }};
+                  --image-box-width: {{ frame.image_box_width }};
+                  --image-box-height: {{ frame.image_box_height }};
+                  --image-frame-top: {{ frame.image_frame_top | default(frame.image_box_top) }};
+                  --image-frame-left: {{ frame.image_frame_left | default(frame.image_box_left) }};
+                  --image-frame-width: {{ frame.image_frame_width | default(frame.image_box_width) }};
+                  --image-frame-height: {{ frame.image_frame_height | default(frame.image_box_height) }};
                    --score-left: {{ frame.score_left | default('18%') }};
                    --score-top: {{ frame.score_top | default('82%') }};
                    --score-width: {{ frame.score_width | default('20%') }};
@@ -382,9 +410,66 @@
         }
       }
 
+      function setupCardToggles() {
+        var cards = document.querySelectorAll('[data-card]');
+        if (!cards.length) { return; }
+
+        function collapseAll(except) {
+          for (var i = 0; i < cards.length; i += 1) {
+            var candidate = cards[i];
+            if (candidate !== except) {
+              candidate.classList.remove('is-expanded');
+              candidate.setAttribute('aria-expanded', 'false');
+            }
+          }
+        }
+
+        for (var i = 0; i < cards.length; i += 1) {
+          (function (card) {
+            card.addEventListener('click', function (event) {
+              if (event.target.closest('.card-actions')) {
+                return;
+              }
+              var willExpand = !card.classList.contains('is-expanded');
+              collapseAll(card);
+              if (willExpand) {
+                card.classList.add('is-expanded');
+                card.setAttribute('aria-expanded', 'true');
+              } else {
+                card.classList.remove('is-expanded');
+                card.setAttribute('aria-expanded', 'false');
+              }
+            });
+            card.addEventListener('keydown', function (event) {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                card.click();
+              } else if (event.key === 'Escape') {
+                card.classList.remove('is-expanded');
+                card.setAttribute('aria-expanded', 'false');
+              }
+            });
+          })(cards[i]);
+        }
+
+        var actionAreas = document.querySelectorAll('.card-actions');
+        for (var j = 0; j < actionAreas.length; j += 1) {
+          actionAreas[j].addEventListener('click', function (event) {
+            event.stopPropagation();
+          });
+        }
+
+        document.addEventListener('click', function (event) {
+          if (!event.target.closest('[data-card]')) {
+            collapseAll(null);
+          }
+        });
+      }
+
       window.addEventListener('DOMContentLoaded', function () {
         notifyParent();
         tagLandscapeImages();
+        setupCardToggles();
       });
       window.addEventListener('load', function () {
         notifyParent();

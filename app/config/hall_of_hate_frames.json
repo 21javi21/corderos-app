@@ -9,11 +9,15 @@
     "score_align": "center",
     "name_top": "87%",
     "name_left": "68%",
-    "name_width": "73%",
+    "name_width": "55%",
     "name_align": "center",
     "name_color": "#eef6ff",
     "name_font_size": "clamp(1.3rem, 1.6vw, 1.5rem)",
-    "name_max_lines": "2"
+    "name_max_lines": "2",
+    "image_frame_width": "84%",
+    "image_frame_height": "50%",
+    "image_frame_top": "27%",
+    "image_frame_left": "8%"
   },
   "devil": {
     "score_left": "48%",
@@ -29,6 +33,10 @@
     "name_align": "center",
     "name_color": "#f5e6c7",
     "name_font_size": "clamp(1.2rem, 1.6vw, 1.4rem)",
-    "name_max_lines": "1"
+    "name_max_lines": "1",
+    "image_frame_width": "78%",
+    "image_frame_height": "55%",
+    "image_frame_top": "15%",
+    "image_frame_left": "9%"
   }
 }
