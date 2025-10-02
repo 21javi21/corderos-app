@@ -147,6 +147,13 @@ FRAME_STORAGE_MODE = "column"
 RATINGS_ENABLED = True
 
 
+def _disable_frame_storage(reason: str) -> None:
+    global FRAME_STORAGE_MODE
+    if FRAME_STORAGE_MODE != "none":
+        print(f"[HallOfHate] Disabling frame metadata support ({reason}); using default frame only.")
+    FRAME_STORAGE_MODE = "none"
+
+
 class ForwardedHeadersMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
         super().__init__(app)
@@ -425,9 +432,10 @@ def _store_frame_key(cur, entry_id: int, frame_key: str) -> None:
                 (key, entry_id),
             )
         except errors.InsufficientPrivilege:
-            FRAME_STORAGE_MODE = "none"
-            print("[HallOfHate] Lost privilege to update hall_of_hate.frame_key; using default frame only.")
-        except Exception as exc:
+            _disable_frame_storage("no privilege to update hall_of_hate.frame_key column")
+        except errors.UndefinedColumn:
+            _disable_frame_storage("hall_of_hate.frame_key column missing")
+        except Exception:
             raise
         return
     if FRAME_STORAGE_MODE == "table":
@@ -441,9 +449,10 @@ def _store_frame_key(cur, entry_id: int, frame_key: str) -> None:
                 (entry_id, key),
             )
         except errors.InsufficientPrivilege:
-            FRAME_STORAGE_MODE = "none"
-            print("[HallOfHate] No privileges to maintain hall_of_hate_frames; using default frame only.")
-        except Exception as exc:
+            _disable_frame_storage("no privileges to maintain hall_of_hate_frames")
+        except errors.UndefinedTable:
+            _disable_frame_storage("hall_of_hate_frames table missing")
+        except Exception:
             raise
     # If FRAME_STORAGE_MODE == "none", do nothing (default frame only)
 
@@ -590,7 +599,13 @@ def _fetch_hall_of_hate_db_entries(current_uid: str | None) -> list[dict[str, st
                 GROUP BY {group_by}
                 ORDER BY h.created_at DESC, h.id DESC
             """
-            cur.execute(query, params)
+            try:
+                cur.execute(query, params)
+            except errors.UndefinedTable:
+                _disable_frame_storage("hall_of_hate_frames table missing")
+                if FRAME_STORAGE_MODE != "table":
+                    return _fetch_hall_of_hate_db_entries(current_uid)
+                raise
             rows = cur.fetchall()
     finally:
         pool.putconn(conn)
@@ -634,7 +649,12 @@ def _insert_hall_of_hate_entry(name: str, image_filename: str, frame_key: str) -
                     (name, image_filename, _normalize_frame_key(frame_key)),
                 )
                 entry_id = cur.fetchone()[0]
-                _store_frame_key(cur, entry_id, frame_key)
+                try:
+                    _store_frame_key(cur, entry_id, frame_key)
+                except errors.UndefinedTable:
+                    _disable_frame_storage("hall_of_hate_frames table missing")
+                except errors.UndefinedColumn:
+                    _disable_frame_storage("hall_of_hate.frame_key column missing")
             elif FRAME_STORAGE_MODE == "table":
                 cur.execute(
                     """
@@ -645,7 +665,10 @@ def _insert_hall_of_hate_entry(name: str, image_filename: str, frame_key: str) -
                     (name, image_filename),
                 )
                 entry_id = cur.fetchone()[0]
-                _store_frame_key(cur, entry_id, frame_key)
+                try:
+                    _store_frame_key(cur, entry_id, frame_key)
+                except errors.UndefinedTable:
+                    _disable_frame_storage("hall_of_hate_frames table missing")
             else:  # FRAME_STORAGE_MODE == "none"
                 cur.execute(
                     """
@@ -710,17 +733,32 @@ def _get_hall_of_hate_entry(entry_id: int) -> dict[str, str | int | None] | None
                     """,
                     (entry_id,),
                 )
+            elif FRAME_STORAGE_MODE == "table":
+                try:
+                    cur.execute(
+                        """
+                        SELECT
+                            h.id,
+                            h.name,
+                            h.image_filename,
+                            COALESCE(f.frame_key, 'default')
+                        FROM hall_of_hate h
+                        LEFT JOIN hall_of_hate_frames f ON f.entry_id = h.id
+                        WHERE h.id = %s
+                        """,
+                        (entry_id,),
+                    )
+                except errors.UndefinedTable:
+                    _disable_frame_storage("hall_of_hate_frames table missing")
+                    if FRAME_STORAGE_MODE != "table":
+                        return _get_hall_of_hate_entry(entry_id)
+                    raise
             else:
                 cur.execute(
                     """
-                    SELECT
-                        h.id,
-                        h.name,
-                        h.image_filename,
-                        COALESCE(f.frame_key, 'default')
-                    FROM hall_of_hate h
-                    LEFT JOIN hall_of_hate_frames f ON f.entry_id = h.id
-                    WHERE h.id = %s
+                    SELECT id, name, image_filename, 'default' AS frame_key
+                    FROM hall_of_hate
+                    WHERE id = %s
                     """,
                     (entry_id,),
                 )
@@ -770,7 +808,12 @@ def _update_hall_of_hate_entry(entry_id: int, name: str, image_filename: str | N
                     """,
                     (name, image_filename, entry_id),
                 )
-            _store_frame_key(cur, entry_id, frame_key)
+            try:
+                _store_frame_key(cur, entry_id, frame_key)
+            except errors.UndefinedTable:
+                _disable_frame_storage("hall_of_hate_frames table missing")
+            except errors.UndefinedColumn:
+                _disable_frame_storage("hall_of_hate.frame_key column missing")
     finally:
         pool.putconn(conn)
 
