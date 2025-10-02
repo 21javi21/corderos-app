@@ -81,6 +81,23 @@
       pointer-events: none;
       z-index: 3;
     }
+    .frame-preview .image-bottom {
+      position: absolute;
+      top: var(
+        --image-bottom-top,
+        calc(
+          var(--image-box-top, 0) +
+          var(--image-box-height, 0)
+        )
+      );
+      left: var(--image-bottom-left, var(--image-box-left, 0));
+      width: var(--image-bottom-width, var(--image-box-width, 0));
+      height: var(--image-bottom-height, 0);
+      border-radius: 16px;
+      background: rgba(6, 16, 28, 0.68);
+      z-index: 2;
+      pointer-events: none;
+    }
     .frame-preview .preview-image {
       position: absolute;
       top: var(--image-box-top);
@@ -199,6 +216,9 @@
              --image-box-left: {{ frame.image_box_left }};
              --image-box-width: {{ frame.image_box_width }};
              --image-box-height: {{ frame.image_box_height }};
+             {% if 'image_bottom_top' in frame %}--image-bottom-top: {{ frame.image_bottom_top }};{% endif %}
+             {% if 'image_bottom_left' in frame %}--image-bottom-left: {{ frame.image_bottom_left }};{% endif %}
+             --image-bottom-height: {{ frame.image_bottom_height | default(frame.image_bottom_heigth) | default('0') }};
             --score-left: {{ frame.score_left | default('18%') }};
             --score-top: {{ frame.score_top | default('82%') }};
             --score-width: {{ frame.score_width | default('22%') }};
@@ -206,6 +226,7 @@
             --score-font-size: {{ frame.score_font_size | default('clamp(1.6rem, 3.6vw, 2.6rem)') }};
             --score-color: {{ frame.score_color | default('#f7fbff') }};
             --score-align: {{ frame.score_align | default('center') }};">
+      <div class="image-bottom" aria-hidden="true"></div>
       <div class="preview-image">
         <img src="{{ request.url_for('static', path='hall_of_hate/' + entry.image_filename) }}" alt="{{ entry.name }}">
       </div>
