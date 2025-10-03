@@ -1,6 +1,6 @@
 ---
 - name: Check root filesystem usage
-  command: df --output=pcent --target /
+  command: df --output=pcent /
   register: root_df
   changed_when: false
 
@@ -10,110 +10,26 @@
 
 - name: Flag root usage above threshold
   set_fact:
-    root_usage_high: {{ root_usage_percent >= root_fs_usage_threshold }}
+    root_usage_high: "{{ (root_usage_percent | int) >= (root_fs_usage_threshold | int) }}"
 
-- name: Display root filesystem usage
+- name: Debug root filesystem usage
   debug:
-    msg: "Root filesystem usage on {{ inventory_hostname }}: {{ root_usage_percent }}% (threshold {{ root_fs_usage_threshold }}%)"
+    msg: "Root FS usage: {{ root_usage_percent }}% (Threshold: {{ root_fs_usage_threshold }}%)"
 
-- name: Capture df -h output
-  command: df -h
-  register: df_h
-  changed_when: false
-
-- name: Show df -h output
-  debug:
-    var: df_h.stdout_lines
-
-- name: Check top-level disk usage under /
-  shell: du -h --max-depth=1 / 2>/dev/null
-  register: du_root
-  changed_when: false
-
-- name: Show top-level disk usage under /
-  debug:
-    var: du_root.stdout_lines
-
-- name: Inspect /var usage
-  shell: du -h --max-depth=1 /var 2>/dev/null
-  register: du_var
-  changed_when: false
-
-- name: Show /var usage
-  debug:
-    var: du_var.stdout_lines
-
-- name: Inspect /var/lib usage
-  shell: du -h --max-depth=1 /var/lib 2>/dev/null
-  register: du_var_lib
-  changed_when: false
-
-- name: Show /var/lib usage
-  debug:
-    var: du_var_lib.stdout_lines
-
-- name: Measure containerd data directory size (MB)
-  command: du -sm /var/lib/rancher/k3s/agent/containerd
-  register: containerd_usage
-  failed_when: containerd_usage.rc not in [0, 1]
-  changed_when: false
-
-- name: Extract containerd usage MB
-  set_fact:
-    containerd_usage_mb: "{{ (containerd_usage.stdout | regex_search('\\d+')) | default(0, true) | int }}"
-
-- name: Flag containerd usage above threshold
-  set_fact:
-    containerd_usage_high: {{ containerd_usage_mb >= containerd_usage_threshold_mb }}
-
-- name: Report containerd usage
-  debug:
-    msg: "containerd data uses {{ containerd_usage_mb }} MB on {{ inventory_hostname }} (threshold {{ containerd_usage_threshold_mb }} MB)"
-
-- name: Inspect rancher k3s directory
-  shell: du -h --max-depth=2 /var/lib/rancher/k3s 2>/dev/null
-  register: du_k3s
-  changed_when: false
-
-- name: Show rancher k3s directory usage
-  debug:
-    var: du_k3s.stdout_lines
-
-- name: Inspect containerd overlay snapshots
-  shell: du -h --max-depth=1 /var/lib/rancher/k3s/agent/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots 2>/dev/null
-  register: du_snapshots
+- name: Check containerd data directory size
+  command: du -sm /var/lib/containerd
+  register: containerd_du
   changed_when: false
   failed_when: false
 
-- name: Show containerd overlay snapshot usage
-  debug:
-    var: du_snapshots.stdout_lines
-
-- name: List k3s container images
-  command: k3s crictl images
-  register: crictl_images
-  changed_when: false
-
-- name: Show container images
-  debug:
-    var: crictl_images.stdout_lines
-
-- name: Determine cleanup recommendation
+- name: Extract containerd usage MB
   set_fact:
-    cleanup_recommended: {{ ((run_prune_when_high | default(true) | bool) and root_usage_high) or containerd_usage_high }}
+    containerd_usage_mb: "{{ (containerd_du.stdout | regex_search('\\d+')) | int if containerd_du.stdout is defined else 0 }}"
 
-- name: Build disk usage summary
+- name: Flag containerd usage above threshold
   set_fact:
-    disk_usage_summary:
-      root_usage_percent: {{ root_usage_percent }}
-      root_usage_high: {{ root_usage_high }}
-      containerd_usage_mb: {{ containerd_usage_mb }}
-      containerd_usage_high: {{ containerd_usage_high }}
-      cleanup_recommended: {{ cleanup_recommended }}
+    containerd_usage_high: "{{ (containerd_usage_mb | int) >= (containerd_usage_threshold_mb | int) }}"
 
-- name: Summarize disk health
+- name: Debug containerd usage
   debug:
-    msg:
-      - "Root usage: {{ root_usage_percent }}% (threshold {{ root_fs_usage_threshold }}%) -> {{ 'HIGH' if root_usage_high else 'OK' }}"
-      - "containerd usage: {{ containerd_usage_mb }} MB (threshold {{ containerd_usage_threshold_mb }} MB) -> {{ 'HIGH' if containerd_usage_high else 'OK' }}"
-      - "Cleanup recommended: {{ 'YES' if cleanup_recommended else 'NO' }}"
+    msg: "Containerd usage: {{ containerd_usage_mb }} MB (Threshold: {{ containerd_usage_threshold_mb }} MB)"
