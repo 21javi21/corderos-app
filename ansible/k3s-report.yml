@@ -1,0 +1,12 @@
+---
+- name: Report disk usage on k3s worker nodes
+  hosts: k3s_workers
+  gather_facts: false
+  become: true
+  vars:
+    root_fs_usage_threshold: 75
+    containerd_usage_threshold_mb: 4096
+    run_prune_when_high: true
+  tasks:
+    - name: Collect disk usage details
+      import_tasks: tasks/k3s_disk_report.yml
