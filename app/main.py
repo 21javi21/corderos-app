@@ -1,32 +1,32 @@
-import json
-import os
-import re
-import secrets
-from collections import defaultdict
-from datetime import date, timedelta
-from pathlib import Path as PathlibPath
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Path, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.middleware.sessions import SessionMiddleware
-from fastapi.staticfiles import StaticFiles
-import psycopg2
-from psycopg2 import errors
-from psycopg2.pool import SimpleConnectionPool
+from app.core.config import settings
+from app.api.routes import auth, users, files  # example routes
+from app.database import engine, Base
 
-from app import auth_ldap
-from app.security import SessionUser, optional_user, require_user
+# Create tables
+Base.metadata.create_all(bind=engine)
 
-CATEGORIAS_PREDEFINIDAS = [
-    "Futbol",
-    "Basket",
-    "Tennis",
-    "Politica",
-    "Otros",
-]
+app = FastAPI(title="Corderos App", version="1.0.0")
 
+# Add CORS middleware if needed
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure appropriately
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(auth.router, prefix="/auth", tags=["authentication"])
+app.include_router(users.router, prefix="/users", tags=["users"])
+app.include_router(files.router, prefix="/files", tags=["files"])
+
+@app.get("/")
+async def root():
+    return {"message": "Corderos App API"}
 MULTIPLICA_OPCIONES = [1, 2, 3, 4, 5]
 
 AUTO_LOCK_DAYS = 3
