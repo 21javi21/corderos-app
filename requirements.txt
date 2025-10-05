@@ -9,3 +9,6 @@ python-jose[cryptography]
 itsdangerous
 ldap3
 pycryptodome
+pydantic-settings
+passlib
+python-dotenv

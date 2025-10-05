@@ -1,12 +1,32 @@
-from fastapi import FastAPI
+import os
+import re
+import secrets
+import time
+import json
+from datetime import date, datetime, timedelta
+from pathlib import Path as PathlibPath
+from typing import Any
+
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+from fastapi import FastAPI, Depends, HTTPException, Request, Form, File, UploadFile, Path
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
+import psycopg2
+from psycopg2 import pool, errors
+from psycopg2.pool import SimpleConnectionPool
+
+from app import auth_ldap
 from app.core.config import settings
-from app.api.routes import auth, users, files  # example routes
-from app.database import engine, Base
-
-# Create tables
-Base.metadata.create_all(bind=engine)
+from app.security import SessionUser, optional_user, require_user
 
 app = FastAPI(title="Corderos App", version="1.0.0")
 
@@ -18,11 +38,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Include routers
-app.include_router(auth.router, prefix="/auth", tags=["authentication"])
-app.include_router(users.router, prefix="/users", tags=["users"])
-app.include_router(files.router, prefix="/files", tags=["files"])
 
 @app.get("/")
 async def root():
@@ -1114,10 +1129,14 @@ def hall_of_hate_update(
     old_filename = entry["image_filename"]
     try:
         if nueva_imagen is not None:
-            if nueva_imagen.filename:
+            if nueva_imagen.filename and nueva_imagen.size and nueva_imagen.size > 0:
                 new_filename = _save_hall_of_hate_image(nueva_imagen, clean_name)
             else:
-                nueva_imagen.file.close()
+                # Close the file handle for empty uploads
+                try:
+                    nueva_imagen.file.close()
+                except:
+                    pass
         _update_hall_of_hate_entry(entry_id, clean_name, new_filename, frame_key)
     except FrameStorageError as exc:
         if new_filename:
