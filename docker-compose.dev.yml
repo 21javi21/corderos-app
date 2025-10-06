@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:14
+    container_name: corderos-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: corderos_app
+      POSTGRES_PASSWORD: corderos_pass
+      POSTGRES_DB: corderos
+    ports:
+      - "55433:5432"
+    volumes:
+      - ./dev/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - postgres-data-dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U corderos_app -d corderos"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  corderos-app:
+    build: .
+    container_name: corderos-app-dev
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - LDAP_URI=ldaps://ldap.kaligulix.com:636
+      - LDAP_BASE_DN=dc=kaligulix,dc=com
+      - LDAP_BIND_DN=cn=admin,dc=kaligulix,dc=com
+      - LDAP_BIND_PASSWORD=kaligulix
+      - LDAP_GROUP_DN=cn=corderos,ou=Groups,dc=kaligulix,dc=com
+      - DATABASE_URL=postgresql://corderos_app:corderos_pass@postgres:5432/corderos
+      - SESSION_SECRET=development-session-secret-for-local-testing-only
+    volumes:
+      # Mount the entire app directory for live development
+      - ./app:/app/app:rw
+      # Mount a local directory for hall of hate images
+      - ./data/hall_of_hate_uploads:/app/app/images/hall_of_hate/uploads
+      # Mount the config file so you can modify frame settings
+      - ./app/config/hall_of_hate_frames.json:/app/app/config/hall_of_hate_frames.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data-dev:

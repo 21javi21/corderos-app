@@ -3,6 +3,7 @@ import re
 import secrets
 import time
 import json
+from collections import defaultdict
 from datetime import date, datetime, timedelta
 from pathlib import Path as PathlibPath
 from typing import Any
@@ -13,6 +14,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI, Depends, HTTPException, Request, Form, File, UploadFile, Path
+from fastapi.responses import Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -26,27 +28,25 @@ from psycopg2.pool import SimpleConnectionPool
 
 from app import auth_ldap
 from app.core.config import settings
-from app.security import SessionUser, optional_user, require_user
+from app.security import SessionUser, optional_user, require_user, require_admin
 
-app = FastAPI(title="Corderos App", version="1.0.0")
-
-# Add CORS middleware if needed
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.get("/")
-async def root():
-    return {"message": "Corderos App API"}
+# The actual app is defined later in this file
 MULTIPLICA_OPCIONES = [1, 2, 3, 4, 5]
 
 AUTO_LOCK_DAYS = 3
 
 HALL_OF_HATE_MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
+
+# Predefined bet categories for the corderos league
+CATEGORIAS_PREDEFINIDAS = [
+    "Futbol",
+    "Champions League", 
+    "La Liga",
+    "Premier League",
+    "NBA",
+    "General",
+    "Otros"
+]
 
 DEFAULT_HALL_OF_HATE_ENTRIES: list[dict[str, str]] = []
 
@@ -160,6 +160,43 @@ def _load_frame_definitions() -> dict[str, dict[str, str]]:
 
 HALL_OF_HATE_FRAMES = _load_frame_definitions()
 
+# Hall of Hate v2 Frame Configuration (Independent from v1)
+FRAME_V2_CONFIG_PATH = PathlibPath("app/config/hall_of_hate_v2_frames.json")
+
+def _load_v2_frame_definitions() -> dict[str, dict[str, str]]:
+    """Load Hall of Hate v2 frame definitions - completely separate from v1"""
+    try:
+        with FRAME_V2_CONFIG_PATH.open("r", encoding="utf-8") as config_file:
+            v2_frames = json.load(config_file)
+    except FileNotFoundError:
+        print(f"[HallOfHate v2] Config file {FRAME_V2_CONFIG_PATH} not found, using defaults")
+        # Default v2 frame configuration
+        v2_frames = {
+            "default": {
+                "label": "Default Frame",
+                "image_path": "hall_of_hate/frames/frame-default.png",
+                "background_size": "cover",
+                "background_position": "center"
+            },
+            "devil": {
+                "label": "Devil Frame", 
+                "image_path": "hall_of_hate/frames/frame-devil.png",
+                "background_size": "cover",
+                "background_position": "center"
+            }
+        }
+    except Exception as exc:
+        print(f"[HallOfHate v2] No se pudo leer {FRAME_V2_CONFIG_PATH}: {exc}")
+        return {}
+
+    if not isinstance(v2_frames, dict):
+        print("[HallOfHate v2] El archivo de frames v2 no tiene el formato esperado")
+        return {}
+
+    return v2_frames
+
+HALL_OF_HATE_V2_FRAMES = _load_v2_frame_definitions()
+
 STATIC_ROOT = PathlibPath("app/images")
 HALL_OF_HATE_DIR = STATIC_ROOT / "hall_of_hate"
 HALL_OF_HATE_UPLOAD_DIR = PathlibPath(
@@ -227,7 +264,17 @@ try:
 except (TypeError, ValueError):
     SESSION_MAX_AGE = 60 * 60 * 12
 
-app = FastAPI()
+app = FastAPI(title="Corderos App", version="1.0.0")
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure appropriately
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.add_middleware(ForwardedHeadersMiddleware)
 app.add_middleware(
     SessionMiddleware,
@@ -240,6 +287,8 @@ app.add_middleware(
 templates = Jinja2Templates(directory="app/templates")
 app.include_router(auth_ldap.router)
 app.mount("/static", StaticFiles(directory="app/images"), name="static")
+
+# Root route is defined later as root_redirect for web app functionality
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
@@ -344,6 +393,59 @@ def _ensure_schema(conn) -> None:
                 raise
     if FRAME_STORAGE_MODE == "none":
         print("[HallOfHate] Frames will not persist; default frame will be used for all entries.")
+
+    # Ensure hall_of_hate_v2 table exists (new version with enhanced features)
+    with conn.cursor() as cur:
+        try:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS hall_of_hate_v2 (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT NOT NULL UNIQUE,
+                    image_filename TEXT NOT NULL,
+                    frame_type TEXT DEFAULT 'default',
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                )
+                """
+            )
+        except errors.InsufficientPrivilege:
+            conn.rollback()
+            cur.execute(
+                """
+                SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'hall_of_hate_v2'
+                """
+            )
+            exists = cur.fetchone() is not None
+            if not exists:
+                raise HTTPException(status_code=500, detail="Cannot create hall_of_hate_v2 table")
+
+        # Ensure hall_of_hate_v2_ratings table exists
+        try:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS hall_of_hate_v2_ratings (
+                    id SERIAL PRIMARY KEY,
+                    villain_id INTEGER REFERENCES hall_of_hate_v2(id) ON DELETE CASCADE,
+                    user_name TEXT NOT NULL,
+                    rating INTEGER CHECK (rating >= 1 AND rating <= 10),
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                    UNIQUE(villain_id, user_name)
+                )
+                """
+            )
+        except errors.InsufficientPrivilege:
+            conn.rollback()
+            cur.execute(
+                """
+                SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'hall_of_hate_v2_ratings'
+                """
+            )
+            exists = cur.fetchone() is not None
+            if not exists:
+                raise HTTPException(status_code=500, detail="Cannot create hall_of_hate_v2_ratings table")
 
     # Ensure ratings table and trigger exist
     with conn.cursor() as cur:
@@ -655,7 +757,9 @@ def _fetch_hall_of_hate_db_entries(current_uid: str | None) -> list[dict[str, st
             if _static_path_exists(candidate):
                 image_path = candidate
         frame_key = _normalize_frame_key(frame_key)
-        avg_value = float(avg_rating) if avg_rating is not None else 99.0
+        
+        # Use proper average calculation that considers all LDAP users default to 99
+        proper_avg_value = _calculate_proper_average_hate(entry_id)
         count_value = int(rating_count or 0)
         user_rating_value = int(user_rating) if user_rating is not None else 99
         entries.append({
@@ -663,7 +767,7 @@ def _fetch_hall_of_hate_db_entries(current_uid: str | None) -> list[dict[str, st
             "name": name,
             "image": image_path,
             "frame_key": frame_key,
-            "average_hate": avg_value,
+            "average_hate": proper_avg_value,
             "ratings_count": count_value,
             "user_rating": user_rating_value,
         })
@@ -919,9 +1023,116 @@ def _set_hall_of_hate_rating(entry_id: int, uid: str, rating: int) -> None:
         pool.putconn(conn)
 
 
+def _calculate_proper_average_hate(entry_id: int) -> float:
+    """Calculate average hate considering all LDAP users default to 99"""
+    if not pool or not RATINGS_ENABLED:
+        print(f"[DEBUG] Ratings disabled or no pool for entry {entry_id}")
+        return 99.0
+    
+    # Get all LDAP users
+    all_users = auth_ldap.fetch_all_user_uids()
+    if not all_users:
+        print(f"[DEBUG] No LDAP users found for entry {entry_id}")
+        return 99.0
+    
+    total_users = len(all_users)
+    print(f"[DEBUG] Total LDAP users: {total_users}, users: {all_users}")
+    
+    conn = pool.getconn()
+    try:
+        with conn.cursor() as cur:
+            # Get all current ratings for this entry
+            cur.execute(
+                """
+                SELECT uid, rating 
+                FROM hall_of_hate_ratings 
+                WHERE entry_id = %s
+                """,
+                (entry_id,)
+            )
+            ratings = cur.fetchall()
+            print(f"[DEBUG] Found ratings for entry {entry_id}: {ratings}")
+            
+            # Create a map of user ratings
+            user_ratings = {uid: rating for uid, rating in ratings}
+            
+            # Calculate average with all users defaulting to 99
+            total_score = 0
+            user_scores = []
+            for user in all_users:
+                score = user_ratings.get(user, 99)  # Default to 99 if not rated
+                total_score += score
+                user_scores.append(f"{user}:{score}")
+                
+            average = total_score / total_users
+            print(f"[DEBUG] Entry {entry_id} calculation: {' + '.join(user_scores)} = {total_score} / {total_users} = {average}")
+            return average
+            
+    finally:
+        pool.putconn(conn)
+
+
 def _hall_of_hate_entries(current_user: SessionUser | None) -> list[dict[str, str | None | float | int]]:
     uid = current_user["uid"] if current_user else None
     return _fetch_hall_of_hate_db_entries(uid)
+
+def _get_hall_of_hate_v2_entries(current_user: SessionUser | None) -> list[dict[str, str | None | float | int]]:
+    """Get Hall of Hate v2 entries with calculated averages"""
+    global pool
+    if not pool:
+        return []
+    
+    conn = pool.getconn()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT 
+                hv2.id,
+                hv2.name, 
+                hv2.image_filename,
+                hv2.frame_type,
+                COALESCE(
+                    (SELECT AVG(rating) FROM hall_of_hate_v2_ratings WHERE villain_id = hv2.id), 
+                    99
+                ) as average_hate
+            FROM hall_of_hate_v2 hv2
+            ORDER BY average_hate DESC
+        """)
+        results = cursor.fetchall()
+        
+        entries = []
+        for row in results:
+            villain_id, name, image_filename, frame_type, average_hate = row
+            
+            # Get user's rating if available
+            user_rating = 99  # Default for unrated
+            if current_user:
+                # Handle both test users (with "id") and authenticated users (with "uid")
+                user_id = current_user.get("id") or current_user.get("uid")
+                if user_id:
+                    cursor.execute(
+                        "SELECT rating FROM hall_of_hate_v2_ratings WHERE villain_id = %s AND user_name = %s",
+                        (villain_id, user_id)
+                    )
+                    rating_result = cursor.fetchone()
+                    if rating_result:
+                        user_rating = rating_result[0]
+            
+            entries.append({
+                "id": villain_id,
+                "name": name,
+                "hate_score": int(average_hate),
+                "image_filename": image_filename,
+                "frame_type": frame_type or "default",
+                "user_rating": user_rating
+            })
+        
+        return entries
+    except Exception as e:
+        print(f"Error fetching v2 entries: {e}")
+        return []
+    finally:
+        pool.putconn(conn)
 
 @app.on_event("startup")
 def startup_db():
@@ -965,6 +1176,387 @@ def login_page(request: Request, current_user: SessionUser | None = Depends(opti
 @app.get("/user_dashboard", response_class=HTMLResponse)
 def dashboard(request: Request):
     return templates.TemplateResponse("user_dashboard.html", {"request": request})
+
+# Test routes removed - implementing proper v2 system
+
+@app.get("/hall-of-hate-v2", response_class=HTMLResponse)
+def hall_of_hate_v2_view(request: Request, current_user: SessionUser | None = Depends(optional_user)):
+    """Hall of Hate v2 - Uses proper v2 data and authentication"""
+    if not current_user:
+        return RedirectResponse(url="/login")
+    
+    # Get v2 villains with calculated averages
+    villains = _get_hall_of_hate_v2_entries(current_user)
+    
+    return templates.TemplateResponse(
+        "hall_of_hate_v2.html",
+        {
+            "request": request,
+            "villains": villains,
+            "current_user": current_user,
+            "v2_frames": HALL_OF_HATE_V2_FRAMES,
+        }
+    )
+
+@app.get("/hall-of-hate-v2-test", response_class=HTMLResponse)
+def hall_of_hate_v2_test_view(request: Request):
+    """Hall of Hate v2 - Test route without authentication for development"""
+    # Mock user for test routes
+    current_user = {'id': 'hugo', 'username': 'hugo', 'is_admin': True}
+    
+    # Get v2 villains with calculated averages
+    villains = _get_hall_of_hate_v2_entries(current_user)
+    
+    return templates.TemplateResponse(
+        "hall_of_hate_v2.html",
+        {
+            "request": request,
+            "villains": villains,
+            "current_user": current_user,
+            "v2_frames": HALL_OF_HATE_V2_FRAMES,
+        }
+    )
+
+@app.get("/hall-of-hate-v2-debug", response_class=HTMLResponse)
+def hall_of_hate_v2_debug_view(request: Request):
+    """Hall of Hate v2 - Debug route that simulates authenticated user"""
+    # Mock authenticated user with proper SessionUser structure
+    current_user = {'uid': 'hugo', 'is_admin': True, 'issued_at': time.time(), 'expires_at': time.time() + 3600}
+    
+    # Get v2 villains with calculated averages (same as authenticated route)
+    villains = _get_hall_of_hate_v2_entries(current_user)
+    
+    return templates.TemplateResponse(
+        "hall_of_hate_v2.html",
+        {
+            "request": request,
+            "villains": villains,
+            "current_user": current_user,
+            "v2_frames": HALL_OF_HATE_V2_FRAMES,
+        }
+    )
+
+@app.get("/hall-of-hate-v2/nuevo", response_class=HTMLResponse)
+def hall_of_hate_v2_new(request: Request, current_user: SessionUser = Depends(require_user)):
+    """Add new villain to Hall of Hate v2"""
+    return templates.TemplateResponse(
+        "hall_of_hate_v2_new.html",
+        {
+            "request": request,
+            "current_user": current_user,
+        }
+    )
+
+@app.post("/hall-of-hate-v2/nuevo")
+async def hall_of_hate_v2_create(
+    request: Request,
+    name: str = Form(...),
+    frame_type: str = Form("default"),
+    image: UploadFile = File(...),
+    current_user: SessionUser = Depends(require_user)
+):
+    """Create new villain in Hall of Hate v2"""
+    if not image.content_type.startswith('image/'):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    
+    if len(await image.read()) > HALL_OF_HATE_MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=400, detail="File too large")
+    
+    await image.seek(0)  # Reset file pointer after reading size
+    
+    # Save image
+    file_extension = image.filename.split('.')[-1] if '.' in image.filename else 'jpg'
+    safe_name = re.sub(r'[^\w\s-]', '', name).strip().replace(' ', '_')
+    filename = f"{safe_name}.{file_extension}"
+    
+    upload_path = PathlibPath("app/images/hall_of_hate/v2_uploads")
+    upload_path.mkdir(exist_ok=True)
+    
+    file_path = upload_path / filename
+    with open(file_path, "wb") as f:
+        content = await image.read()
+        f.write(content)
+    
+    # Save to database
+    conn = pool.getconn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO hall_of_hate_v2 (name, image_filename, frame_type)
+                VALUES (%s, %s, %s)
+                RETURNING id
+                """,
+                (name, f"v2_uploads/{filename}", frame_type)
+            )
+            villain_id = cur.fetchone()[0]
+        conn.commit()
+    except psycopg2.IntegrityError:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail="Villain name already exists")
+    finally:
+        pool.putconn(conn)
+    
+    return RedirectResponse(url="/hall-of-hate-v2", status_code=303)
+
+
+# Hall of Hate v2 TEST Routes (No Authentication Required)
+@app.get("/hall-of-hate-v2-test/{villain_id}/edit", response_class=HTMLResponse)
+def hall_of_hate_v2_test_edit_view(
+    request: Request,
+    villain_id: int,
+    current_user: SessionUser | None = Depends(optional_user)
+):
+    """TEST: Edit villain in Hall of Hate v2 (no auth required)"""
+    # Create a mock admin user for testing
+    mock_admin = {"is_admin": True, "id": "hugo"}
+    
+    # Use v2 data and find by actual database ID
+    global pool
+    if not pool:
+        raise HTTPException(status_code=500, detail="Database not available")
+    
+    conn = pool.getconn()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, name, image_filename, frame_type FROM hall_of_hate_v2 WHERE id = %s",
+            (villain_id,)
+        )
+        result = cursor.fetchone()
+        
+        if not result:
+            raise HTTPException(status_code=404, detail="Villain not found")
+        
+        db_id, name, image_filename, frame_type = result
+        villain_data = {
+            "id": db_id,
+            "name": name,
+            "image_filename": image_filename,
+            "frame_type": frame_type or "default"
+        }
+    finally:
+        pool.putconn(conn)
+    
+    return templates.TemplateResponse(
+        "hall_of_hate_v2_edit.html",
+        {
+            "request": request,
+            "villain": {
+                "id": villain_id,
+                "name": villain_data["name"],
+                "image_filename": villain_data["image_filename"],
+                "frame_type": villain_data["frame_type"]
+            },
+            "current_user": mock_admin,
+            "available_frames": ["default", "devil"]  # Available frame types
+        }
+    )
+
+@app.get("/hall-of-hate-v2-test/{villain_id}/rate", response_class=HTMLResponse)
+def hall_of_hate_v2_test_rate_view(
+    request: Request,
+    villain_id: int,
+    current_user: SessionUser | None = Depends(optional_user)
+):
+    """TEST: Rate villain in Hall of Hate v2 (no auth required)"""
+    # Use actual LDAP user for testing (first user from LDAP)
+    test_user_id = "hugo"  # Use specific LDAP user for testing
+    
+    # Use v2 data and find by actual database ID
+    global pool
+    if not pool:
+        raise HTTPException(status_code=500, detail="Database not available")
+    
+    conn = pool.getconn()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, name, image_filename, frame_type FROM hall_of_hate_v2 WHERE id = %s",
+            (villain_id,)
+        )
+        result = cursor.fetchone()
+        
+        if not result:
+            raise HTTPException(status_code=404, detail="Villain not found")
+        
+        db_id, name, image_filename, frame_type = result
+        
+        # Get user's current rating for v2 system
+        cursor.execute(
+            "SELECT rating FROM hall_of_hate_v2_ratings WHERE villain_id = %s AND user_name = %s",
+            (villain_id, test_user_id)
+        )
+        rating_result = cursor.fetchone()
+        user_current_rating = rating_result[0] if rating_result else 99
+        
+        villain_data = {
+            "id": db_id,
+            "name": name,
+            "image_filename": image_filename,
+            "frame_type": frame_type or "default",
+            "user_rating": user_current_rating
+        }
+    finally:
+        pool.putconn(conn)
+    
+    return templates.TemplateResponse(
+        "hall_of_hate_v2_rate.html",
+        {
+            "request": request,
+            "villain": {
+                "id": villain_id,
+                "name": villain_data["name"],
+                "image_filename": villain_data["image_filename"],
+                "frame_type": villain_data["frame_type"],
+                "user_rating": villain_data["user_rating"]  # Pass user's current rating
+            },
+            "current_user": {"id": test_user_id, "is_admin": False}
+        }
+    )
+
+@app.post("/hall-of-hate-v2-test/{villain_id}/rate")
+async def hall_of_hate_v2_test_rate_submit(
+    request: Request,
+    villain_id: int,
+    hate_rating: int = Form(..., ge=1, le=99),
+    current_user: SessionUser | None = Depends(optional_user)
+):
+    """TEST: Submit rating for villain in Hall of Hate v2 (no auth required)"""
+    # Use actual LDAP user for demo purposes
+    test_user_id = "hugo"  # Use specific LDAP user for testing
+    
+    # Verify the villain exists in v2 database
+    global pool
+    if not pool:
+        raise HTTPException(status_code=500, detail="Database not available")
+    
+    conn = pool.getconn()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM hall_of_hate_v2 WHERE id = %s", (villain_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Villain not found")
+        
+        # Store/update the rating in v2 table
+        cursor.execute("""
+            INSERT INTO hall_of_hate_v2_ratings (villain_id, user_name, rating)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (villain_id, user_name)
+            DO UPDATE SET rating = EXCLUDED.rating
+        """, (villain_id, test_user_id, hate_rating))
+        conn.commit()
+        
+        # Calculate the new average from v2 table
+        cursor.execute("""
+            SELECT AVG(rating) FROM hall_of_hate_v2_ratings 
+            WHERE villain_id = %s
+        """, (villain_id,))
+        avg_result = cursor.fetchone()
+        new_average = float(avg_result[0]) if avg_result and avg_result[0] else 99
+        
+        return RedirectResponse(
+            url=f"/hall-of-hate-v2-test?rating_submitted=true&new_average={new_average:.1f}&your_rating={hate_rating}", 
+            status_code=303
+        )
+        
+    except Exception as e:
+        print(f"Error storing v2 rating: {e}")
+        return RedirectResponse(url="/hall-of-hate-v2-test?rating_error=true", status_code=303)
+    finally:
+        pool.putconn(conn)
+
+
+# Hall of Hate v2 Edit and Rate Routes
+@app.get("/hall-of-hate-v2/{villain_id}/edit", response_class=HTMLResponse)
+def hall_of_hate_v2_edit_view(
+    request: Request,
+    villain_id: int,
+    current_user: SessionUser = Depends(require_admin)
+):
+    """Edit villain in Hall of Hate v2"""
+    # For now, use v1 data - we'll create a proper v2 edit template later
+    entries = _hall_of_hate_entries(current_user)
+    
+    # Find the villain by index (villain_id is the loop index from template)
+    if villain_id <= 0 or villain_id > len(entries):
+        raise HTTPException(status_code=404, detail="Villain not found")
+    
+    villain_data = entries[villain_id - 1]  # Convert to 0-based index
+    
+    return templates.TemplateResponse(
+        "hall_of_hate_v2_edit.html",
+        {
+            "request": request,
+            "villain": {
+                "id": villain_id,
+                "name": villain_data["name"],
+                "image_filename": villain_data["image"].replace('hall_of_hate/', ''),
+                "frame_type": villain_data["frame_key"],
+                "hate_score": int(villain_data["average_hate"])
+            },
+            "current_user": current_user,
+            "available_frames": ["default", "devil"]  # Available frame types
+        }
+    )
+
+@app.post("/hall-of-hate-v2/{villain_id}/edit")
+async def hall_of_hate_v2_edit_update(
+    request: Request,
+    villain_id: int,
+    name: str = Form(...),
+    frame_type: str = Form("default"),
+    image: UploadFile = File(None),
+    current_user: SessionUser = Depends(require_admin)
+):
+    """Update villain in Hall of Hate v2"""
+    # This is a placeholder - we'll implement proper v2 database operations later
+    # For now, just redirect back to the main page
+    return RedirectResponse(url="/hall-of-hate-v2", status_code=303)
+
+@app.get("/hall-of-hate-v2/{villain_id}/rate", response_class=HTMLResponse)
+def hall_of_hate_v2_rate_view(
+    request: Request,
+    villain_id: int,
+    current_user: SessionUser = Depends(require_user)
+):
+    """Rate villain in Hall of Hate v2"""
+    # For now, use v1 data - we'll create a proper v2 rate template later
+    entries = _hall_of_hate_entries(current_user)
+    
+    # Find the villain by index (villain_id is the loop index from template)
+    if villain_id <= 0 or villain_id > len(entries):
+        raise HTTPException(status_code=404, detail="Villain not found")
+    
+    villain_data = entries[villain_id - 1]  # Convert to 0-based index
+    
+    return templates.TemplateResponse(
+        "hall_of_hate_v2_rate.html",
+        {
+            "request": request,
+            "villain": {
+                "id": villain_id,
+                "name": villain_data["name"],
+                "image_filename": villain_data["image"].replace('hall_of_hate/', ''),
+                "frame_type": villain_data["frame_key"],
+                "hate_score": int(villain_data["average_hate"])
+            },
+            "current_user": current_user
+        }
+    )
+
+@app.post("/hall-of-hate-v2/{villain_id}/rate")
+async def hall_of_hate_v2_rate_submit(
+    request: Request,
+    villain_id: int,
+    hate_rating: int = Form(..., ge=1, le=99),
+    current_user: SessionUser = Depends(require_user)
+):
+    """Submit rating for villain in Hall of Hate v2"""
+    # This is a placeholder - we'll implement proper v2 database operations later
+    # For now, just redirect back to the main page
+    return RedirectResponse(url="/hall-of-hate-v2", status_code=303)
+
 
 @app.get("/bets", response_class=HTMLResponse)
 def bets_home(request: Request, current_user: SessionUser = Depends(require_user)):
@@ -1024,19 +1616,24 @@ def bets_home(request: Request, current_user: SessionUser = Depends(require_user
 
 @app.get("/hall-of-hate", response_class=HTMLResponse)
 def hall_of_hate(request: Request, current_user: SessionUser | None = Depends(optional_user)):
-    can_manage = bool(current_user)
+    # Original Hall of Hate v1 functionality
+    entries = _hall_of_hate_entries(current_user)
+    
     return templates.TemplateResponse(
-        "hall_of_hate.html",
+        "hall_of_hate.html",  # Back to original template
         {
             "request": request,
-            "entries": _hall_of_hate_entries(current_user),
-            "can_manage": can_manage,
-            "frames": HALL_OF_HATE_FRAMES,
+            "entries": entries,
             "current_user": current_user,
-            "frame_assets": _resolve_frame_assets(),
+            "can_manage": current_user and current_user.get("is_admin", False),
             "ratings_enabled": RATINGS_ENABLED,
+            "frames": HALL_OF_HATE_FRAMES,
+            "frame_assets": _resolve_frame_assets(),
         }
     )
+
+
+
 
 
 @app.get("/hall-of-hate/nuevo", response_class=HTMLResponse)
