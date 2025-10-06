@@ -429,7 +429,7 @@ def _ensure_schema(conn) -> None:
                     id SERIAL PRIMARY KEY,
                     villain_id INTEGER REFERENCES hall_of_hate_v2(id) ON DELETE CASCADE,
                     user_name TEXT NOT NULL,
-                    rating INTEGER CHECK (rating >= 1 AND rating <= 10),
+                    rating INTEGER CHECK (rating >= 1 AND rating <= 99),
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                     UNIQUE(villain_id, user_name)
                 )
