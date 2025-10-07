@@ -59,8 +59,11 @@ def fetch_all_user_uids() -> list[str]:
 
 @router.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request, current_user: SessionUser = Depends(require_user)):
+    # Use role-specific layout
+    template_name = "layout_admin.html" if current_user["is_admin"] else "layout_user.html"
+    
     return templates.TemplateResponse(
-        "layout.html",
+        template_name,
         {
             "request": request,
             "is_admin": current_user["is_admin"],

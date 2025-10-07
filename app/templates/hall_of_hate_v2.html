@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hall of Hate - New Version</title>
+    <title>Hall of Hate - Corderos League</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
         <style>
         /* Hall of Hate v2 - Frame Styles (Independent from v1) */
@@ -332,11 +332,9 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1><i class="fas fa-fire"></i> HALL OF HATE - NEW VERSION <i class="fas fa-fire"></i></h1>
-            <p>Clean, simple approach - images that actually fill the frames!</p>
-            <div style="margin-top: 10px; padding: 8px 16px; background: rgba(52, 152, 219, 0.2); border: 1px solid rgba(52, 152, 219, 0.3); border-radius: 20px; display: inline-block; font-size: 0.9rem; color: #3498db;">
-                🧪 TEST MODE: Authentication bypassed for demo purposes
-            </div>
+            <h1><i class="fas fa-fire"></i> HALL OF HATE <i class="fas fa-fire"></i></h1>
+            <p>Rate the most hated villains in sports and beyond!</p>
+
         </div>
 
         <!-- Success/Status Messages -->
@@ -358,8 +356,7 @@
         {% endif %}
 
         <div class="nav-links">
-            <a href="/hall-of-hate">← Back to Original v1</a>
-            <a href="/hall-of-hate-v2/nuevo">Add New Villain (v2)</a>
+            <a href="/hall-of-hate-v2/nuevo">Add New Villain</a>
         </div>
 
         <div class="cards-grid">
@@ -619,7 +616,7 @@
             // Action functions
             function editVillain(villainId, villainName) {
                 // Use test routes for demo purposes (no authentication required)
-                window.location.href = `/hall-of-hate-v2-test/${villainId}/edit`;
+                window.location.href = `/hall-of-hate-v2/${villainId}/edit`;
             }
             
             function deleteVillain(villainId, villainName) {
@@ -641,7 +638,7 @@
             
             function rateVillain(villainId, villainName, currentScore) {
                 // Use test routes for demo purposes (no authentication required)
-                window.location.href = `/hall-of-hate-v2-test/${villainId}/rate`;
+                window.location.href = `/hall-of-hate-v2/${villainId}/rate`;
             }
             
             // Modern toast notifications
