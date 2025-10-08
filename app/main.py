@@ -1206,26 +1206,32 @@ def hall_of_hate_view(request: Request, current_user: SessionUser | None = Depen
 @app.get("/hall-of-hate/nuevo", response_class=HTMLResponse)
 def hall_of_hate_new(request: Request, current_user: SessionUser = Depends(require_user)):
     """Add new villain to Hall of Hate v2"""
+    # Load available frames from JSON configuration
+    v2_frames = _load_v2_frame_definitions()
+    available_frames = list(v2_frames.keys())
+    
     return templates.TemplateResponse(
         "hall_of_hate_new.html",
         {
             "request": request,
             "current_user": current_user,
+            "available_frames": available_frames,
+            "v2_frames": v2_frames,
         }
     )
 
 def _get_all_ldap_user_ids():
     """Get all LDAP user IDs for automatic rating assignment"""
     from ldap3 import Server, Connection, SUBTREE, ALL
-    from app.core.config import LDAP_URI, LDAP_BASE_DN, LDAP_BIND_DN, LDAP_BIND_PASSWORD
+    from app.core.config import settings
     
-    server = Server(LDAP_URI, get_info=ALL)
+    server = Server(settings.ldap_uri, get_info=ALL)
     user_ids = []
     
     try:
-        with Connection(server, LDAP_BIND_DN, LDAP_BIND_PASSWORD, auto_bind=True) as conn:
+        with Connection(server, settings.ldap_bind_dn, settings.ldap_bind_password, auto_bind=True) as conn:
             conn.search(
-                search_base=LDAP_BASE_DN,
+                search_base=settings.ldap_base_dn,
                 search_filter="(objectClass=inetOrgPerson)",
                 search_scope=SUBTREE,
                 attributes=["uid"]
@@ -1276,6 +1282,7 @@ async def hall_of_hate_create(
     conn = pool.getconn()
     try:
         with conn.cursor() as cur:
+            print(f"[DEBUG] Creating villain: name='{name}', frame_type='{frame_type}', filename='uploads/{filename}'")
             # Create the villain
             cur.execute(
                 """
@@ -1286,10 +1293,15 @@ async def hall_of_hate_create(
                 (name, f"uploads/{filename}", frame_type)
             )
             villain_id = cur.fetchone()[0]
+            print(f"[DEBUG] Villain created with ID: {villain_id}")
             
             # Get all LDAP users and create automatic 99 ratings
+            print(f"[DEBUG] Getting LDAP users for automatic ratings...")
             user_ids = _get_all_ldap_user_ids()
+            print(f"[DEBUG] Found {len(user_ids)} LDAP users: {user_ids}")
+            
             for user_id in user_ids:
+                print(f"[DEBUG] Creating rating for user: {user_id}")
                 cur.execute(
                     """
                     INSERT INTO hall_of_hate_v2_ratings (villain_id, user_name, rating)
@@ -1301,9 +1313,16 @@ async def hall_of_hate_create(
             
             print(f"Created villain '{name}' with automatic 99 ratings for {len(user_ids)} users")
         conn.commit()
-    except psycopg2.IntegrityError:
+        print(f"[DEBUG] Successfully created villain '{name}' with automatic ratings")
+    except psycopg2.IntegrityError as e:
+        print(f"[DEBUG] IntegrityError: {e}")
         conn.rollback()
         raise HTTPException(status_code=400, detail="Villain name already exists")
+    except Exception as e:
+        print(f"[DEBUG] Unexpected error creating villain: {e}")
+        print(f"[DEBUG] Error type: {type(e)}")
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
     finally:
         pool.putconn(conn)
     
@@ -1355,13 +1374,18 @@ def hall_of_hate_edit_view(
     finally:
         pool.putconn(conn)
     
+    # Load available frames from JSON configuration
+    v2_frames = _load_v2_frame_definitions()
+    available_frames = list(v2_frames.keys())
+    
     return templates.TemplateResponse(
         "hall_of_hate_edit.html",
         {
             "request": request,
             "villain": villain_data,
             "current_user": current_user,
-            "available_frames": ["default", "devil"]  # Available frame types
+            "available_frames": available_frames,
+            "v2_frames": v2_frames,
         }
     )
 

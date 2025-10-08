@@ -14,6 +14,14 @@
         .frame-devil .card-frame {
             background-image: url('/static/hall_of_hate/frames/frame-devil.png');
         }
+
+        .frame-engendro-lakers .card-frame {
+            background-image: url('/static/hall_of_hate/frames/frame-engendro-lakers.png');
+        }
+
+        .frame-real-madrid-engendro .card-frame {
+            background-image: url('/static/hall_of_hate/frames/frame-real-madrid-engendro.png');
+        }
     </style>
     <style>
         * {
@@ -498,7 +506,14 @@
             console.log('V2 Frames config loaded:', v2FrameConfig);
             
             document.querySelectorAll('.villain-card').forEach((card, index) => {
-                const frameType = card.classList.contains('frame-devil') ? 'devil' : 'default';
+                let frameType = 'default';
+                if (card.classList.contains('frame-devil')) {
+                    frameType = 'devil';
+                } else if (card.classList.contains('frame-engendro-lakers')) {
+                    frameType = 'engendro-lakers';
+                } else if (card.classList.contains('frame-real-madrid-engendro')) {
+                    frameType = 'real-madrid-engendro';
+                }
                 const config = v2FrameConfig[frameType];
                 
                 console.log(`Processing Card ${index + 1} - Frame type: ${frameType}`);

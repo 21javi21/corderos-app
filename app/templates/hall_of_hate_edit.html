@@ -336,7 +336,7 @@
                         {% for frame in available_frames %}
                         <option value="{{ frame }}" 
                                 {% if frame == villain.frame_type %}selected{% endif %}>
-                            {{ frame.title() }} Frame
+                            {{ v2_frames[frame].label }}
                         </option>
                         {% endfor %}
                     </select>

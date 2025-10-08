@@ -170,8 +170,9 @@
                         <i class="fas fa-border-style"></i> Frame Style
                     </label>
                     <select id="frame_type" name="frame_type">
-                        <option value="default">Default Frame</option>
-                        <option value="devil">Devil Frame</option>
+                        {% for frame_key in available_frames %}
+                        <option value="{{ frame_key }}">{{ v2_frames[frame_key].label }}</option>
+                        {% endfor %}
                     </select>
                     <div class="frame-preview">
                         <p>Preview: <span id="frame-name">Default Frame</span></p>
@@ -201,15 +202,20 @@
 
     <script>
         // Frame preview functionality
+        // Load frame configuration from backend
+        const frameConfig = {{ v2_frames|tojson|safe }};
+        
         document.getElementById('frame_type').addEventListener('change', function() {
             const frameType = this.value;
             const frameImg = document.getElementById('frame-img');
             const frameName = document.getElementById('frame-name');
             
-            if (frameType === 'devil') {
-                frameImg.src = '/static/images/hall_of_hate/frames/frame-devil.png';
-                frameName.textContent = 'Devil Frame';
+            const config = frameConfig[frameType];
+            if (config) {
+                frameImg.src = '/static/images/' + config.image_path;
+                frameName.textContent = config.label;
             } else {
+                // Fallback to default
                 frameImg.src = '/static/images/hall_of_hate/frames/frame-default.png';
                 frameName.textContent = 'Default Frame';
             }
