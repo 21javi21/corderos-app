@@ -1,6 +1,7 @@
 import os
 import re
 import secrets
+import shutil
 import time
 import json
 from collections import defaultdict
@@ -1275,26 +1276,47 @@ def hall_of_hate_v2_edit_view(
     current_user: SessionUser = Depends(require_admin)
 ):
     """Edit villain in Hall of Hate v2"""
-    # For now, use v1 data - we'll create a proper v2 edit template later
-    entries = _hall_of_hate_entries(current_user)
+    global pool
+    if not pool:
+        raise HTTPException(status_code=500, detail="Database connection not available")
     
-    # Find the villain by index (villain_id is the loop index from template)
-    if villain_id <= 0 or villain_id > len(entries):
-        raise HTTPException(status_code=404, detail="Villain not found")
-    
-    villain_data = entries[villain_id - 1]  # Convert to 0-based index
+    conn = pool.getconn()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, name, image_filename, frame_type FROM hall_of_hate_v2 WHERE id = %s",
+            (villain_id,)
+        )
+        result = cursor.fetchone()
+        
+        if not result:
+            raise HTTPException(status_code=404, detail="Villain not found")
+        
+        db_id, name, image_filename, frame_type = result
+        
+        # Get average hate score
+        cursor.execute(
+            "SELECT COALESCE(AVG(rating), 99) FROM hall_of_hate_v2_ratings WHERE villain_id = %s",
+            (villain_id,)
+        )
+        avg_result = cursor.fetchone()
+        average_hate = avg_result[0] if avg_result else 99
+        
+        villain_data = {
+            "id": db_id,
+            "name": name,
+            "image_filename": image_filename,
+            "frame_type": frame_type or "default",
+            "hate_score": int(average_hate)
+        }
+    finally:
+        pool.putconn(conn)
     
     return templates.TemplateResponse(
         "hall_of_hate_v2_edit.html",
         {
             "request": request,
-            "villain": {
-                "id": villain_id,
-                "name": villain_data["name"],
-                "image_filename": villain_data["image"].replace('hall_of_hate/', ''),
-                "frame_type": villain_data["frame_key"],
-                "hate_score": int(villain_data["average_hate"])
-            },
+            "villain": villain_data,
             "current_user": current_user,
             "available_frames": ["default", "devil"]  # Available frame types
         }
@@ -1310,8 +1332,58 @@ async def hall_of_hate_v2_edit_update(
     current_user: SessionUser = Depends(require_admin)
 ):
     """Update villain in Hall of Hate v2"""
-    # This is a placeholder - we'll implement proper v2 database operations later
-    # For now, just redirect back to the main page
+    global pool
+    if not pool:
+        raise HTTPException(status_code=500, detail="Database connection not available")
+    
+    conn = pool.getconn()
+    try:
+        cursor = conn.cursor()
+        
+        # Verify villain exists
+        cursor.execute("SELECT id, image_filename FROM hall_of_hate_v2 WHERE id = %s", (villain_id,))
+        result = cursor.fetchone()
+        if not result:
+            raise HTTPException(status_code=404, detail="Villain not found")
+        
+        current_image = result[1]
+        new_image_filename = current_image
+        
+        # Handle image upload if provided
+        if image and image.filename:
+            # Validate image type
+            if not image.content_type.startswith('image/'):
+                raise HTTPException(status_code=400, detail="Invalid image file")
+            
+            # Generate filename and save
+            file_extension = image.filename.split('.')[-1]
+            filename_only = f"{name.replace(' ', '_')}.{file_extension}"
+            new_image_filename = f"uploads/{filename_only}"  # Store relative path in DB
+            
+            uploads_dir = PathlibPath("app/images/hall_of_hate/uploads")
+            uploads_dir.mkdir(exist_ok=True)
+            
+            # Delete old image if it exists and is in uploads folder
+            if current_image and current_image.startswith('uploads/'):
+                old_file_path = PathlibPath("app/images/hall_of_hate") / current_image
+                if old_file_path.exists():
+                    old_file_path.unlink()
+            
+            file_path = uploads_dir / filename_only
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(image.file, buffer)
+        
+        # Update database
+        cursor.execute("""
+            UPDATE hall_of_hate_v2 
+            SET name = %s, frame_type = %s, image_filename = %s, updated_at = CURRENT_TIMESTAMP
+            WHERE id = %s
+        """, (name, frame_type, new_image_filename, villain_id))
+        
+        conn.commit()
+    finally:
+        pool.putconn(conn)
+    
     return RedirectResponse(url="/hall-of-hate-v2", status_code=303)
 
 @app.get("/hall-of-hate-v2/{villain_id}/rate", response_class=HTMLResponse)
@@ -1321,26 +1393,60 @@ def hall_of_hate_v2_rate_view(
     current_user: SessionUser = Depends(require_user)
 ):
     """Rate villain in Hall of Hate v2"""
-    # For now, use v1 data - we'll create a proper v2 rate template later
-    entries = _hall_of_hate_entries(current_user)
+    global pool
+    if not pool:
+        raise HTTPException(status_code=500, detail="Database connection not available")
     
-    # Find the villain by index (villain_id is the loop index from template)
-    if villain_id <= 0 or villain_id > len(entries):
-        raise HTTPException(status_code=404, detail="Villain not found")
-    
-    villain_data = entries[villain_id - 1]  # Convert to 0-based index
+    conn = pool.getconn()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, name, image_filename, frame_type FROM hall_of_hate_v2 WHERE id = %s",
+            (villain_id,)
+        )
+        result = cursor.fetchone()
+        
+        if not result:
+            raise HTTPException(status_code=404, detail="Villain not found")
+        
+        db_id, name, image_filename, frame_type = result
+        
+        # Get current user's rating if exists
+        user_id = current_user.get("id") or current_user.get("uid")
+        current_rating = 50  # Default middle value
+        if user_id:
+            cursor.execute(
+                "SELECT rating FROM hall_of_hate_v2_ratings WHERE villain_id = %s AND user_name = %s",
+                (villain_id, user_id)
+            )
+            rating_result = cursor.fetchone()
+            if rating_result:
+                current_rating = rating_result[0]
+        
+        # Get average hate score
+        cursor.execute(
+            "SELECT COALESCE(AVG(rating), 99) FROM hall_of_hate_v2_ratings WHERE villain_id = %s",
+            (villain_id,)
+        )
+        avg_result = cursor.fetchone()
+        average_hate = avg_result[0] if avg_result else 99
+        
+        villain_data = {
+            "id": db_id,
+            "name": name,
+            "image_filename": image_filename,
+            "frame_type": frame_type or "default",
+            "hate_score": int(average_hate),
+            "user_rating": current_rating
+        }
+    finally:
+        pool.putconn(conn)
     
     return templates.TemplateResponse(
         "hall_of_hate_v2_rate.html",
         {
             "request": request,
-            "villain": {
-                "id": villain_id,
-                "name": villain_data["name"],
-                "image_filename": villain_data["image"].replace('hall_of_hate/', ''),
-                "frame_type": villain_data["frame_key"],
-                "hate_score": int(villain_data["average_hate"])
-            },
+            "villain": villain_data,
             "current_user": current_user
         }
     )
@@ -1353,8 +1459,36 @@ async def hall_of_hate_v2_rate_submit(
     current_user: SessionUser = Depends(require_user)
 ):
     """Submit rating for villain in Hall of Hate v2"""
-    # This is a placeholder - we'll implement proper v2 database operations later
-    # For now, just redirect back to the main page
+    global pool
+    if not pool:
+        raise HTTPException(status_code=500, detail="Database connection not available")
+    
+    # Get user identifier
+    user_id = current_user.get("id") or current_user.get("uid")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="User ID not available")
+    
+    conn = pool.getconn()
+    try:
+        cursor = conn.cursor()
+        
+        # Verify villain exists
+        cursor.execute("SELECT id FROM hall_of_hate_v2 WHERE id = %s", (villain_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Villain not found")
+        
+        # Insert or update rating using UPSERT
+        cursor.execute("""
+            INSERT INTO hall_of_hate_v2_ratings (villain_id, user_name, rating)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (villain_id, user_name)
+            DO UPDATE SET rating = EXCLUDED.rating
+        """, (villain_id, user_id, hate_rating))
+        
+        conn.commit()
+    finally:
+        pool.putconn(conn)
+    
     return RedirectResponse(url="/hall-of-hate-v2", status_code=303)
 
 
