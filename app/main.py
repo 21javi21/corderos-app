@@ -1316,7 +1316,7 @@ async def hall_of_hate_create(
 def hall_of_hate_edit_view(
     request: Request,
     villain_id: int,
-    current_user: SessionUser = Depends(require_admin)
+    current_user: SessionUser = Depends(require_user)
 ):
     """Edit villain in Hall of Hate v2"""
     global pool
@@ -1372,7 +1372,7 @@ async def hall_of_hate_edit_update(
     name: str = Form(...),
     frame_type: str = Form("default"),
     image: UploadFile = File(None),
-    current_user: SessionUser = Depends(require_admin)
+    current_user: SessionUser = Depends(require_user)
 ):
     """Update villain in Hall of Hate v2"""
     global pool
@@ -1538,7 +1538,7 @@ async def hall_of_hate_rate_submit(
 async def hall_of_hate_delete(
     request: Request,
     villain_id: int,
-    current_user: SessionUser = Depends(require_admin)
+    current_user: SessionUser = Depends(require_user)
 ):
     """Delete villain from Hall of Hate"""
     global pool

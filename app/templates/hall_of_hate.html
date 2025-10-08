@@ -425,7 +425,7 @@
                 <!-- Modern Action Buttons -->
                 <div class="card-actions">
                     <div class="action-buttons">
-                        {% if current_user and current_user.get('is_admin', False) %}
+                        {% if current_user %}
                         <button class="action-btn edit-btn" data-action="edit">
                             <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -442,8 +442,6 @@
                             </svg>
                             <span>Delete</span>
                         </button>
-                        {% endif %}
-                        {% if current_user %}
                         <button class="action-btn rate-btn" data-action="rate">
                             <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                 <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26 12,2"/>
