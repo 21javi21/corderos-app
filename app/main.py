@@ -1214,6 +1214,34 @@ def hall_of_hate_new(request: Request, current_user: SessionUser = Depends(requi
         }
     )
 
+def _get_all_ldap_user_ids():
+    """Get all LDAP user IDs for automatic rating assignment"""
+    from ldap3 import Server, Connection, SUBTREE, ALL
+    from app.core.config import LDAP_URI, LDAP_BASE_DN, LDAP_BIND_DN, LDAP_BIND_PASSWORD
+    
+    server = Server(LDAP_URI, get_info=ALL)
+    user_ids = []
+    
+    try:
+        with Connection(server, LDAP_BIND_DN, LDAP_BIND_PASSWORD, auto_bind=True) as conn:
+            conn.search(
+                search_base=LDAP_BASE_DN,
+                search_filter="(objectClass=inetOrgPerson)",
+                search_scope=SUBTREE,
+                attributes=["uid"]
+            )
+            entries = list(conn.entries)
+            for entry in entries:
+                uid = str(entry.uid) if "uid" in entry else ""
+                if uid:
+                    user_ids.append(uid)
+    except Exception as e:
+        print(f"Warning: Could not fetch LDAP users for automatic ratings: {e}")
+        # Return some default users if LDAP fails
+        user_ids = ["javi", "hugo", "isma"]
+    
+    return user_ids
+
 @app.post("/hall-of-hate/nuevo")
 async def hall_of_hate_create(
     request: Request,
@@ -1248,6 +1276,7 @@ async def hall_of_hate_create(
     conn = pool.getconn()
     try:
         with conn.cursor() as cur:
+            # Create the villain
             cur.execute(
                 """
                 INSERT INTO hall_of_hate_v2 (name, image_filename, frame_type)
@@ -1257,6 +1286,20 @@ async def hall_of_hate_create(
                 (name, f"uploads/{filename}", frame_type)
             )
             villain_id = cur.fetchone()[0]
+            
+            # Get all LDAP users and create automatic 99 ratings
+            user_ids = _get_all_ldap_user_ids()
+            for user_id in user_ids:
+                cur.execute(
+                    """
+                    INSERT INTO hall_of_hate_v2_ratings (villain_id, user_name, rating)
+                    VALUES (%s, %s, 99)
+                    ON CONFLICT (villain_id, user_name) DO NOTHING
+                    """,
+                    (villain_id, user_id)
+                )
+            
+            print(f"Created villain '{name}' with automatic 99 ratings for {len(user_ids)} users")
         conn.commit()
     except psycopg2.IntegrityError:
         conn.rollback()

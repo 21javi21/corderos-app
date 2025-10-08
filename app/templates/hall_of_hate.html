@@ -23,28 +23,68 @@
         }
 
         body {
-            background: linear-gradient(135deg, #0c1425 0%, #1a2332 100%);
-            font-family: 'Arial', sans-serif;
-            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
             min-height: 100vh;
-            padding: 20px;
+            padding: 48px 32px 60px;
+            background: linear-gradient(160deg, rgba(5, 13, 24, 0.9) 0%, rgba(12, 24, 39, 0.94) 55%, rgba(4, 10, 18, 0.97) 100%),
+              url("{{ request.url_for('static', path='main_back.png') }}") center/cover fixed;
+            color: #e6edf7;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: url("{{ request.url_for('static', path='corderos_logo_white.png') }}") center calc(100% - 44px)/clamp(200px, 32vw, 280px) auto no-repeat;
+            opacity: 0.16;
+            pointer-events: none;
+            z-index: 0;
         }
 
         .container {
-            max-width: 1200px;
-            margin: 0 auto;
+            width: 100%;
+            max-width: 1100px;
+            position: relative;
+            z-index: 1;
         }
 
         .header {
             text-align: center;
             margin-bottom: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
         }
 
-        .header h1 {
-            font-size: 3rem;
-            color: #ff4444;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-            margin-bottom: 10px;
+        .header-logo {
+            max-width: 100%;
+            height: auto;
+            max-height: 300px;
+            object-fit: contain;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+            transition: transform 0.3s ease;
+        }
+
+        .header-logo:hover {
+            transform: scale(1.02);
+        }
+
+        /* Responsive header sizing */
+        @media (max-width: 768px) {
+            .header-logo {
+                max-height: 200px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header-logo {
+                max-height: 150px;
+            }
         }
 
         .cards-grid {
@@ -53,6 +93,8 @@
             gap: 30px;
             padding: 20px 0;
             background: transparent;
+            width: 100%;
+            justify-items: center;
         }
 
         /* Card Container - Fixed to eliminate white lines */
@@ -143,15 +185,7 @@
             text-align: center;
         }
 
-        /* Devil frame color adjustments */
-        .villain-card.frame-devil .villain-name {
-            color: #f5e6c7;
-            background: rgba(139,0,0,0.8);
-        }
-
-        .villain-card.frame-devil .hate-score {
-            background: #8b0000;
-        }
+        /* Devil frame styling now controlled by JSON configuration */
 
         /* Hover effects */
         .villain-card:hover {
@@ -336,9 +370,9 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1><i class="fas fa-fire"></i> HALL OF HATE <i class="fas fa-fire"></i></h1>
-            <p>Rate the most hated villains in sports and beyond!</p>
-
+            <img src="{{ request.url_for('static', path='hall_of_hate_header.png') }}" 
+                 alt="Hall of Hate" 
+                 class="header-logo">
         </div>
 
         <!-- Success/Status Messages -->
