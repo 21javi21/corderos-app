@@ -162,7 +162,7 @@ def _load_frame_definitions() -> dict[str, dict[str, str]]:
 HALL_OF_HATE_FRAMES = _load_frame_definitions()
 
 # Hall of Hate v2 Frame Configuration (Independent from v1)
-FRAME_V2_CONFIG_PATH = PathlibPath("app/config/hall_of_hate_v2_frames.json")
+FRAME_V2_CONFIG_PATH = PathlibPath("app/config/hall_of_hate_frames.json")
 
 def _load_v2_frame_definitions() -> dict[str, dict[str, str]]:
     """Load Hall of Hate v2 frame definitions - completely separate from v1"""
@@ -395,12 +395,12 @@ def _ensure_schema(conn) -> None:
     if FRAME_STORAGE_MODE == "none":
         print("[HallOfHate] Frames will not persist; default frame will be used for all entries.")
 
-    # Ensure hall_of_hate_v2 table exists (new version with enhanced features)
+    # Ensure hall_of_hate table exists (new version with enhanced features)
     with conn.cursor() as cur:
         try:
             cur.execute(
                 """
-                CREATE TABLE IF NOT EXISTS hall_of_hate_v2 (
+                CREATE TABLE IF NOT EXISTS hall_of_hate (
                     id SERIAL PRIMARY KEY,
                     name TEXT NOT NULL UNIQUE,
                     image_filename TEXT NOT NULL,
@@ -415,20 +415,20 @@ def _ensure_schema(conn) -> None:
             cur.execute(
                 """
                 SELECT 1 FROM information_schema.columns
-                WHERE table_schema = 'public' AND table_name = 'hall_of_hate_v2'
+                WHERE table_schema = 'public' AND table_name = 'hall_of_hate'
                 """
             )
             exists = cur.fetchone() is not None
             if not exists:
-                raise HTTPException(status_code=500, detail="Cannot create hall_of_hate_v2 table")
+                raise HTTPException(status_code=500, detail="Cannot create hall_of_hate table")
 
-        # Ensure hall_of_hate_v2_ratings table exists
+        # Ensure hall_of_hate_ratings table exists
         try:
             cur.execute(
                 """
-                CREATE TABLE IF NOT EXISTS hall_of_hate_v2_ratings (
+                CREATE TABLE IF NOT EXISTS hall_of_hate_ratings (
                     id SERIAL PRIMARY KEY,
-                    villain_id INTEGER REFERENCES hall_of_hate_v2(id) ON DELETE CASCADE,
+                    villain_id INTEGER REFERENCES hall_of_hate(id) ON DELETE CASCADE,
                     user_name TEXT NOT NULL,
                     rating INTEGER CHECK (rating >= 1 AND rating <= 99),
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -441,12 +441,12 @@ def _ensure_schema(conn) -> None:
             cur.execute(
                 """
                 SELECT 1 FROM information_schema.columns
-                WHERE table_schema = 'public' AND table_name = 'hall_of_hate_v2_ratings'
+                WHERE table_schema = 'public' AND table_name = 'hall_of_hate_ratings'
                 """
             )
             exists = cur.fetchone() is not None
             if not exists:
-                raise HTTPException(status_code=500, detail="Cannot create hall_of_hate_v2_ratings table")
+                raise HTTPException(status_code=500, detail="Cannot create hall_of_hate_ratings table")
 
     # Ensure ratings table and trigger exist
     with conn.cursor() as cur:
@@ -1077,7 +1077,7 @@ def _hall_of_hate_entries(current_user: SessionUser | None) -> list[dict[str, st
     uid = current_user["uid"] if current_user else None
     return _fetch_hall_of_hate_db_entries(uid)
 
-def _get_hall_of_hate_v2_entries(current_user: SessionUser | None) -> list[dict[str, str | None | float | int]]:
+def _get_hall_of_hate_entries(current_user: SessionUser | None) -> list[dict[str, str | None | float | int]]:
     """Get Hall of Hate v2 entries with calculated averages"""
     global pool
     if not pool:
@@ -1180,17 +1180,17 @@ def dashboard(request: Request):
 
 # Test routes removed - implementing proper v2 system
 
-@app.get("/hall-of-hate-v2", response_class=HTMLResponse)
-def hall_of_hate_v2_view(request: Request, current_user: SessionUser | None = Depends(optional_user)):
+@app.get("/hall-of-hate", response_class=HTMLResponse)
+def hall_of_hate_view(request: Request, current_user: SessionUser | None = Depends(optional_user)):
     """Hall of Hate v2 - Uses proper v2 data and authentication"""
     if not current_user:
         return RedirectResponse(url="/login")
     
     # Get v2 villains with calculated averages
-    villains = _get_hall_of_hate_v2_entries(current_user)
+    villains = _get_hall_of_hate_entries(current_user)
     
     return templates.TemplateResponse(
-        "hall_of_hate_v2.html",
+        "hall_of_hate.html",
         {
             "request": request,
             "villains": villains,
@@ -1203,19 +1203,19 @@ def hall_of_hate_v2_view(request: Request, current_user: SessionUser | None = De
 
 
 
-@app.get("/hall-of-hate-v2/nuevo", response_class=HTMLResponse)
-def hall_of_hate_v2_new(request: Request, current_user: SessionUser = Depends(require_user)):
+@app.get("/hall-of-hate/nuevo", response_class=HTMLResponse)
+def hall_of_hate_new(request: Request, current_user: SessionUser = Depends(require_user)):
     """Add new villain to Hall of Hate v2"""
     return templates.TemplateResponse(
-        "hall_of_hate_v2_new.html",
+        "hall_of_hate_new.html",
         {
             "request": request,
             "current_user": current_user,
         }
     )
 
-@app.post("/hall-of-hate-v2/nuevo")
-async def hall_of_hate_v2_create(
+@app.post("/hall-of-hate/nuevo")
+async def hall_of_hate_create(
     request: Request,
     name: str = Form(...),
     frame_type: str = Form("default"),
@@ -1236,7 +1236,7 @@ async def hall_of_hate_v2_create(
     safe_name = re.sub(r'[^\w\s-]', '', name).strip().replace(' ', '_')
     filename = f"{safe_name}.{file_extension}"
     
-    upload_path = PathlibPath("app/images/hall_of_hate/v2_uploads")
+    upload_path = PathlibPath("app/images/hall_of_hate/uploads")
     upload_path.mkdir(exist_ok=True)
     
     file_path = upload_path / filename
@@ -1254,7 +1254,7 @@ async def hall_of_hate_v2_create(
                 VALUES (%s, %s, %s)
                 RETURNING id
                 """,
-                (name, f"v2_uploads/{filename}", frame_type)
+                (name, f"uploads/{filename}", frame_type)
             )
             villain_id = cur.fetchone()[0]
         conn.commit()
@@ -1264,13 +1264,13 @@ async def hall_of_hate_v2_create(
     finally:
         pool.putconn(conn)
     
-    return RedirectResponse(url="/hall-of-hate-v2", status_code=303)
+    return RedirectResponse(url="/hall-of-hate", status_code=303)
 
 
 # Hall of Hate v2 TEST Routes (No Authentication Required)
 # Hall of Hate v2 Edit and Rate Routes
-@app.get("/hall-of-hate-v2/{villain_id}/edit", response_class=HTMLResponse)
-def hall_of_hate_v2_edit_view(
+@app.get("/hall-of-hate/{villain_id}/edit", response_class=HTMLResponse)
+def hall_of_hate_edit_view(
     request: Request,
     villain_id: int,
     current_user: SessionUser = Depends(require_admin)
@@ -1313,7 +1313,7 @@ def hall_of_hate_v2_edit_view(
         pool.putconn(conn)
     
     return templates.TemplateResponse(
-        "hall_of_hate_v2_edit.html",
+        "hall_of_hate_edit.html",
         {
             "request": request,
             "villain": villain_data,
@@ -1322,8 +1322,8 @@ def hall_of_hate_v2_edit_view(
         }
     )
 
-@app.post("/hall-of-hate-v2/{villain_id}/edit")
-async def hall_of_hate_v2_edit_update(
+@app.post("/hall-of-hate/{villain_id}/edit")
+async def hall_of_hate_edit_update(
     request: Request,
     villain_id: int,
     name: str = Form(...),
@@ -1384,10 +1384,10 @@ async def hall_of_hate_v2_edit_update(
     finally:
         pool.putconn(conn)
     
-    return RedirectResponse(url="/hall-of-hate-v2", status_code=303)
+    return RedirectResponse(url="/hall-of-hate", status_code=303)
 
-@app.get("/hall-of-hate-v2/{villain_id}/rate", response_class=HTMLResponse)
-def hall_of_hate_v2_rate_view(
+@app.get("/hall-of-hate/{villain_id}/rate", response_class=HTMLResponse)
+def hall_of_hate_rate_view(
     request: Request,
     villain_id: int,
     current_user: SessionUser = Depends(require_user)
@@ -1443,7 +1443,7 @@ def hall_of_hate_v2_rate_view(
         pool.putconn(conn)
     
     return templates.TemplateResponse(
-        "hall_of_hate_v2_rate.html",
+        "hall_of_hate_rate.html",
         {
             "request": request,
             "villain": villain_data,
@@ -1451,8 +1451,8 @@ def hall_of_hate_v2_rate_view(
         }
     )
 
-@app.post("/hall-of-hate-v2/{villain_id}/rate")
-async def hall_of_hate_v2_rate_submit(
+@app.post("/hall-of-hate/{villain_id}/rate")
+async def hall_of_hate_rate_submit(
     request: Request,
     villain_id: int,
     hate_rating: int = Form(..., ge=1, le=99),
@@ -1489,7 +1489,53 @@ async def hall_of_hate_v2_rate_submit(
     finally:
         pool.putconn(conn)
     
-    return RedirectResponse(url="/hall-of-hate-v2", status_code=303)
+    return RedirectResponse(url="/hall-of-hate", status_code=303)
+
+@app.post("/hall-of-hate/{villain_id}/delete")
+async def hall_of_hate_delete(
+    request: Request,
+    villain_id: int,
+    current_user: SessionUser = Depends(require_admin)
+):
+    """Delete villain from Hall of Hate"""
+    global pool
+    if not pool:
+        raise HTTPException(status_code=500, detail="Database connection not available")
+    
+    conn = pool.getconn()
+    try:
+        cursor = conn.cursor()
+        
+        # Get villain info before deletion for cleanup
+        cursor.execute("SELECT image_filename FROM hall_of_hate_v2 WHERE id = %s", (villain_id,))
+        result = cursor.fetchone()
+        if not result:
+            raise HTTPException(status_code=404, detail="Villain not found")
+        
+        image_filename = result[0]
+        
+        # Delete from database (cascade will handle ratings)
+        cursor.execute("DELETE FROM hall_of_hate_v2 WHERE id = %s", (villain_id,))
+        conn.commit()
+        
+        # Try to delete image file
+        try:
+            import os
+            image_path = os.path.join("/app/app/images/hall_of_hate/uploads", image_filename)
+            print(f"Attempting to delete image file: {image_path}")
+            if os.path.exists(image_path):
+                os.remove(image_path)
+                print(f"Successfully deleted image file: {image_filename}")
+            else:
+                print(f"Image file not found: {image_path}")
+        except Exception as e:
+            # Log but don't fail the deletion if file cleanup fails
+            print(f"Warning: Could not delete image file {image_filename}: {e}")
+        
+    finally:
+        pool.putconn(conn)
+    
+    return RedirectResponse(url="/hall-of-hate", status_code=303)
 
 
 @app.get("/bets", response_class=HTMLResponse)
@@ -1546,208 +1592,6 @@ def bets_home(request: Request, current_user: SessionUser = Depends(require_user
             "is_admin": is_admin,
         }
     )
-
-
-@app.get("/hall-of-hate", response_class=HTMLResponse)
-def hall_of_hate(request: Request, current_user: SessionUser | None = Depends(optional_user)):
-    # Original Hall of Hate v1 functionality
-    entries = _hall_of_hate_entries(current_user)
-    
-    return templates.TemplateResponse(
-        "hall_of_hate.html",  # Back to original template
-        {
-            "request": request,
-            "entries": entries,
-            "current_user": current_user,
-            "can_manage": current_user and current_user.get("is_admin", False),
-            "ratings_enabled": RATINGS_ENABLED,
-            "frames": HALL_OF_HATE_FRAMES,
-            "frame_assets": _resolve_frame_assets(),
-        }
-    )
-
-
-
-
-
-@app.get("/hall-of-hate/nuevo", response_class=HTMLResponse)
-def hall_of_hate_new(request: Request, current_user: SessionUser = Depends(require_user)):
-    return templates.TemplateResponse(
-        "hall_of_hate_new.html",
-        {
-            "request": request,
-            "current_user": current_user,
-            "frames": HALL_OF_HATE_FRAMES,
-            "frame_assets": _resolve_frame_assets(),
-        }
-    )
-
-
-@app.post("/hall-of-hate/nuevo")
-def hall_of_hate_create(
-    request: Request,
-    nombre: str = Form(...),
-    imagen: UploadFile = File(...),
-    marco: str = Form("default"),
-    current_user: SessionUser = Depends(require_user),
-):
-    clean_name = nombre.strip()
-    if not clean_name:
-        raise HTTPException(status_code=400, detail="El nombre es obligatorio")
-
-    frame_key = _normalize_frame_key(marco)
-
-    filename = _save_hall_of_hate_image(imagen, clean_name)
-    try:
-        _insert_hall_of_hate_entry(clean_name, filename, frame_key)
-    except FrameStorageError as exc:
-        file_path = HALL_OF_HATE_DIR / filename
-        if file_path.exists():
-            file_path.unlink(missing_ok=True)
-        raise HTTPException(status_code=500, detail="No se pudo guardar el registro") from exc
-    except psycopg2.Error as exc:
-        # Limpia el archivo recién creado si la inserción falla
-        file_path = HALL_OF_HATE_DIR / filename
-        if file_path.exists():
-            file_path.unlink(missing_ok=True)
-        if isinstance(exc, errors.UniqueViolation):
-            raise HTTPException(status_code=400, detail="Ya existe un villano con ese nombre") from exc
-        raise HTTPException(status_code=500, detail="No se pudo guardar el registro") from exc
-
-    return RedirectResponse(url="/hall-of-hate", status_code=303)
-
-
-@app.get("/hall-of-hate/{entry_id}/editar", response_class=HTMLResponse)
-def hall_of_hate_edit_form(
-    request: Request,
-    entry_id: int = Path(..., ge=1),
-    current_user: SessionUser = Depends(require_user),
-):
-    entry = _get_hall_of_hate_entry(entry_id)
-    if not entry:
-        raise HTTPException(status_code=404, detail="Villano no encontrado")
-    return templates.TemplateResponse(
-        "hall_of_hate_edit.html",
-        {
-            "request": request,
-            "entry": entry,
-            "current_user": current_user,
-            "frames": HALL_OF_HATE_FRAMES,
-            "frame_assets": _resolve_frame_assets(),
-        }
-    )
-
-
-@app.post("/hall-of-hate/{entry_id}/editar")
-def hall_of_hate_update(
-    request: Request,
-    entry_id: int = Path(..., ge=1),
-    nombre: str = Form(...),
-    nueva_imagen: UploadFile | None = File(None),
-    marco: str = Form("default"),
-    current_user: SessionUser = Depends(require_user),
-):
-    entry = _get_hall_of_hate_entry(entry_id)
-    if not entry:
-        raise HTTPException(status_code=404, detail="Villano no encontrado")
-
-    clean_name = nombre.strip()
-    if not clean_name:
-        raise HTTPException(status_code=400, detail="El nombre es obligatorio")
-
-    new_filename: str | None = None
-    frame_key = _normalize_frame_key(marco) if marco else entry.get("frame_key", "default")
-    old_filename = entry["image_filename"]
-    try:
-        if nueva_imagen is not None:
-            if nueva_imagen.filename and nueva_imagen.size and nueva_imagen.size > 0:
-                new_filename = _save_hall_of_hate_image(nueva_imagen, clean_name)
-            else:
-                # Close the file handle for empty uploads
-                try:
-                    nueva_imagen.file.close()
-                except:
-                    pass
-        _update_hall_of_hate_entry(entry_id, clean_name, new_filename, frame_key)
-    except FrameStorageError as exc:
-        if new_filename:
-            file_path = HALL_OF_HATE_DIR / new_filename
-            if file_path.exists():
-                file_path.unlink(missing_ok=True)
-        raise HTTPException(status_code=500, detail="No se pudo actualizar el villano") from exc
-    except psycopg2.Error as exc:
-        if new_filename:
-            file_path = HALL_OF_HATE_DIR / new_filename
-            if file_path.exists():
-                file_path.unlink(missing_ok=True)
-        if isinstance(exc, errors.UniqueViolation):
-            raise HTTPException(status_code=400, detail="Ya existe un villano con ese nombre") from exc
-        raise HTTPException(status_code=500, detail="No se pudo actualizar el villano") from exc
-
-    if new_filename and old_filename and old_filename != new_filename:
-        old_path = HALL_OF_HATE_DIR / old_filename
-        if old_path.exists():
-            old_path.unlink(missing_ok=True)
-
-    return RedirectResponse(url="/hall-of-hate", status_code=303)
-
-
-@app.post("/hall-of-hate/{entry_id}/borrar")
-def hall_of_hate_delete(
-    request: Request,
-    entry_id: int = Path(..., ge=1),
-    current_user: SessionUser = Depends(require_user),
-):
-    image_filename = _delete_hall_of_hate_entry(entry_id)
-    if image_filename is None:
-        raise HTTPException(status_code=404, detail="Villano no encontrado")
-    file_path = HALL_OF_HATE_DIR / image_filename
-    if file_path.exists():
-        file_path.unlink(missing_ok=True)
-    return RedirectResponse(url="/hall-of-hate", status_code=303)
-
-
-@app.get("/hall-of-hate/{entry_id}/odio", response_class=HTMLResponse)
-def hall_of_hate_rate_form(
-    request: Request,
-    entry_id: int = Path(..., ge=1),
-    current_user: SessionUser = Depends(require_user),
-):
-    entry = _get_hall_of_hate_entry(entry_id)
-    if not entry:
-        raise HTTPException(status_code=404, detail="Villano no encontrado")
-    if not RATINGS_ENABLED:
-        raise HTTPException(status_code=503, detail="El registro de odio no está disponible")
-    current_rating = _get_hall_of_hate_rating(entry_id, current_user["uid"]) or 99
-    return templates.TemplateResponse(
-        "hall_of_hate_rate.html",
-        {
-            "request": request,
-            "entry": entry,
-            "current_rating": current_rating,
-            "frames": HALL_OF_HATE_FRAMES,
-            "frame": HALL_OF_HATE_FRAMES.get(entry["frame_key"], HALL_OF_HATE_FRAMES["default"]),
-            "frame_assets": _resolve_frame_assets(),
-        },
-    )
-
-
-@app.post("/hall-of-hate/{entry_id}/odio")
-def hall_of_hate_rate_submit(
-    request: Request,
-    entry_id: int = Path(..., ge=1),
-    odio: int = Form(...),
-    current_user: SessionUser = Depends(require_user),
-):
-    if odio < 1 or odio > 99:
-        raise HTTPException(status_code=400, detail="El nivel de odio debe estar entre 1 y 99")
-    entry = _get_hall_of_hate_entry(entry_id)
-    if not entry:
-        raise HTTPException(status_code=404, detail="Villano no encontrado")
-    if not RATINGS_ENABLED:
-        raise HTTPException(status_code=503, detail="El registro de odio no está disponible")
-    _set_hall_of_hate_rating(entry_id, current_user["uid"], odio)
-    return RedirectResponse(url="/hall-of-hate", status_code=303)
 
 
 @app.get("/apuestas/nueva", response_class=HTMLResponse)

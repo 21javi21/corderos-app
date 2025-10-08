@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Registrar odio - Hall Of Hate</title>
+  <link rel="icon" href="{{ request.url_for('static', path='favicon.ico') }}" type="image/x-icon">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(165deg, rgba(5, 13, 24, 0.92) 0%, rgba(12, 24, 39, 0.95) 55%, rgba(4, 10, 18, 0.97) 100%),
+        url("{{ request.url_for('static', path='main_back.png') }}") center/cover fixed;
+      color: #e6edf7;
+      position: relative;
+    }
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: url("{{ request.url_for('static', path='corderos_logo_white.png') }}") center calc(100% - 44px)/clamp(200px, 32vw, 280px) auto no-repeat;
+      opacity: 0.16;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .card {
+      position: relative;
+      z-index: 1;
+      width: min(500px, 92vw);
+      padding: 40px 44px;
+      border-radius: 20px;
+      background: rgba(12, 23, 36, 0.94);
+      box-shadow: 0 28px 64px rgba(2, 6, 12, 0.78);
+      border: 1px solid rgba(70, 104, 146, 0.28);
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+      backdrop-filter: blur(3px);
+    }
+    h1 {
+      margin: 0;
+      text-align: center;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #f4f8ff;
+    }
+    p.subtitle {
+      margin: 0;
+      text-align: center;
+      color: #9fb4cf;
+      letter-spacing: 0.05em;
+    }
+    .frame-preview {
+      position: relative;
+      width: clamp(240px, 46vw, 280px);
+      aspect-ratio: 3 / 5;
+      margin: 0 auto;
+      border-radius: var(--frame-border-radius, 24px);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--frame-background-color, rgba(6, 16, 28, 0.75));
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
+      --frame-image: none;
+      --image-box-top: 18%;
+      --image-box-left: 10%;
+      --image-box-width: 80%;
+      --image-box-height: 60%;
+      --score-box-left: 12%;
+      --score-box-bottom: 10%;
+    }
+    .frame-preview::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: var(--frame-image) center/contain no-repeat;
+      pointer-events: none;
+      z-index: 3;
+    }
+    .frame-preview .preview-image {
+      position: absolute;
+      top: var(--image-box-top);
+      left: var(--image-box-left);
+      width: var(--image-box-width);
+      height: var(--image-box-height);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 18px;
+      overflow: hidden;
+      background: rgba(9, 18, 30, 0.65);
+      z-index: 1;
+    }
+    .frame-preview .preview-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .frame-preview .hate-meter {
+      position: absolute;
+      left: var(--score-left);
+      top: var(--score-top);
+      width: var(--score-width, 22%);
+      height: var(--score-height, 14%);
+      display: flex;
+      align-items: center;
+      justify-content: var(--score-align, center);
+      color: var(--score-color, #f7fbff);
+      font-weight: 700;
+      text-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      z-index: 4;
+      background: transparent;
+      border-radius: 16px;
+      transform: translate(-50%, -50%);
+    }
+    .frame-preview .hate-meter span {
+      font-size: var(--score-font-size, clamp(1.6rem, 3.8vw, 2.6rem));
+      line-height: 1;
+    }
+    label {
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      color: #aebcd1;
+    }
+    .slider-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    input[type="range"] {
+      width: 100%;
+      accent-color: #c61a5b;
+    }
+    .hate-output {
+      display: flex;
+      justify-content: center;
+      align-items: baseline;
+      gap: 12px;
+      font-size: 2.8rem;
+      font-weight: 700;
+      color: #f4f8ff;
+    }
+    .hate-output small {
+      font-size: 0.95rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #ffc857;
+    }
+    .actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 11px 18px;
+      border-radius: 12px;
+      text-decoration: none;
+      cursor: pointer;
+      font-weight: 600;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      color: #f7fbff;
+      border: none;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #8b1f5a, #c61a5b);
+      box-shadow: 0 18px 32px rgba(139, 31, 90, 0.55);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      background: linear-gradient(135deg, #771947, #ab174b);
+      box-shadow: 0 20px 36px rgba(139, 31, 90, 0.6);
+    }
+    .btn-secondary {
+      background: linear-gradient(135deg, rgba(67, 88, 112, 0.55), rgba(56, 74, 96, 0.55));
+    }
+    .btn-secondary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 20px 36px rgba(5, 12, 22, 0.45);
+    }
+  </style>
+</head>
+<body>
+  <form class="card" method="post" action="/hall-of-hate/{{ entry.id }}/odio">
+    <h1>Registrar odio</h1>
+    <p class="subtitle">¿Cuánto detestas a {{ entry.name }}?</p>
+    {% set frame_asset = frame_assets.get(entry.frame_key) %}
+    <div class="frame-preview" id="frame-preview"
+      style="{% if frame_asset %}--frame-image: url('{{ request.url_for('static', path=frame_asset) }}');{% else %}--frame-image: none;{% endif %}
+             --image-box-top: {{ frame.image_box_top }};
+             --image-box-left: {{ frame.image_box_left }};
+             --image-box-width: {{ frame.image_box_width }};
+             --image-box-height: {{ frame.image_box_height }};
+             --frame-background-color: {{ frame.frame_background_color | default('rgba(6, 16, 28, 0.75)') }};
+             --frame-border-radius: {{ frame.frame_border_radius | default('24px') }};
+            --score-left: {{ frame.score_left | default('18%') }};
+            --score-top: {{ frame.score_top | default('82%') }};
+            --score-width: {{ frame.score_width | default('22%') }};
+            --score-height: {{ frame.score_height | default('14%') }};
+            --score-font-size: {{ frame.score_font_size | default('clamp(1.6rem, 3.6vw, 2.6rem)') }};
+            --score-color: {{ frame.score_color | default('#f7fbff') }};
+            --score-align: {{ frame.score_align | default('center') }};">
+      <div class="preview-image">
+        <img src="{{ request.url_for('static', path='hall_of_hate/' + entry.image_filename) }}" alt="{{ entry.name }}">
+      </div>
+      <div class="hate-meter"><span id="preview-hate">{{ current_rating or 99 }}</span></div>
+    </div>
+    <div class="slider-group">
+      <label for="odio">Tu odio (1-99)</label>
+      <input id="odio" name="odio" type="range" min="1" max="99" value="{{ current_rating or 99 }}">
+      <div class="hate-output"><span id="odio-valor">{{ current_rating or 99 }}</span><small>ODIO</small></div>
+    </div>
+    <div class="actions">
+      <a class="btn btn-secondary" href="/hall-of-hate">⟵ Volver</a>
+      <button type="submit" class="btn btn-primary">Guardar odiometro</button>
+    </div>
+  </form>
+  <script>
+    (function () {
+      function notifyParent() {
+        if (window.parent && window.parent !== window) {
+          const payload = { type: 'corderos:set-title', title: document.title || '' };
+          try { window.parent.postMessage(payload, '*'); } catch (error) { /* ignore */ }
+        }
+      }
+
+      function updateDisplay(value) {
+        const display = document.getElementById('odio-valor');
+        const meter = document.getElementById('preview-hate');
+        if (display) { display.textContent = value; }
+        if (meter) { meter.textContent = value; }
+      }
+
+      window.addEventListener('DOMContentLoaded', function () {
+        notifyParent();
+        const slider = document.getElementById('odio');
+        if (slider) {
+          slider.addEventListener('input', function (event) {
+            updateDisplay(event.target.value);
+          });
+        }
+      });
+      window.addEventListener('load', notifyParent);
+    })();
+  </script>
+</body>
+</html>

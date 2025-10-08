@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Hall Of Hate - Corderos App</title>
+  <link rel="icon" href="{{ request.url_for('static', path='favicon.ico') }}" type="image/x-icon">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      padding: 48px 32px 60px;
+      background: linear-gradient(160deg, rgba(5, 13, 24, 0.9) 0%, rgba(12, 24, 39, 0.94) 55%, rgba(4, 10, 18, 0.97) 100%),
+        url("{{ request.url_for('static', path='main_back.png') }}") center/cover fixed;
+      color: #e6edf7;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: url("{{ request.url_for('static', path='corderos_logo_white.png') }}") center calc(100% - 44px)/clamp(200px, 32vw, 280px) auto no-repeat;
+      opacity: 0.16;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .content {
+      width: 100%;
+      max-width: 1100px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+      position: relative;
+      z-index: 1;
+    }
+    .add-button {
+      position: absolute;
+      top: -12px;
+      left: 0;
+      transform: translateY(-100%);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #1f6db5, #2980b9);
+      color: #f7fbff;
+      text-decoration: none;
+      font-weight: 600;
+      box-shadow: 0 18px 32px rgba(18, 78, 130, 0.55);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+    .add-button:hover {
+      transform: translateY(calc(-100% - 2px));
+      background: linear-gradient(135deg, #215c92, #2472a3);
+      box-shadow: 0 20px 36px rgba(18, 78, 130, 0.6);
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 3vw, 2.6rem);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      text-align: center;
+      color: #f4f8ff;
+    }
+    p.subtitle {
+      margin: 0;
+      color: #9fb4cf;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-size: 0.85rem;
+      text-align: center;
+    }
+    .gallery {
+      background: transparent;
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+      gap: clamp(32px, 5vw, 60px);
+      justify-items: center;
+      align-items: start;
+      padding: 0 clamp(8px, 2vw, 16px);
+    }
+    .card {
+      background: transparent;
+      border-radius: 22px;
+      padding: 16px 18px 64px;
+      width: clamp(232px, 22vw, 252px);
+      margin: 0 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 26px 54px rgba(2, 6, 12, 0.7);
+      backdrop-filter: blur(2px);
+      cursor: pointer;
+      transition: transform 0.16s ease;
+      position: relative;
+    }
+    .card:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(37, 124, 188, 0.45), 0 26px 54px rgba(2, 6, 12, 0.7);
+    }
+    .card:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(37, 124, 188, 0.65), 0 26px 54px rgba(2, 6, 12, 0.7);
+    }
+    .frame-card {
+      position: relative;
+      width: clamp(220px, 24vw, 260px);
+      aspect-ratio: 3 / 5;
+      border-radius: 24px;
+      overflow: hidden;
+      background-color: rgba(6, 16, 28, 0.92);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 28px 46px rgba(0, 0, 0, 0.45);
+      --image-box-top: 18%;
+      --image-box-left: 10%;
+      --image-box-width: 80%;
+      --image-box-height: 60%;
+      --score-left: 18%;
+      --score-top: 82%;
+      --score-width: 22%;
+      --score-height: 16%;
+      --stat-top: 76%;
+      --stat-left: 12%;
+      --stat-width: 76%;
+      --stat-height: 12%;
+      --stat-gap: 12px;
+      margin-bottom: 2px;
+    }
+
+    .frame-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: var(--frame-image, none);
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      z-index: 3;
+      pointer-events: none;
+    }
+    .frame-card .villain-image {
+      position: absolute;
+      left: 5%;
+      right: 5%;
+      top: 5%;
+      bottom: 15%;
+      overflow: hidden;
+      border-radius: 18px;
+      background: transparent;
+      z-index: 2;
+    }
+    .frame-card .villain-image img {
+      width: 150%;
+      height: 150%;
+      object-fit: cover;
+      object-position: center bottom;
+      transition: transform 0.2s ease;
+      transform: translateX(-16%) translateY(-15%);
+    }
+    .frame-card .stat-row {
+      display: none;
+    }
+    .frame-card .hate-badge {
+      position: absolute;
+      left: var(--score-left, 24%);
+      top: var(--score-top, 82%);
+      width: var(--score-width, 24%);
+      height: var(--score-height, 24%);
+      display: flex;
+      align-items: center;
+      justify-content: var(--score-align, center);
+      color: var(--score-color, #f7fbff);
+      font-weight: 700;
+      text-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      z-index: 4;
+      background: transparent;
+      border-radius: 16px;
+      font-size: var(--score-font-size, clamp(1.6rem, 3.6vw, 2.6rem));
+      transform: translate(-50%, -50%);
+      min-width: 48px;
+      min-height: 48px;
+    }
+    .frame-card .name-label {
+      position: absolute;
+      top: var(--name-top, 88%);
+      left: var(--name-left, 60%);
+      width: var(--name-width, 50%);
+      transform: translate(-50%, -50%);
+      text-align: var(--name-align, left);
+      font-size: var(--name-font-size, clamp(0.9rem, 1.6vw, 1.15rem));
+      text-transform: uppercase;
+      color: var(--name-color, #f7fbff);
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+      white-space: var(--name-white-space, normal);
+      line-height: 1.15;
+      display: -webkit-box;
+      -webkit-line-clamp: var(--name-line-clamp, 2);
+      line-clamp: var(--name-line-clamp, 2);
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      z-index: 4;
+    }
+    .card-actions {
+      position: absolute;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%) translateY(12px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+    .card.is-expanded .card-actions {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(-50%) translateY(0);
+    }
+    .card-actions form,
+    .card-actions a {
+      margin: 0;
+    }
+    .card-action-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      border: none;
+      cursor: pointer;
+      font-size: 1.3rem;
+      color: #f7fbff;
+      text-decoration: none;
+      background: linear-gradient(135deg, #1f6db5, #2980b9);
+      box-shadow: 0 16px 28px rgba(18, 78, 130, 0.55);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      margin: 0 3px;
+    }
+    .card-action-button:hover {
+      transform: translateY(-2px);
+      background: linear-gradient(135deg, #215c92, #2472a3);
+      box-shadow: 0 18px 32px rgba(18, 78, 130, 0.6);
+    }
+    .card-action-button.delete {
+      background: linear-gradient(135deg, #9b2f24, #c0392b);
+      box-shadow: 0 16px 28px rgba(124, 36, 28, 0.55);
+    }
+    .card-action-button.delete:hover {
+      background: linear-gradient(135deg, #7c241c, #a12f23);
+      box-shadow: 0 18px 32px rgba(124, 36, 28, 0.6);
+    }
+    .card-action-button.hate {
+      background: linear-gradient(135deg, #8b1f5a, #c61a5b);
+      box-shadow: 0 16px 28px rgba(139, 31, 90, 0.55);
+    }
+    .card-action-button.hate:hover {
+      background: linear-gradient(135deg, #771947, #ab174b);
+      box-shadow: 0 18px 32px rgba(139, 31, 90, 0.6);
+    }
+    .card h3 {
+      margin: 0;
+      font-size: 1rem;
+      text-align: center;
+      letter-spacing: 0.05em;
+    }
+    .missing {
+      width: 100%;
+      height: 100%;
+      border-radius: 14px;
+      border: 2px dashed rgba(255, 255, 255, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255, 255, 255, 0.55);
+      font-size: 0.85rem;
+      text-align: center;
+      padding: 8px;
+    }
+    @media (max-width: 1200px) {
+      .gallery {
+        grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+        gap: clamp(24px, 4vw, 48px);
+      }
+    }
+    @media (max-width: 900px) {
+      .gallery {
+        grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+        gap: clamp(20px, 3vw, 36px);
+      }
+    }
+    @media (max-width: 600px) {
+      .gallery {
+        grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+        gap: clamp(16px, 2.5vw, 24px);
+        padding: 0 clamp(4px, 1vw, 8px);
+      }
+    }
+    @media (max-width: 400px) {
+      .gallery {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Configuration data for JavaScript -->
+  <div id="hall-config" 
+       data-frames="{{ frames | tojson | e }}" 
+       data-frame-assets="{{ frame_assets | tojson | e }}"
+       style="display: none;">
+  </div>
+
+  <section class="content">
+    {% if can_manage %}
+    <a class="add-button" href="/hall-of-hate/nuevo">➕ Añadir villano</a>
+    {% endif %}
+    <div>
+      <h1>Hall Of Hate</h1>
+      <p class="subtitle">nunca olvidamos a nuestros villanos</p>
+    </div>
+    <div class="gallery">
+      {% for item in entries %}
+        {% set frame = frames.get(item.frame_key, frames['default']) %}
+        {% set frame_asset = frame_assets.get(item.frame_key) %}
+        {% set name_lines = (frame.name_max_lines | default('2')) | int %}
+        {% set name_white_space = 'nowrap' if name_lines == 1 else 'normal' %}
+        {% set avg_value = (item.average_hate if item.average_hate is not none else 99)|round(0)|int %}
+        {% set has_edit = can_manage and item.id %}
+        {% set can_rate = ratings_enabled and current_user and item.id %}
+        <article class="card" tabindex="0" data-card aria-expanded="false">
+          <div class="frame-card"
+               data-frame-key="{{ item.frame_key }}"
+               {% if frame_asset %}data-frame-asset="{{ request.url_for('static', path=frame_asset) }}"{% endif %}
+               data-name-lines="{{ name_lines }}"
+               data-name-white-space="{{ name_white_space }}">
+            <div class="villain-image">
+              {% if item.image %}
+                <img src="{{ request.url_for('static', path=item.image) }}" alt="{{ item.name }}">
+              {% else %}
+                <div class="missing">Foto no disponible</div>
+              {% endif %}
+            </div>
+            <div class="hate-badge">{{ avg_value }}</div>
+            <div class="name-label">{{ item.name }}</div>
+          </div>
+          {% if has_edit or can_rate %}
+          <div class="card-actions">
+            {% if has_edit %}
+            <a class="card-action-button" href="/hall-of-hate/{{ item.id }}/editar" title="Editar villano" aria-label="Editar villano">✏️</a>
+            <form method="post" action="/hall-of-hate/{{ item.id }}/borrar" onsubmit="return confirm('¿Borrar villano {{ item.name }}?');">
+              <button type="submit" class="card-action-button delete" title="Borrar villano" aria-label="Borrar villano">✖</button>
+            </form>
+            {% endif %}
+            {% if can_rate %}
+            <a class="card-action-button hate" href="/hall-of-hate/{{ item.id }}/odio" title="Registrar tu odio" aria-label="Registrar tu odio">😈</a>
+            {% endif %}
+          </div>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+  <script>
+    (function () {
+      function notifyParent() {
+        if (window.parent && window.parent !== window) {
+          var payload = { type: 'corderos:set-title', title: document.title || '' };
+          try {
+            window.parent.postMessage(payload, '*');
+          } catch (error) {
+            // ignore
+          }
+        }
+      }
+
+      function applyLandscapeClass(element) {
+        if (element.naturalWidth > element.naturalHeight * 1.1) {
+          element.classList.add('is-landscape');
+        } else {
+          element.classList.remove('is-landscape');
+        }
+      }
+
+      function tagLandscapeImages() {
+        var images = document.querySelectorAll('.villain-image img');
+        for (var i = 0; i < images.length; i += 1) {
+          var img = images[i];
+          if (img.complete && img.naturalWidth) {
+            applyLandscapeClass(img);
+          } else if (!img.dataset.landscapeWatcher) {
+            img.addEventListener('load', function handleLoad(event) {
+              var target = event.currentTarget;
+              if (target && target.naturalWidth) {
+                applyLandscapeClass(target);
+              }
+            });
+            img.dataset.landscapeWatcher = '1';
+          }
+        }
+      }
+
+      function setupCardToggles() {
+        var cards = document.querySelectorAll('[data-card]');
+        if (!cards.length) { return; }
+
+        function collapseAll(except) {
+          for (var i = 0; i < cards.length; i += 1) {
+            var candidate = cards[i];
+            if (candidate !== except) {
+              candidate.classList.remove('is-expanded');
+              candidate.setAttribute('aria-expanded', 'false');
+            }
+          }
+        }
+
+        for (var i = 0; i < cards.length; i += 1) {
+          (function (card) {
+            card.addEventListener('click', function (event) {
+              if (event.target.closest('.card-actions')) {
+                return;
+              }
+              var willExpand = !card.classList.contains('is-expanded');
+              collapseAll(card);
+              if (willExpand) {
+                card.classList.add('is-expanded');
+                card.setAttribute('aria-expanded', 'true');
+              } else {
+                card.classList.remove('is-expanded');
+                card.setAttribute('aria-expanded', 'false');
+              }
+            });
+            card.addEventListener('keydown', function (event) {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                card.click();
+              } else if (event.key === 'Escape') {
+                card.classList.remove('is-expanded');
+                card.setAttribute('aria-expanded', 'false');
+              }
+            });
+          })(cards[i]);
+        }
+
+        var actionAreas = document.querySelectorAll('.card-actions');
+        for (var j = 0; j < actionAreas.length; j += 1) {
+          actionAreas[j].addEventListener('click', function (event) {
+            event.stopPropagation();
+          });
+        }
+
+        document.addEventListener('click', function (event) {
+          if (!event.target.closest('[data-card]')) {
+            collapseAll(null);
+          }
+        });
+      }
+
+      window.addEventListener('DOMContentLoaded', function () {
+        notifyParent();
+        tagLandscapeImages();
+        setupCardToggles();
+      });
+      window.addEventListener('load', function () {
+        notifyParent();
+        tagLandscapeImages();
+      });
+    })();
+  </script>
+  <script src="{{ request.url_for('static', path='js/hall_of_hate_frames.js') }}"></script>
+  <script>
+    // Initialize frame configuration from data attributes
+    document.addEventListener('DOMContentLoaded', function() {
+        // Read configuration from data attributes
+        const configElement = document.getElementById('hall-config');
+        if (configElement) {
+            try {
+                window.HallOfHateFrames = {
+                    frames: JSON.parse(configElement.dataset.frames || '{}'),
+                    frameAssets: JSON.parse(configElement.dataset.frameAssets || '{}')
+                };
+            } catch (error) {
+                console.error('Hall of Hate: Error parsing configuration', error);
+            }
+        }
+    });
+  </script>
+</body>
+</html>
