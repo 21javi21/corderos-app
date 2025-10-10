@@ -144,10 +144,7 @@
             border-radius: 15px; /* Rounded corners for image */
             z-index: 2;
             background: transparent; /* Transparent to show frame behind */
-               aspect-ratio: 3 / 4;
-               height: 320px;
-               width: 100%;
-        }
+    }
 
         /* The actual image - fills container completely */
         .villain-image {
@@ -415,10 +412,24 @@
         <div class="cards-grid">
             {% for villain in villains %}
                 {% set config = frame_configs[villain.frame_type] %}
-                <div class="villain-card frame-{{ villain.frame_type }}"
-                     data-villain-id="{{ villain.id }}"
-                     data-villain-name="{{ villain.name }}"
-                     data-villain-score="{{ villain.hate_score }}">
+             <div class="villain-card frame-{{ villain.frame_type }}"
+                 data-villain-id="{{ villain.id }}"
+                 data-villain-name="{{ villain.name }}"
+                 data-villain-score="{{ villain.hate_score }}"
+                 style="
+                    --image-top: {{ config.image_top }};
+                    --image-bottom: {{ config.image_bottom }};
+                    --image-left: {{ config.image_left }};
+                    --image-right: {{ config.image_right }};
+                    --name-bottom: {{ config.name_bottom }};
+                    --name-left: {{ config.name_left }};
+                    --name-right: {{ config.name_right }};
+                    --name-font-size: {{ config.name_font_size }};
+                    --score-bottom: {{ config.score_bottom }};
+                    --score-left: {{ config.score_left }};
+                    --score-font-size: {{ config.score_font_size }};
+                    --score-transform: {{ config.score_transform }};
+                 ">
                     <img class="frame-img" src="{{ request.url_for('static', path=config.image_path) }}" alt="Frame">
                     <div class="image-container">
                         <img src="{{ request.url_for('static', path='hall_of_hate/' + villain.image_filename) }}"
