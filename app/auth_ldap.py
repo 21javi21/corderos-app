@@ -389,6 +389,7 @@ def dashboard_admin(request: Request, current_admin: SessionUser = Depends(requi
         "admin_dashboard.html",
         {
             "request": request,
+            "user": current_admin,
             "is_admin": current_admin["is_admin"],
         },
     )

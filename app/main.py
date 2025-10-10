@@ -1083,6 +1083,12 @@ def _get_hall_of_hate_entries(current_user: SessionUser | None) -> list[dict[str
     if not pool:
         return []
     
+    # Clean up orphaned ratings before calculating averages (temporarily disabled for troubleshooting)
+    # try:
+    #     _cleanup_orphaned_ratings()
+    # except Exception as e:
+    #     print(f"Warning: Could not clean up orphaned ratings: {e}")
+    
     conn = pool.getconn()
     try:
         cursor = conn.cursor()
@@ -1178,6 +1184,11 @@ def login_page(request: Request, current_user: SessionUser | None = Depends(opti
 def dashboard(request: Request):
     return templates.TemplateResponse("user_dashboard.html", {"request": request})
 
+@app.get("/test-download", response_class=HTMLResponse)
+def test_download_page(request: Request):
+    """Test page for debugging card download functionality without authentication"""
+    return templates.TemplateResponse("test_download.html", {"request": request})
+
 # Test routes removed - implementing proper v2 system
 
 @app.get("/hall-of-hate", response_class=HTMLResponse)
@@ -1195,7 +1206,7 @@ def hall_of_hate_view(request: Request, current_user: SessionUser | None = Depen
             "request": request,
             "villains": villains,
             "current_user": current_user,
-            "v2_frames": HALL_OF_HATE_V2_FRAMES,
+            "frame_configs": HALL_OF_HATE_V2_FRAMES,
         }
     )
 
@@ -1222,31 +1233,86 @@ def hall_of_hate_new(request: Request, current_user: SessionUser = Depends(requi
 
 def _get_all_ldap_user_ids():
     """Get all LDAP user IDs for automatic rating assignment"""
-    from ldap3 import Server, Connection, SUBTREE, ALL
-    from app.core.config import settings
-    
-    server = Server(settings.ldap_uri, get_info=ALL)
-    user_ids = []
-    
-    try:
-        with Connection(server, settings.ldap_bind_dn, settings.ldap_bind_password, auto_bind=True) as conn:
-            conn.search(
-                search_base=settings.ldap_base_dn,
-                search_filter="(objectClass=inetOrgPerson)",
-                search_scope=SUBTREE,
-                attributes=["uid"]
-            )
-            entries = list(conn.entries)
-            for entry in entries:
-                uid = str(entry.uid) if "uid" in entry else ""
-                if uid:
-                    user_ids.append(uid)
-    except Exception as e:
-        print(f"Warning: Could not fetch LDAP users for automatic ratings: {e}")
-        # Return some default users if LDAP fails
-        user_ids = ["javi", "hugo", "isma"]
-    
+    # Temporarily disabled LDAP connection for troubleshooting
+    print("Warning: LDAP connection temporarily disabled for troubleshooting")
+    user_ids = ["javi", "hugo", "isma"]
     return user_ids
+    
+    # Original LDAP code (commented out for troubleshooting)
+    # from ldap3 import Server, Connection, SUBTREE, ALL
+    # from app.core.config import settings
+    # 
+    # server = Server(settings.ldap_uri, get_info=ALL)
+    # user_ids = []
+    # 
+    # try:
+    #     with Connection(server, settings.ldap_bind_dn, settings.ldap_bind_password, auto_bind=True) as conn:
+    #         conn.search(
+    #             search_base=settings.ldap_base_dn,
+    #             search_filter="(objectClass=inetOrgPerson)",
+    #             search_scope=SUBTREE,
+    #             attributes=["uid"]
+    #         )
+    #         entries = list(conn.entries)
+    #         for entry in entries:
+    #             uid = str(entry.uid) if "uid" in entry else ""
+    #             if uid:
+    #                 user_ids.append(uid)
+    # except Exception as e:
+    #     print(f"Warning: Could not fetch LDAP users for automatic ratings: {e}")
+    #     # Return some default users if LDAP fails
+    #     user_ids = ["javi", "hugo", "isma"]
+    # 
+    # return user_ids
+
+def _cleanup_orphaned_ratings():
+    """Remove ratings from users that no longer exist in LDAP"""
+    # Temporarily disabled for troubleshooting
+    print("[CLEANUP] Cleanup function temporarily disabled for troubleshooting")
+    return
+    
+    # Original cleanup code (commented out for troubleshooting)
+    # global pool
+    # if not pool:
+    #     print("Warning: Database connection not available for cleanup")
+    #     return
+    # 
+    # try:
+    #     # Get current LDAP users
+    #     valid_users = _get_all_ldap_user_ids()
+    #     print(f"[CLEANUP] Valid LDAP users: {valid_users}")
+    #     
+    #     conn = pool.getconn()
+    #     try:
+    #         with conn.cursor() as cur:
+    #             # Get all users who have ratings
+    #             cur.execute("SELECT DISTINCT user_name FROM hall_of_hate_v2_ratings")
+    #             rating_users = [row[0] for row in cur.fetchall()]
+    #             print(f"[CLEANUP] Users with ratings: {rating_users}")
+    #             
+    #             # Find orphaned users (users with ratings but not in LDAP)
+    #             orphaned_users = [user for user in rating_users if user not in valid_users]
+    #             
+    #             if orphaned_users:
+    #                 print(f"[CLEANUP] Found orphaned users: {orphaned_users}")
+    #                 # Delete ratings for orphaned users
+    #                 for user in orphaned_users:
+    #                     cur.execute(
+    #                         "DELETE FROM hall_of_hate_v2_ratings WHERE user_name = %s",
+    #                         (user,)
+    #                     )
+    #                     deleted_count = cur.rowcount
+    #                     print(f"[CLEANUP] Deleted {deleted_count} ratings for user '{user}'")
+    #                 
+    #                 conn.commit()
+    #                 print(f"[CLEANUP] Successfully cleaned up ratings for {len(orphaned_users)} orphaned users")
+    #             else:
+    #                 print("[CLEANUP] No orphaned ratings found")
+    #     finally:
+    #         pool.putconn(conn)
+    #         
+    # except Exception as e:
+    #     print(f"[CLEANUP] Error during orphaned ratings cleanup: {e}")
 
 @app.post("/hall-of-hate/nuevo")
 async def hall_of_hate_create(
@@ -2223,3 +2289,50 @@ def actualizar_apuesta(
         pool.putconn(conn)
 
     return RedirectResponse(url="/bets", status_code=303)
+
+# Admin Utility Endpoints
+@app.post("/admin/cleanup-orphaned-ratings")
+async def cleanup_orphaned_ratings_endpoint(
+    request: Request,
+    current_user: SessionUser = Depends(require_admin)
+):
+    """Admin endpoint to clean up ratings from deleted LDAP users"""
+    try:
+        _cleanup_orphaned_ratings()
+        return {"status": "success", "message": "Orphaned ratings cleanup completed"}
+    except Exception as e:
+        print(f"Error in cleanup endpoint: {e}")
+        raise HTTPException(status_code=500, detail=f"Cleanup failed: {str(e)}")
+
+@app.delete("/admin/user/{username}/ratings")
+async def delete_user_ratings(
+    username: str,
+    request: Request,
+    current_user: SessionUser = Depends(require_admin)
+):
+    """Admin endpoint to delete all ratings for a specific user"""
+    global pool
+    if not pool:
+        raise HTTPException(status_code=500, detail="Database connection not available")
+    
+    conn = pool.getconn()
+    try:
+        with conn.cursor() as cur:
+            # Delete all ratings for the specified user
+            cur.execute(
+                "DELETE FROM hall_of_hate_v2_ratings WHERE user_name = %s",
+                (username,)
+            )
+            deleted_count = cur.rowcount
+            conn.commit()
+            
+            return {
+                "status": "success", 
+                "message": f"Deleted {deleted_count} ratings for user '{username}'"
+            }
+    except Exception as e:
+        print(f"Error deleting user ratings: {e}")
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete ratings: {str(e)}")
+    finally:
+        pool.putconn(conn)

@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download Test Page</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #0c1425 0%, #1a2942 100%);
+            margin: 0;
+            padding: 20px;
+            font-family: 'Arial', sans-serif;
+            color: white;
+        }
+
+        .test-container {
+            max-width: 400px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        /* Frame styles */
+        .frame-default .card-frame {
+            background-image: url('/static/hall_of_hate/frames/frame-default.png');
+        }
+
+        .frame-devil .card-frame {
+            background-image: url('/static/hall_of_hate/frames/frame-devil.png');
+        }
+
+        .frame-engendro-lakers .card-frame {
+            background-image: url('/static/hall_of_hate/frames/frame-engendro-lakers.png');
+        }
+
+        .frame-real-madrid-engendro .card-frame {
+            background-image: url('/static/hall_of_hate/frames/frame-real-madrid-engendro.png');
+        }
+
+        /* Card Styles */
+        .villain-card {
+            position: relative;
+            width: 310px;
+            height: 500px;
+            margin: 20px auto;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        .villain-card:hover {
+            transform: translateY(-5px);
+            transition: transform 0.3s ease;
+        }
+
+        .villain-card:hover .villain-image {
+            transform: scale(1.05);
+            transition: transform 0.3s ease;
+        }
+
+        .villain-card.active {
+            transform: translateY(-8px) scale(1.02);
+        }
+
+        /* Frame Background */
+        .card-frame {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            z-index: 1;
+            overflow: hidden;
+            border: none;
+        }
+
+        /* Image Container */
+        .image-container {
+            position: absolute;
+            top: 5%;
+            left: 5%;
+            right: 5%;
+            bottom: 20%;
+            overflow: hidden;
+            border-radius: 15px;
+            z-index: 2;
+            background: transparent;
+        }
+
+        /* The actual image */
+        .villain-image {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+            object-position: center center !important;
+            display: block !important;
+            border-radius: 15px;
+            max-width: none !important;
+            max-height: none !important;
+        }
+
+        /* Name Label */
+        .villain-name {
+            position: absolute;
+            bottom: 12%;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffffff;
+            font-size: 1.8em;
+            font-weight: bold;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
+            z-index: 3;
+            text-align: center;
+            width: 90%;
+        }
+
+        /* Score Badge */
+        .villain-score {
+            position: absolute;
+            bottom: 25%;
+            right: 8%;
+            width: 60px;
+            height: 60px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 3px solid #ffd700;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffd700;
+            font-size: 1.4em;
+            font-weight: bold;
+            z-index: 3;
+        }
+
+        .test-buttons {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .test-btn {
+            padding: 10px 20px;
+            background: rgba(102, 179, 255, 0.2);
+            border: 2px solid #66b3ff;
+            border-radius: 8px;
+            color: #66b3ff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .test-btn:hover {
+            background: #66b3ff;
+            color: #0c1425;
+        }
+
+        /* Debug info */
+        .debug-info {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            margin: 20px 0;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Card Download Test</h1>
+        <p>Testing different download approaches without authentication</p>
+
+        <div class="villain-card frame-default" id="testCard">
+            <div class="card-frame"></div>
+            <div class="image-container">
+                <img class="villain-image" src="/static/hall_of_hate/uploads/Carlo Ancelotti.png" alt="Carlo Ancelotti">
+            </div>
+            <div class="villain-name">CARLO ANCELOTTI</div>
+            <div class="villain-score">46</div>
+        </div>
+
+        <div class="test-buttons">
+            <button class="test-btn" onclick="downloadOriginal()">Download Original Method</button>
+            <button class="test-btn" onclick="downloadClone()">Download Clone Method</button>
+            <button class="test-btn" onclick="downloadSimple()">Download Simple</button>
+            <button class="test-btn" onclick="toggleActive()">Toggle Active State</button>
+        </div>
+
+        <div class="debug-info" id="debugInfo">
+            Debug info will appear here...
+        </div>
+    </div>
+
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script>
+        const card = document.getElementById('testCard');
+        const debugInfo = document.getElementById('debugInfo');
+
+        function log(message) {
+            console.log(message);
+            debugInfo.innerHTML += '<div>' + JSON.stringify(message, null, 2) + '</div>';
+        }
+
+        function toggleActive() {
+            card.classList.toggle('active');
+            log('Toggled active state: ' + card.classList.contains('active'));
+        }
+
+        // Original method from the app
+        async function downloadOriginal() {
+            try {
+                log('Starting original download method...');
+                // Get villain image and container
+                const villainImage = card.querySelector('.villain-image');
+                const imageContainer = card.querySelector('.image-container');
+                // Store original styles
+                const originalCardWidth = card.style.width;
+                const originalCardHeight = card.style.height;
+                const originalContainerWidth = imageContainer.style.width;
+                const originalContainerHeight = imageContainer.style.height;
+                const originalObjectFit = villainImage.style.objectFit;
+                const originalObjectPosition = villainImage.style.objectPosition;
+                // Get natural image size
+                await new Promise(resolve => {
+                    if (villainImage.complete) resolve();
+                    else villainImage.onload = resolve;
+                });
+                const naturalWidth = villainImage.naturalWidth;
+                const naturalHeight = villainImage.naturalHeight;
+                // Calculate aspect ratio and set card/container to match
+                const aspectRatio = naturalWidth / naturalHeight;
+                const targetHeight = 500; // Keep height for card design
+                const targetWidth = Math.round(targetHeight * aspectRatio);
+                card.style.width = targetWidth + 'px';
+                card.style.height = targetHeight + 'px';
+                imageContainer.style.width = '100%';
+                imageContainer.style.height = '70%';
+                villainImage.style.objectFit = 'contain';
+                villainImage.style.objectPosition = 'center center';
+                // Wait for layout to settle
+                await new Promise(resolve => setTimeout(resolve, 300));
+                // Generate the canvas
+                const rect = card.getBoundingClientRect();
+                log({
+                    method: 'original',
+                    naturalWidth,
+                    naturalHeight,
+                    aspectRatio,
+                    targetWidth,
+                    targetHeight,
+                    rect
+                });
+                const canvas = await html2canvas(card, {
+                    backgroundColor: null,
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    logging: true,
+                    width: Math.round(rect.width),
+                    height: Math.round(rect.height)
+                });
+                log({
+                    canvasDimensions: {
+                        width: canvas.width,
+                        height: canvas.height
+                    }
+                });
+                // Restore original styles
+                card.style.width = originalCardWidth;
+                card.style.height = originalCardHeight;
+                imageContainer.style.width = originalContainerWidth;
+                imageContainer.style.height = originalContainerHeight;
+                villainImage.style.objectFit = originalObjectFit;
+                villainImage.style.objectPosition = originalObjectPosition;
+                // Convert to blob and download
+                canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'test-original-method.png';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    log('Download completed: original method');
+                }, 'image/png', 1.0);
+            } catch (error) {
+                log('Error in original method: ' + error.message);
+            }
+        }
+
+        // Clone method - cleaner approach
+        async function downloadClone() {
+            try {
+                log('Starting clone download method...');
+                
+                const canvas = await html2canvas(card, {
+                    backgroundColor: null,
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    logging: true,
+                    onclone: function(clonedDoc) {
+                        const clonedElement = clonedDoc.querySelector('.villain-card');
+                        if (clonedElement) {
+                            clonedElement.style.transform = 'none !important';
+                            clonedElement.style.transition = 'none !important';
+                            clonedElement.classList.remove('active');
+                            
+                            // Force all hover states off
+                            clonedElement.style.pointerEvents = 'none';
+                            
+                            const clonedImage = clonedElement.querySelector('.villain-image');
+                            if (clonedImage) {
+                                clonedImage.style.transform = 'none !important';
+                            }
+                        }
+                    }
+                });
+                
+                log({
+                    method: 'clone',
+                    canvasDimensions: {
+                        width: canvas.width,
+                        height: canvas.height
+                    }
+                });
+                
+                canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'test-clone-method.png';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    log('Download completed: clone method');
+                }, 'image/png', 1.0);
+                
+            } catch (error) {
+                log('Error in clone method: ' + error.message);
+            }
+        }
+
+        // Simple method - just capture as-is but temporarily disable effects
+        async function downloadSimple() {
+            try {
+                log('Starting simple download method...');
+                
+                // Store original state
+                const wasActive = card.classList.contains('active');
+                const originalTransform = card.style.transform;
+                const originalTransition = card.style.transition;
+                
+                // Temporarily disable all effects
+                card.classList.remove('active');
+                card.style.transform = 'none !important';
+                card.style.transition = 'none !important';
+                card.style.pointerEvents = 'none';
+                
+                // Wait for changes to apply
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                const canvas = await html2canvas(card, {
+                    backgroundColor: null,
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    logging: true
+                });
+                
+                // Restore original state
+                card.style.transform = originalTransform;
+                card.style.transition = originalTransition;
+                card.style.pointerEvents = '';
+                if (wasActive) {
+                    card.classList.add('active');
+                }
+                
+                log({
+                    method: 'simple',
+                    canvasDimensions: {
+                        width: canvas.width,
+                        height: canvas.height
+                    }
+                });
+                
+                canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'test-simple-method.png';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    log('Download completed: simple method');
+                }, 'image/png', 1.0);
+                
+            } catch (error) {
+                log('Error in simple method: ' + error.message);
+            }
+        }
+
+        // Log initial state
+        log('Test page loaded. Card dimensions: ' + JSON.stringify(card.getBoundingClientRect()));
+    </script>
+</body>
+</html>

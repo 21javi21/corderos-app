@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Admin Dashboard</title>
+</head>
+<body>
+  <h1>Admin Dashboard Test</h1>
+  <p>If you can see this, the admin dashboard is working.</p>
+  <p>User: {{ user.username if user else 'Not logged in' }}</p>
+  <p>Is Admin: {{ is_admin }}</p>
+  <a href="/hall-of-hate">Go to Hall of Hate</a>
+</body>
+</html>
