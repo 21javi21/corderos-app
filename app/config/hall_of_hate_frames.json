@@ -16,8 +16,8 @@
     "name_font_size": "1.8rem",
     "score_background": "transparent",
     "score_color": "#ffffff",
-    "score_bottom": "11%",
-    "score_left": "26%",
+    "score_bottom": "13%",
+    "score_left": "27%",
     "score_transform": "translateX(-50%)",
     "score_font_size": "2.6rem"
   },

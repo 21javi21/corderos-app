@@ -124,8 +124,6 @@
             position: absolute;
             top: 0;
             left: 0;
-            right: 0;
-            bottom: 0;
             width: 100%;
             height: 100%;
             object-fit: cover;
@@ -430,7 +428,9 @@
                     --score-font-size: {{ config.score_font_size }};
                     --score-transform: {{ config.score_transform }};
                  ">
-                    <img class="frame-img" src="{{ request.url_for('static', path=config.image_path) }}" alt="Frame">
+                    <div class="frame-wrapper">
+                        <img class="frame-img" src="{{ request.url_for('static', path=config.image_path) }}" alt="Frame">
+                    </div>
                     <div class="image-container">
                         <img src="{{ request.url_for('static', path='hall_of_hate/' + villain.image_filename) }}"
                              alt="{{ villain.name }}"
@@ -514,7 +514,7 @@
                 });
             });
             
-            // Apply v2 frame configuration from JSON
+            // Apply v2 Frame configuration from JSON
             const v2FrameConfig = JSON.parse('{{ frame_configs|tojson|safe }}');
             console.log('V2 Frames config loaded:', v2FrameConfig);
             
@@ -760,6 +760,7 @@
                         onclone: function(clonedDoc) {
                             const clonedElement = clonedDoc.querySelector('.villain-card');
                             const clonedImage = clonedDoc.querySelector('.villain-image');
+                            const clonedFrame = clonedDoc.querySelector('.frame-img');
                             if (clonedElement) {
                                 clonedElement.style.transform = 'none';
                                 clonedElement.style.transition = 'none';
@@ -771,6 +772,12 @@
                                 clonedImage.style.maxWidth = 'none';
                                 clonedImage.style.maxHeight = 'none';
                                 clonedImage.style.transition = 'none';
+                            }
+                            if (clonedFrame) {
+                                clonedFrame.style.objectFit = 'contain';
+                                clonedFrame.style.width = '100%';
+                                clonedFrame.style.height = 'auto';
+                                clonedFrame.style.aspectRatio = '310 / 500';
                             }
                         }
                     });
