@@ -97,8 +97,9 @@
 
         .cards-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+            gap: 32px;
+            justify-content: center;
             padding: 20px 0;
             background: transparent;
             width: 100%;
@@ -107,10 +108,9 @@
 
         /* Card Container - Fixed to eliminate white lines */
         .villain-card {
+            width: 310px;
+            aspect-ratio: 310 / 500;
             position: relative;
-            width: 310px; /* Fixed width instead of 100% for consistent capture */
-            height: 500px; /* Fixed height for consistency */
-            margin: 0 auto;
             border-radius: 20px; /* Add some rounding to clip edges */
             overflow: hidden; /* This clips everything to card boundaries */
             box-shadow: 0 0px 0px rgba(0,0,0,0.5);
@@ -126,7 +126,8 @@
             left: 0;
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: contain;
+            aspect-ratio: 310 / 500;
             z-index: 1;
             pointer-events: none;
         }
@@ -134,14 +135,11 @@
         /* Image Container - Configurable positioning via JSON */
         .image-container {
             position: absolute;
-            top: var(--image-top, 5%);
-            left: var(--image-left, 5%);
-            right: var(--image-right, 5%);
-            bottom: var(--image-bottom, 20%);
-            overflow: hidden !important;
-            border-radius: 15px; /* Rounded corners for image */
+            inset: 0;
+            overflow: hidden;
+            border-radius: 15px;
             z-index: 2;
-            background: transparent; /* Transparent to show frame behind */
+            background: transparent;
     }
 
         /* The actual image - fills container completely */
@@ -410,24 +408,25 @@
         <div class="cards-grid">
             {% for villain in villains %}
                 {% set config = frame_configs[villain.frame_type] %}
-             <div class="villain-card frame-{{ villain.frame_type }}"
-                 data-villain-id="{{ villain.id }}"
-                 data-villain-name="{{ villain.name }}"
-                 data-villain-score="{{ villain.hate_score }}"
-                 style="
-                    --image-top: {{ config.image_top }};
-                    --image-bottom: {{ config.image_bottom }};
-                    --image-left: {{ config.image_left }};
-                    --image-right: {{ config.image_right }};
-                    --name-bottom: {{ config.name_bottom }};
-                    --name-left: {{ config.name_left }};
-                    --name-right: {{ config.name_right }};
-                    --name-font-size: {{ config.name_font_size }};
-                    --score-bottom: {{ config.score_bottom }};
-                    --score-left: {{ config.score_left }};
-                    --score-font-size: {{ config.score_font_size }};
-                    --score-transform: {{ config.score_transform }};
-                 ">
+                     <div class="villain-card frame-{{ villain.frame_type }}"
+                            data-villain-id="{{ villain.id }}"
+                            data-villain-name="{{ villain.name }}"
+                            data-villain-score="{{ villain.hate_score }}"
+                            style="
+                                aspect-ratio: 310 / 500;
+                                --image-top: {{ config.image_top }};
+                                --image-bottom: {{ config.image_bottom }};
+                                --image-left: {{ config.image_left }};
+                                --image-right: {{ config.image_right }};
+                                --name-bottom: {{ config.name_bottom }};
+                                --name-left: {{ config.name_left }};
+                                --name-right: {{ config.name_right }};
+                                --name-font-size: {{ config.name_font_size }};
+                                --score-bottom: {{ config.score_bottom }};
+                                --score-left: {{ config.score_left }};
+                                --score-font-size: {{ config.score_font_size }};
+                                --score-transform: {{ config.score_transform }};
+                            ">
                     <div class="frame-wrapper">
                         <img class="frame-img" src="{{ request.url_for('static', path=config.image_path) }}" alt="Frame">
                     </div>
@@ -750,34 +749,38 @@
                     // Generate the canvas directly from the modified element
                     const canvas = await html2canvas(cardElement, {
                         backgroundColor: null,
-                        scale: 4, // Ultra-high quality - 4x resolution
+                        scale: 2,
                         useCORS: true,
-                        allowTaint: true,
-                        logging: false,
-                        ignoreElements: function(element) {
-                            return element.classList && element.classList.contains('card-actions');
-                        },
                         onclone: function(clonedDoc) {
-                            const clonedElement = clonedDoc.querySelector('.villain-card');
-                            const clonedImage = clonedDoc.querySelector('.villain-image');
-                            const clonedFrame = clonedDoc.querySelector('.frame-img');
-                            if (clonedElement) {
-                                clonedElement.style.transform = 'none';
-                                clonedElement.style.transition = 'none';
-                                clonedElement.classList.remove('active');
-                            }
-                            if (clonedImage) {
-                                clonedImage.style.objectFit = 'contain';
-                                clonedImage.style.objectPosition = 'center center';
-                                clonedImage.style.maxWidth = 'none';
-                                clonedImage.style.maxHeight = 'none';
-                                clonedImage.style.transition = 'none';
-                            }
+                            const cardId = cardElement.id;
+                            const clonedCard = clonedDoc.getElementById(cardId);
+                            const clonedImage = clonedCard.querySelector('.villain-image');
+                            const clonedFrame = clonedCard.querySelector('.frame-img');
+                            const clonedImageContainer = clonedCard.querySelector('.image-container');
+
+                            // Force fixed aspect ratio and size
+                            clonedCard.style.width = '310px';
+                            clonedCard.style.height = '500px';
+                            clonedCard.style.aspectRatio = '310 / 500';
+
                             if (clonedFrame) {
-                                clonedFrame.style.objectFit = 'contain';
                                 clonedFrame.style.width = '100%';
-                                clonedFrame.style.height = 'auto';
+                                clonedFrame.style.height = '100%';
                                 clonedFrame.style.aspectRatio = '310 / 500';
+                                clonedFrame.style.objectFit = 'contain';
+                            }
+
+                            if (clonedImage) {
+                                clonedImage.style.objectFit = 'cover';
+                                clonedImage.style.width = '100%';
+                                clonedImage.style.height = '100%';
+                                clonedImage.style.borderRadius = '15px';
+                            }
+
+                            if (clonedImageContainer) {
+                                clonedImageContainer.style.overflow = 'hidden';
+                                clonedImageContainer.style.borderRadius = '15px';
+                                clonedImageContainer.style.inset = '0';
                             }
                         }
                     });
