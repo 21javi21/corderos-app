@@ -24,6 +24,9 @@ services:
     build: .
     container_name: corderos-app-dev
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "ldap.kaligulix.com:host-gateway"
     ports:
       - "8000:8000"
     environment:
