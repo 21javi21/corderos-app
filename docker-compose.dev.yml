@@ -37,6 +37,7 @@ services:
       - LDAP_GROUP_DN=cn=corderos,ou=Groups,dc=kaligulix,dc=com
       - DATABASE_URL=postgresql://corderos_app:corderos_pass@postgres:5432/corderos
       - SESSION_SECRET=development-session-secret-for-local-testing-only
+      - SESSION_COOKIE_SECURE=false
     volumes:
       # Mount the entire app directory for live development
       - ./app:/app/app:rw

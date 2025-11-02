@@ -1207,6 +1207,7 @@ def hall_of_hate_view(request: Request, current_user: SessionUser | None = Depen
             "villains": villains,
             "current_user": current_user,
             "frame_configs": HALL_OF_HATE_V2_FRAMES,
+            "v2_frames": HALL_OF_HATE_V2_FRAMES,
         }
     )
 

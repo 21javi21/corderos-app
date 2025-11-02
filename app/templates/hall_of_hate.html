@@ -97,9 +97,8 @@
 
         .cards-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
-            gap: 32px;
-            justify-content: center;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
             padding: 20px 0;
             background: transparent;
             width: 100%;
@@ -108,39 +107,45 @@
 
         /* Card Container - Fixed to eliminate white lines */
         .villain-card {
-            width: 310px;
-            aspect-ratio: 310 / 500;
             position: relative;
+            width: 100%;
+            max-width: 310px;
+            height: 500px; /* Fixed height for consistency */
+            margin: 0 auto;
             border-radius: 20px; /* Add some rounding to clip edges */
             overflow: hidden; /* This clips everything to card boundaries */
             box-shadow: 0 0px 0px rgba(0,0,0,0.5);
             background: transparent;
             border: none; /* Explicitly remove borders */
-            flex-shrink: 0; /* Prevent shrinking during capture */
         }
 
-        /* Frame Image - High-res rendering */
-        .frame-img {
+        /* Frame Background - Re-enabled with v2 config */
+        .card-frame {
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            aspect-ratio: 310 / 500;
+            right: 0;
+            bottom: 0;
+            background-size: cover;  /* Crop frame to eliminate white borders */
+            background-repeat: no-repeat;
+            background-position: center;
             z-index: 1;
-            pointer-events: none;
+            overflow: hidden;
+            border: none;
         }
 
         /* Image Container - Configurable positioning via JSON */
         .image-container {
             position: absolute;
-            inset: 0;
-            overflow: hidden;
-            border-radius: 15px;
+            top: var(--image-top, 5%);
+            left: var(--image-left, 5%);
+            right: var(--image-right, 5%);
+            bottom: var(--image-bottom, 20%);
+            overflow: hidden !important;
+            border-radius: 15px; /* Rounded corners for image */
             z-index: 2;
-            background: transparent;
-    }
+            background: transparent; /* Transparent to show frame behind */
+        }
 
         /* The actual image - fills container completely */
         .villain-image {
@@ -351,11 +356,6 @@
             border-color: rgba(241, 196, 15, 0.4);
         }
 
-        .download-btn:hover {
-            background: linear-gradient(135deg, rgba(46, 204, 113, 0.3), rgba(46, 204, 113, 0.1));
-            border-color: rgba(46, 204, 113, 0.4);
-        }
-
         /* Active button state */
         .action-btn:active {
             transform: translateY(-1px) scale(0.98);
@@ -407,71 +407,59 @@
 
         <div class="cards-grid">
             {% for villain in villains %}
-                {% set config = frame_configs[villain.frame_type] %}
-                     <div class="villain-card frame-{{ villain.frame_type }}"
-                            data-villain-id="{{ villain.id }}"
-                            data-villain-name="{{ villain.name }}"
-                            data-villain-score="{{ villain.hate_score }}"
-                            style="
-                                aspect-ratio: 310 / 500;
-                                --image-top: {{ config.image_top }};
-                                --image-bottom: {{ config.image_bottom }};
-                                --image-left: {{ config.image_left }};
-                                --image-right: {{ config.image_right }};
-                                --name-bottom: {{ config.name_bottom }};
-                                --name-left: {{ config.name_left }};
-                                --name-right: {{ config.name_right }};
-                                --name-font-size: {{ config.name_font_size }};
-                                --score-bottom: {{ config.score_bottom }};
-                                --score-left: {{ config.score_left }};
-                                --score-font-size: {{ config.score_font_size }};
-                                --score-transform: {{ config.score_transform }};
-                            ">
-                    <div class="frame-wrapper">
-                        <img class="frame-img" src="{{ request.url_for('static', path=config.image_path) }}" alt="Frame">
-                    </div>
-                    <div class="image-container">
-                        <img src="{{ request.url_for('static', path='hall_of_hate/' + villain.image_filename) }}"
-                             alt="{{ villain.name }}"
-                             class="villain-image"
-                             onerror="this.style.display='none'; this.parentNode.style.background='#333';">
-                    </div>
-                    <div class="villain-name">{{ villain.name|upper }}</div>
-                    <div class="hate-score">{{ villain.hate_score }}</div>
-                    <div class="card-actions">
-                        <div class="action-buttons">
-                            {% if current_user %}
-                            <button class="action-btn edit-btn" data-action="edit">
-                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                </svg>
-                                <span>Edit</span>
-                            </button>
-                            <button class="action-btn rate-btn" data-action="rate">
-                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                    <circle cx="12" cy="12" r="10"/>
-                                    <path d="M8 15l4-4 4 4"/>
-                                </svg>
-                                <span>Rate</span>
-                            </button>
-                            <button class="action-btn delete-btn" data-action="delete">
-                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                    <rect x="3" y="6" width="18" height="14" rx="2"/>
-                                    <path d="M9 10v6M15 10v6"/>
-                                </svg>
-                                <span>Delete</span>
-                            </button>
-                            <button class="action-btn download-btn" data-action="download">
-                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                    <path d="M12 5v14M5 12l7 7 7-7"/>
-                                </svg>
-                                <span>Download</span>
-                            </button>
-                            {% endif %}
-                        </div>
+            <div class="villain-card frame-{{ villain.frame_type }}" 
+                 data-villain-id="{{ villain.id }}"
+                 data-villain-name="{{ villain.name }}"
+                 data-villain-score="{{ villain.hate_score }}">
+                <!-- Frame Background -->
+                <div class="card-frame"></div>
+                
+                <!-- Image Container - Simple and effective -->
+                <div class="image-container">
+                    <img src="{{ request.url_for('static', path='hall_of_hate/' + villain.image_filename) }}" 
+                         alt="{{ villain.name }}" 
+                         class="villain-image"
+                         onerror="this.style.display='none'; this.parentNode.style.background='#333';">
+                </div>
+                
+                <!-- Name Label -->
+                <div class="villain-name">{{ villain.name|upper }}</div>
+                
+                <!-- Hate Score -->
+                <div class="hate-score">
+                    {{ villain.hate_score }}
+                </div>
+                
+                <!-- Modern Action Buttons -->
+                <div class="card-actions">
+                    <div class="action-buttons">
+                        {% if current_user %}
+                        <button class="action-btn edit-btn" data-action="edit">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                            <span>Edit</span>
+                        </button>
+                        <button class="action-btn delete-btn" data-action="delete">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <polyline points="3,6 5,6 21,6"/>
+                                <path d="M19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
+                                <line x1="10" y1="11" x2="10" y2="17"/>
+                                <line x1="14" y1="11" x2="14" y2="17"/>
+                            </svg>
+                            <span>Delete</span>
+                        </button>
+                        <button class="action-btn rate-btn" data-action="rate">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26 12,2"/>
+                            </svg>
+                            <span>Rate</span>
+                        </button>
+                        {% endif %}
                     </div>
                 </div>
+            </div>
             {% endfor %}
         </div>
 
@@ -513,8 +501,8 @@
                 });
             });
             
-            // Apply v2 Frame configuration from JSON
-            const v2FrameConfig = JSON.parse('{{ frame_configs|tojson|safe }}');
+            // Apply v2 frame configuration from JSON
+            const v2FrameConfig = JSON.parse('{{ v2_frames|tojson|safe }}');
             console.log('V2 Frames config loaded:', v2FrameConfig);
             
             document.querySelectorAll('.villain-card').forEach((card, index) => {
@@ -670,9 +658,6 @@
                     case 'rate':
                         rateVillain(villainId, villainName, villainScore);
                         break;
-                    case 'download':
-                        downloadVillainCard(card, villainName);
-                        break;
                 }
                 
                 // Close the card after action
@@ -711,104 +696,6 @@
             function rateVillain(villainId, villainName, currentScore) {
                 // Use test routes for demo purposes (no authentication required)
                 window.location.href = `/hall-of-hate/${villainId}/rate`;
-            }
-            
-            // Download villain card as PNG
-            async function downloadVillainCard(cardElement, villainName) {
-                try {
-                    showToast('Generating high-quality card image...', 'info');
-                    if (!window.html2canvas) {
-                        const script = document.createElement('script');
-                        script.src = 'https://html2canvas.hertzen.com/dist/html2canvas.min.js';
-                        document.head.appendChild(script);
-                        await new Promise((resolve, reject) => {
-                            script.onload = resolve;
-                            script.onerror = reject;
-                        });
-                    }
-                    // Store original states before modification
-                    const wasActive = cardElement.classList.contains('active');
-                    const originalTransform = cardElement.style.transform;
-                    const originalTransition = cardElement.style.transition;
-                    const villainImage = cardElement.querySelector('.villain-image');
-                    const originalObjectFit = villainImage.style.objectFit;
-                    const originalObjectPosition = villainImage.style.objectPosition;
-                    const originalImageTransition = villainImage.style.transition;
-                    // Temporarily disable all effects and set image to contain
-                    cardElement.classList.remove('active');
-                    cardElement.style.transform = 'none';
-                    cardElement.style.transition = 'none';
-                    villainImage.style.objectFit = 'contain';
-                    villainImage.style.objectPosition = 'center center';
-                    villainImage.style.transition = 'none';
-                    // Wait for fonts and layout to stabilize
-                    await document.fonts.ready;
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    // Force browser to recalculate layout
-                    cardElement.offsetHeight;
-                    // Generate the canvas directly from the modified element
-                    const canvas = await html2canvas(cardElement, {
-                        backgroundColor: null,
-                        scale: 2,
-                        useCORS: true,
-                        onclone: function(clonedDoc) {
-                            const cardId = cardElement.id;
-                            const clonedCard = clonedDoc.getElementById(cardId);
-                            const clonedImage = clonedCard.querySelector('.villain-image');
-                            const clonedFrame = clonedCard.querySelector('.frame-img');
-                            const clonedImageContainer = clonedCard.querySelector('.image-container');
-
-                            // Force fixed aspect ratio and size
-                            clonedCard.style.width = '310px';
-                            clonedCard.style.height = '500px';
-                            clonedCard.style.aspectRatio = '310 / 500';
-
-                            if (clonedFrame) {
-                                clonedFrame.style.width = '100%';
-                                clonedFrame.style.height = '100%';
-                                clonedFrame.style.aspectRatio = '310 / 500';
-                                clonedFrame.style.objectFit = 'contain';
-                            }
-
-                            if (clonedImage) {
-                                clonedImage.style.objectFit = 'cover';
-                                clonedImage.style.width = '100%';
-                                clonedImage.style.height = '100%';
-                                clonedImage.style.borderRadius = '15px';
-                            }
-
-                            if (clonedImageContainer) {
-                                clonedImageContainer.style.overflow = 'hidden';
-                                clonedImageContainer.style.borderRadius = '15px';
-                                clonedImageContainer.style.inset = '0';
-                            }
-                        }
-                    });
-                    // Restore original image object-fit and card styles
-                    villainImage.style.objectFit = originalObjectFit || '';
-                    villainImage.style.objectPosition = originalObjectPosition || '';
-                    villainImage.style.transition = originalImageTransition || '';
-                    cardElement.style.transform = originalTransform || '';
-                    cardElement.style.transition = originalTransition || '';
-                    if (wasActive) {
-                        cardElement.classList.add('active');
-                    }
-                    // Convert to blob and download with maximum quality
-                    canvas.toBlob(function(blob) {
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `hall-of-hate-${villainName.toLowerCase().replace(/\s+/g, '-')}.png`;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(url);
-                        showToast(`✅ ${villainName} card downloaded in HD!`, 'success');
-                    }, 'image/png', 1.0);
-                } catch (error) {
-                    console.error('Error downloading card:', error);
-                    showToast('❌ Error generating card image', 'error');
-                }
             }
             
             // Modern toast notifications
