@@ -13,3 +13,4 @@ pydantic-settings
 passlib
 python-dotenv
 nba_api
+pandas

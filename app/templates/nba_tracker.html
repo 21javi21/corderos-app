@@ -1,0 +1,166 @@
+<!-- app/templates/nba_tracker.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Regular Season Tracker — Corderos App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --bg:#0b0f19; --card:#131a2a; --ink:#e7eefc; --muted:#9db0d8; --accent:#9bf6a3; --warn:#ffbf69; }
+    body { background:linear-gradient(180deg,#0b0f19,#0b1022); color:var(--ink); font-family: ui-sans-serif,system-ui,Segoe UI,Roboto,Ubuntu; margin:0; }
+    header { display:flex; align-items:center; justify-content:space-between; padding:18px 22px; border-bottom:1px solid #1d2740; }
+    .brand { display:flex; gap:12px; align-items:center; }
+    .title { font-size:20px; letter-spacing:0.3px; }
+    .grid { display:grid; gap:16px; padding:20px; grid-template-columns: repeat(auto-fit,minmax(300px,1fr)); }
+    .card { background:var(--card); border:1px solid #1e2a49; border-radius:16px; padding:16px; box-shadow:0 8px 24px rgba(0,0,0,0.35); }
+    h2 { margin:0 0 10px; font-size:16px; color:var(--muted); font-weight:600; }
+    .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+    .kpi { background:#0f1630; border:1px solid #22335d; border-radius:12px; padding:10px; text-align:center; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { padding:8px 10px; border-bottom:1px dashed #29375f; font-size:14px; }
+    th { color:#b9c8ea; text-align:left; }
+    .tag { display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid #2a3a66; font-size:12px; color:#bcd0ff; }
+    .badge { display:inline-block; padding:2px 8px; border-radius:8px; font-size:12px; background:#0e1e3a; border:1px solid #21407a; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; background:#0d2a1a; border:1px solid #1d5b39; color:#aaf0b6; }
+    .note { font-size:12px; color:var(--muted); margin-top:8px; }
+    .icons { display:flex; gap:10px; align-items:center; }
+    .muted { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <!-- Cordero (mini) -->
+      <svg width="28" height="28" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+        <circle cx="24" cy="28" r="12" fill="#EDEFF6"/>
+        <circle cx="36" cy="28" r="12" fill="#EDEFF6"/>
+        <circle cx="30" cy="22" r="12" fill="#F7F8FD"/>
+        <circle cx="30" cy="30" r="14" fill="#FFFFFF" />
+        <circle cx="26" cy="28" r="2" fill="#111"/>
+        <circle cx="34" cy="28" r="2" fill="#111"/>
+        <rect x="29" y="34" width="2" height="4" rx="1" fill="#111"/>
+      </svg>
+      <div>
+        <div class="title">Regular Season Tracker</div>
+        <div class="muted">Temporada {{ season }}</div>
+      </div>
+    </div>
+    <!-- Gorrinofante (mini) -->
+    <div class="icons" title="Gorrinofantismo 🐖🐘">
+      <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true">
+        <ellipse cx="32" cy="36" rx="18" ry="12" fill="#ffd1a6" stroke="#c78a5a"/>
+        <circle cx="24" cy="28" r="8" fill="#ffd1a6" stroke="#c78a5a"/>
+        <circle cx="40" cy="28" r="8" fill="#ffd1a6" stroke="#c78a5a"/>
+        <path d="M28 36 q4 6 0 12" stroke="#c78a5a" stroke-width="3" fill="none"/>
+        <circle cx="28" cy="30" r="2" fill="#222"/>
+        <circle cx="36" cy="30" r="2" fill="#222"/>
+        <ellipse cx="32" cy="40" rx="6" ry="4" fill="#f7bfb0" stroke="#c78a5a"/>
+      </svg>
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- Equipo: Off/Def/Net/Pace -->
+    <section class="card">
+      <h2>Equipos: eficiencia avanzada (TOP-10 NetRtg)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Equipo</th><th class="muted">GP</th>
+            <th>OffRtg</th><th>DefRtg</th><th>NetRtg</th><th>Pace</th><th class="muted">TS%</th><th class="muted">eFG%</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if team_adv %}
+            {% for t in team_adv %}
+            <tr>
+              <td class="muted">{{ loop.index }}</td>
+              <td><span class="tag">{{ t.TEAM_NAME }}</span></td>
+              <td class="muted">{{ t.GP }}</td>
+              <td>{{ "%.1f"|format(t.OFF_RATING) }}</td>
+              <td>{{ "%.1f"|format(t.DEF_RATING) }}</td>
+              <td><span class="pill">{{ "%.1f"|format(t.NET_RATING) }}</span></td>
+              <td>{{ "%.1f"|format(t.PACE) }}</td>
+              <td class="muted">{{ "%.3f"|format(t.TS_PCT) }}</td>
+              <td class="muted">{{ "%.3f"|format(t.EFG_PCT) }}</td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="9" class="muted">Sin datos ahora mismo. stats.nba.com está tardando demasiado en responder.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+      <div class="note">Fuente: nba_api (measure=Advanced). NetRtg = OffRtg − DefRtg.</div>
+    </section>
+
+    <!-- MVP Ladder -->
+    <section class="card">
+      <h2>MVP Tracker (TOP-10)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Jugador</th><th class="muted">GP</th><th>PTS</th><th>REB</th><th>AST</th><th class="muted">TS%</th><th>Team W%</th><th class="muted">Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if mvp %}
+            {% for p in mvp %}
+            <tr>
+              <td class="muted">{{ loop.index }}</td>
+              <td><span class="badge">{{ p.PLAYER_NAME }} · {{ p.TEAM_ABBREVIATION }}</span></td>
+              <td class="muted">{{ p.GP }}</td>
+              <td>{{ "%.1f"|format(p.PTS) }}</td>
+              <td>{{ "%.1f"|format(p.REB) }}</td>
+              <td>{{ "%.1f"|format(p.AST) }}</td>
+              <td class="muted">{{ "%.3f"|format(p.TS_PCT) }}</td>
+              <td>{{ "%.3f"|format(p.TEAM_WPCT) }}</td>
+              <td class="muted">{{ "%.2f"|format(p.MVP_SCORE) }}</td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="9" class="muted">Sin ladder MVP. Vuelve a intentarlo en un rato 🐑.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+      <div class="note">Fórmula MVP transparente en código (mix volumen + eficiencia + % victorias).</div>
+    </section>
+
+    <!-- ROY Ladder -->
+    <section class="card">
+      <h2>Rookie of the Year (TOP-10)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Jugador</th><th class="muted">GP</th><th>PTS</th><th>REB</th><th>AST</th><th class="muted">TS%</th><th class="muted">Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if roy %}
+            {% for r in roy %}
+            <tr>
+              <td class="muted">{{ loop.index }}</td>
+              <td><span class="badge">{{ r.PLAYER_NAME }} · {{ r.TEAM_ABBREVIATION }}</span></td>
+              <td class="muted">{{ r.GP }}</td>
+              <td>{{ "%.1f"|format(r.PTS) }}</td>
+              <td>{{ "%.1f"|format(r.REB) }}</td>
+              <td>{{ "%.1f"|format(r.AST) }}</td>
+              <td class="muted">{{ "%.3f"|format(r.TS_PCT) }}</td>
+              <td class="muted">{{ "%.2f"|format(r.ROY_SCORE) }}</td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="8" class="muted">Sin ladder de rookies por ahora. stats.nba.com no responde 🐖🐘.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+      <div class="note">El ROY no penaliza por W% del equipo para ser más “context-free”.</div>
+    </section>
+  </div>
+</body>
+</html>

@@ -84,7 +84,8 @@
       object-fit: contain;
       filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.35));
     }
-    .sidebar a:hover {
+    .sidebar a:hover,
+    .sidebar a.active {
       background: rgba(255, 255, 255, 0.22);
       transform: translateY(-2px);
       box-shadow: 0 14px 28px rgba(5, 12, 22, 0.48);
@@ -129,6 +130,7 @@
       </a>
       <a href="/hall-of-hate" target="main_frame">😡 Hall Of Hate</a>
       <a href="/nba-playoffs" target="main_frame">🏀 NBA RS</a>
+      <a href="/nba/tracker" target="main_frame">🐖🐘 RS Tracker</a>
       <a href="/auth/panel" target="main_frame">🛠️ Gestion De Usuarios</a>
       <form class="logout-form" action="/auth/logout" method="post" target="_top">
         <button type="submit" class="logout-button">⏏️ Cerrar sesión</button>
@@ -145,6 +147,25 @@
   <script>
     (function () {
       var iframe = document.querySelector('iframe[name="main_frame"]');
+      var links = Array.prototype.slice.call(document.querySelectorAll('.sidebar-nav a[target="main_frame"]'));
+      links.forEach(function(link) {
+        link.addEventListener('click', function (event) {
+          event.preventDefault();
+          if (!iframe) {
+            iframe = document.querySelector('iframe[name="main_frame"]');
+          }
+          if (!iframe) {
+            return;
+          }
+          iframe.src = link.href;
+          links.forEach(function (item) {
+            item.classList.toggle('active', item === link);
+          });
+        });
+      });
+      if (links.length) {
+        links[0].classList.add('active');
+      }
       var defaultTitle = document.title;
       function applyTitle(value) {
         if (value && typeof value === 'string') {

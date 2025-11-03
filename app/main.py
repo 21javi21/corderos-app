@@ -30,6 +30,7 @@ from psycopg2.pool import SimpleConnectionPool
 from app import auth_ldap
 from app.core.config import settings
 from app.security import SessionUser, optional_user, require_user, require_admin
+from app.routers import nba as nba_router
 
 # The actual app is defined later in this file
 MULTIPLICA_OPCIONES = [1, 2, 3, 4, 5]
@@ -318,6 +319,7 @@ app.add_middleware(
 )
 templates = Jinja2Templates(directory="app/templates")
 app.include_router(auth_ldap.router)
+app.include_router(nba_router.router)
 app.mount("/static", StaticFiles(directory="app/images"), name="static")
 
 # Root route is defined later as root_redirect for web app functionality
