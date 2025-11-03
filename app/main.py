@@ -662,7 +662,7 @@ def _ensure_nba_season(conn, *, year: int) -> int | None:
             if existing:
                 conn.commit()
                 return int(existing[0])
-            label = f"NBA {year} Playoffs"
+            label = f"NBA {year} Regular Season"
             cur.execute(
                 "INSERT INTO nba_seasons (year, label) VALUES (%s, %s) RETURNING id",
                 (year, label),

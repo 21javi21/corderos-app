@@ -139,7 +139,7 @@
                     <article class="card">
                         <h2>{{ entry.user_uid|upper }}</h2>
                         <div class="subsection">
-                            <h3>Playoffs</h3>
+                            <h3>Regular Season</h3>
                             <div class="pairs">
                                 {% for conference in conferences %}
                                     {% set data = entry.playoff.get(conference, {}) %}
