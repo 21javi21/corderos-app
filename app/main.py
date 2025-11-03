@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-from fastapi import FastAPI, Depends, HTTPException, Request, Form, File, UploadFile, Path
+from fastapi import FastAPI, Depends, HTTPException, Request, Form, File, UploadFile, Path, status
 from fastapi.responses import Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -52,6 +52,35 @@ CATEGORIAS_PREDEFINIDAS = [
 DEFAULT_HALL_OF_HATE_ENTRIES: list[dict[str, str]] = []
 
 FRAME_CONFIG_PATH = PathlibPath("app/config/hall_of_hate_frames.json")
+
+NBA_TARGET_SEASON_YEAR = 2026
+NBA_CONFERENCES = ("West", "East")
+NBA_HONOR_CATEGORIES = ("best_record", "mvp", "roy")
+NBA_ALL_NBA_SLOT_DEFS: dict[int, dict[str, str]] = {
+    1: {"label": "Guard 1", "bucket": "guard"},
+    2: {"label": "Guard 2", "bucket": "guard"},
+    3: {"label": "Forward 1", "bucket": "forward"},
+    4: {"label": "Forward 2", "bucket": "forward"},
+    5: {"label": "Forward 3", "bucket": "forward"},
+}
+
+NBA_CURRENT_SEASON_ID: int | None = None
+
+
+def _classify_player_position(raw: str | None) -> str:
+    """Return guard/forward bucket from a raw position string."""
+    if not raw:
+        return "forward"
+    normalized = str(raw).strip().upper()
+    if not normalized:
+        return "forward"
+    if normalized.startswith(("PG", "SG", "G")):
+        return "guard"
+    if normalized.startswith(("SF", "PF", "F", "C")):
+        return "forward"
+    if "G" in normalized and not normalized.startswith("F"):
+        return "guard"
+    return "forward"
 
 _BASE_FRAME_DEFINITIONS: dict[str, dict[str, str]] = {
     "default": {
@@ -500,6 +529,152 @@ def _ensure_schema(conn) -> None:
             conn.rollback()
             raise
 
+    # Ensure NBA picks structures exist
+    with conn.cursor() as cur:
+        try:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS nba_seasons (
+                    id SERIAL PRIMARY KEY,
+                    year INTEGER NOT NULL UNIQUE,
+                    label TEXT NOT NULL DEFAULT 'NBA Season',
+                    status TEXT NOT NULL DEFAULT 'open',
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS nba_teams (
+                    id SERIAL PRIMARY KEY,
+                    nba_team_id INTEGER UNIQUE,
+                    full_name TEXT NOT NULL,
+                    abbreviation TEXT NOT NULL,
+                    conference TEXT NOT NULL CHECK (conference IN ('East', 'West')),
+                    city TEXT,
+                    nickname TEXT,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+            cur.execute(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS nba_teams_full_name_unique_idx
+                ON nba_teams (LOWER(full_name))
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS nba_players (
+                    id SERIAL PRIMARY KEY,
+                    nba_player_id INTEGER UNIQUE,
+                    full_name TEXT NOT NULL,
+                    team_id INTEGER REFERENCES nba_teams(id) ON DELETE SET NULL,
+                    position TEXT,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+            cur.execute(
+                """
+                CREATE INDEX IF NOT EXISTS nba_players_full_name_idx
+                ON nba_players (LOWER(full_name))
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS nba_playoff_picks (
+                    id SERIAL PRIMARY KEY,
+                    season_id INTEGER NOT NULL REFERENCES nba_seasons(id) ON DELETE CASCADE,
+                    user_uid TEXT NOT NULL,
+                    conference TEXT NOT NULL CHECK (conference IN ('East', 'West')),
+                    seed INTEGER NOT NULL CHECK (seed BETWEEN 1 AND 8),
+                    team_id INTEGER REFERENCES nba_teams(id),
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    UNIQUE (season_id, user_uid, conference, seed)
+                )
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS nba_honor_picks (
+                    id SERIAL PRIMARY KEY,
+                    season_id INTEGER NOT NULL REFERENCES nba_seasons(id) ON DELETE CASCADE,
+                    user_uid TEXT NOT NULL,
+                    category TEXT NOT NULL CHECK (category IN ('best_record', 'mvp', 'roy')),
+                    nominee TEXT NOT NULL,
+                    nominee_team_id INTEGER REFERENCES nba_teams(id),
+                    nominee_team_name TEXT,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    UNIQUE (season_id, user_uid, category)
+                )
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS nba_all_nba_picks (
+                    id SERIAL PRIMARY KEY,
+                    season_id INTEGER NOT NULL REFERENCES nba_seasons(id) ON DELETE CASCADE,
+                    user_uid TEXT NOT NULL,
+                    slot INTEGER NOT NULL CHECK (slot BETWEEN 1 AND 5),
+                    player_name TEXT NOT NULL,
+                    position TEXT,
+                    team_name TEXT,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    UNIQUE (season_id, user_uid, slot)
+                )
+                """
+            )
+            # Relax historical constraints in case table existed with stricter schema
+            cur.execute(
+                """
+                ALTER TABLE nba_all_nba_picks
+                DROP CONSTRAINT IF EXISTS nba_all_nba_picks_position_check
+                """
+            )
+            cur.execute(
+                """
+                ALTER TABLE nba_all_nba_picks
+                ALTER COLUMN position DROP NOT NULL
+                """
+            )
+            conn.commit()
+        except errors.InsufficientPrivilege:
+            conn.rollback()
+            print("[NBA] No privileges to create NBA tables; disabling NBA picks feature.")
+        except Exception:
+            conn.rollback()
+            raise
+
+
+def _ensure_nba_season(conn, *, year: int) -> int | None:
+    """Create the NBA season row if missing and return its identifier."""
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id FROM nba_seasons WHERE year = %s",
+                (year,),
+            )
+            existing = cur.fetchone()
+            if existing:
+                conn.commit()
+                return int(existing[0])
+            label = f"NBA {year} Playoffs"
+            cur.execute(
+                "INSERT INTO nba_seasons (year, label) VALUES (%s, %s) RETURNING id",
+                (year, label),
+            )
+            new_id = cur.fetchone()[0]
+            conn.commit()
+            print(f"[NBA] Created season {year} with id {new_id}")
+            return int(new_id)
+    except Exception:
+        conn.rollback()
+        raise
+
 
 def _parse_locked_value(value: str | None, current: bool) -> bool:
     if value is None:
@@ -548,6 +723,374 @@ def _normalize_frame_key(value: str | None) -> str:
             return key
     return "default"
 
+
+def _load_nba_teams_by_conference() -> dict[str, list[dict[str, Any]]]:
+    teams: dict[str, list[dict[str, Any]]] = {conf: [] for conf in NBA_CONFERENCES}
+    if not pool:
+        return teams
+    conn = pool.getconn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, full_name, abbreviation, conference, city, nickname
+                FROM nba_teams
+                ORDER BY conference, full_name
+                """
+            )
+            for team_id, full_name, abbreviation, conference, city, nickname in cur.fetchall():
+                conf = (conference or "").title()
+                entry = {
+                    "id": team_id,
+                    "name": full_name,
+                    "abbreviation": abbreviation,
+                    "city": city,
+                    "nickname": nickname,
+                }
+                teams.setdefault(conf, []).append(entry)
+    except Exception as exc:
+        print(f"[NBA] Unable to load teams: {exc}")
+    finally:
+        pool.putconn(conn)
+    return teams
+
+
+def _load_nba_player_suggestions(limit: int = 400) -> list[dict[str, str]]:
+    suggestions: list[dict[str, str]] = []
+    if not pool:
+        return suggestions
+    conn = pool.getconn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT p.full_name, COALESCE(p.position, ''), COALESCE(t.full_name, '')
+                FROM nba_players p
+                LEFT JOIN nba_teams t ON t.id = p.team_id
+                ORDER BY p.full_name
+                LIMIT %s
+                """,
+                (limit,),
+            )
+            for full_name, raw_position, team_name in cur.fetchall():
+                bucket = _classify_player_position(raw_position)
+                suggestions.append(
+                    {
+                        "name": full_name,
+                        "position": (raw_position or "").strip().upper(),
+                        "bucket": bucket,
+                        "team": team_name,
+                    }
+                )
+    except Exception as exc:
+        print(f"[NBA] Unable to load player suggestions: {exc}")
+    finally:
+        pool.putconn(conn)
+    return suggestions
+
+
+def _load_user_nba_picks(user_uid: str) -> dict[str, Any]:
+    data = {
+        "playoff": {conf: {} for conf in NBA_CONFERENCES},
+        "honors": {},
+        "all_nba": {},
+    }
+    if not pool or NBA_CURRENT_SEASON_ID is None:
+        return data
+    conn = pool.getconn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT p.conference,
+                       p.seed,
+                       p.team_id,
+                       t.full_name,
+                       t.abbreviation
+                FROM nba_playoff_picks p
+                LEFT JOIN nba_teams t ON t.id = p.team_id
+                WHERE p.season_id = %s
+                  AND p.user_uid = %s
+                ORDER BY p.conference, p.seed
+                """,
+                (NBA_CURRENT_SEASON_ID, user_uid),
+            )
+            for conference, seed, team_id, team_name, abbrev in cur.fetchall():
+                conf_key = (conference or "").title()
+                data["playoff"].setdefault(conf_key, {})
+                data["playoff"][conf_key][int(seed)] = {
+                    "team_id": team_id,
+                    "team_name": team_name,
+                    "abbreviation": abbrev,
+                }
+
+            cur.execute(
+                """
+                SELECT h.category,
+                       h.nominee,
+                       h.nominee_team_id,
+                       h.nominee_team_name,
+                       t.full_name
+                FROM nba_honor_picks h
+                LEFT JOIN nba_teams t ON t.id = h.nominee_team_id
+                WHERE h.season_id = %s
+                  AND h.user_uid = %s
+                """,
+                (NBA_CURRENT_SEASON_ID, user_uid),
+            )
+            for category, nominee, team_id, team_name_override, team_name in cur.fetchall():
+                team_label = team_name_override or team_name
+                data["honors"][category] = {
+                    "nominee": nominee,
+                    "team_id": team_id,
+                    "team_name": team_label,
+                }
+
+            cur.execute(
+                """
+                SELECT slot, player_name, position, team_name
+                FROM nba_all_nba_picks
+                WHERE season_id = %s
+                  AND user_uid = %s
+                ORDER BY slot
+                """,
+                (NBA_CURRENT_SEASON_ID, user_uid),
+            )
+            for slot, player_name, position, team_name in cur.fetchall():
+                data["all_nba"][int(slot)] = {
+                    "player_name": player_name,
+                    "position": position,
+                    "team_name": team_name,
+                }
+    except Exception as exc:
+        print(f"[NBA] Unable to load picks for {user_uid}: {exc}")
+    finally:
+        pool.putconn(conn)
+    return data
+
+
+def _replace_user_nba_picks(
+    user_uid: str,
+    *,
+    playoff: dict[str, dict[int, int | None]],
+    honors: dict[str, dict[str, Any]],
+    all_nba: dict[int, dict[str, str | None]],
+) -> None:
+    if not pool or NBA_CURRENT_SEASON_ID is None:
+        raise HTTPException(status_code=500, detail="NBA picks feature no disponible")
+
+    conn = pool.getconn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM nba_playoff_picks WHERE season_id = %s AND user_uid = %s",
+                (NBA_CURRENT_SEASON_ID, user_uid),
+            )
+            for conference, seeds in playoff.items():
+                for seed, team_id in seeds.items():
+                    if not team_id:
+                        continue
+                    cur.execute(
+                        """
+                        INSERT INTO nba_playoff_picks (season_id, user_uid, conference, seed, team_id)
+                        VALUES (%s, %s, %s, %s, %s)
+                        """,
+                        (NBA_CURRENT_SEASON_ID, user_uid, conference, seed, team_id),
+                    )
+
+            cur.execute(
+                "DELETE FROM nba_honor_picks WHERE season_id = %s AND user_uid = %s",
+                (NBA_CURRENT_SEASON_ID, user_uid),
+            )
+            for category, payload in honors.items():
+                nominee = (payload.get("nominee") or "").strip()
+                team_id = payload.get("team_id")
+                team_name = payload.get("team_name")
+                if not nominee:
+                    continue
+                cur.execute(
+                    """
+                    INSERT INTO nba_honor_picks (season_id, user_uid, category, nominee, nominee_team_id, nominee_team_name)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    """,
+                    (NBA_CURRENT_SEASON_ID, user_uid, category, nominee, team_id, team_name),
+                )
+
+            cur.execute(
+                "DELETE FROM nba_all_nba_picks WHERE season_id = %s AND user_uid = %s",
+                (NBA_CURRENT_SEASON_ID, user_uid),
+            )
+            for slot, payload in all_nba.items():
+                player_name = (payload.get("player_name") or "").strip()
+                team_name = payload.get("team_name")
+                position = (payload.get("position") or None)
+                if not player_name:
+                    continue
+                cur.execute(
+                    """
+                    INSERT INTO nba_all_nba_picks (season_id, user_uid, slot, player_name, position, team_name)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    """,
+                    (NBA_CURRENT_SEASON_ID, user_uid, slot, player_name, position, team_name),
+                )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        pool.putconn(conn)
+
+
+def _merge_form_into_picks(
+    picks: dict[str, Any],
+    *,
+    playoff_payload: dict[str, dict[int, int | None]],
+    honors_payload: dict[str, dict[str, Any]],
+    all_nba_payload: dict[int, dict[str, str | None]],
+    teams_by_id: dict[str, dict[str, Any]],
+    player_lookup: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    merged = {
+        "playoff": {conf: dict(picks.get("playoff", {}).get(conf, {})) for conf in NBA_CONFERENCES},
+        "honors": dict(picks.get("honors", {})),
+        "all_nba": dict(picks.get("all_nba", {})),
+    }
+    for conference, seeds in playoff_payload.items():
+        for seed, team_id in seeds.items():
+            if not team_id:
+                merged["playoff"].setdefault(conference, {}).pop(seed, None)
+                continue
+            team = teams_by_id.get(str(team_id)) or teams_by_id.get(team_id) or {}
+            merged["playoff"].setdefault(conference, {})[seed] = {
+                "team_id": team_id,
+                "team_name": team.get("name"),
+                "abbreviation": team.get("abbreviation"),
+            }
+
+    for category, payload in honors_payload.items():
+        nominee = payload.get("nominee")
+        if not nominee:
+            merged["honors"].pop(category, None)
+            continue
+        team_name = payload.get("team_name")
+        if not team_name:
+            lookup = player_lookup.get(nominee.strip().lower()) if nominee else None
+            if lookup and lookup.get("team"):
+                team_name = lookup["team"]
+        merged["honors"][category] = {
+            "nominee": nominee,
+            "team_name": team_name,
+        }
+
+    for slot, payload in all_nba_payload.items():
+        player_name = payload.get("player_name")
+        if not player_name:
+            merged["all_nba"].pop(slot, None)
+            continue
+        key = str(player_name).strip().lower()
+        lookup = player_lookup.get(key) or {}
+        merged["all_nba"][slot] = {
+            "player_name": player_name,
+            "team_name": payload.get("team_name") or lookup.get("team"),
+            "position": payload.get("position") or lookup.get("bucket"),
+        }
+
+    return merged
+
+
+def _load_all_users_nba_picks() -> list[dict[str, Any]]:
+    if not pool or NBA_CURRENT_SEASON_ID is None:
+        return []
+    conn = pool.getconn()
+    try:
+        users: dict[str, dict[str, Any]] = {}
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT p.user_uid,
+                       p.conference,
+                       p.seed,
+                       t.full_name,
+                       t.abbreviation
+                FROM nba_playoff_picks p
+                LEFT JOIN nba_teams t ON t.id = p.team_id
+                WHERE p.season_id = %s
+                ORDER BY p.user_uid, p.conference, p.seed
+                """,
+                (NBA_CURRENT_SEASON_ID,),
+            )
+            for uid, conference, seed, team_name, abbreviation in cur.fetchall():
+                record = users.setdefault(
+                    uid,
+                    {
+                        "user_uid": uid,
+                        "playoff": {conf: {} for conf in NBA_CONFERENCES},
+                        "honors": {},
+                        "all_nba": {},
+                    },
+                )
+                conf_key = (conference or "").title()
+                record["playoff"].setdefault(conf_key, {})
+                record["playoff"][conf_key][int(seed)] = {
+                    "team_name": team_name,
+                    "abbreviation": abbreviation,
+                }
+
+            cur.execute(
+                """
+                SELECT user_uid, category, nominee, nominee_team_name
+                FROM nba_honor_picks
+                WHERE season_id = %s
+                ORDER BY user_uid, category
+                """,
+                (NBA_CURRENT_SEASON_ID,),
+            )
+            for uid, category, nominee, team_name in cur.fetchall():
+                record = users.setdefault(
+                    uid,
+                    {
+                        "user_uid": uid,
+                        "playoff": {conf: {} for conf in NBA_CONFERENCES},
+                        "honors": {},
+                        "all_nba": {},
+                    },
+                )
+                record["honors"][category] = {
+                    "nominee": nominee,
+                    "team_name": team_name,
+                }
+
+            cur.execute(
+                """
+                SELECT user_uid, slot, player_name, position, team_name
+                FROM nba_all_nba_picks
+                WHERE season_id = %s
+                ORDER BY user_uid, slot
+                """,
+                (NBA_CURRENT_SEASON_ID,),
+            )
+            for uid, slot, player_name, position, team_name in cur.fetchall():
+                record = users.setdefault(
+                    uid,
+                    {
+                        "user_uid": uid,
+                        "playoff": {conf: {} for conf in NBA_CONFERENCES},
+                        "honors": {},
+                        "all_nba": {},
+                    },
+                )
+                record["all_nba"][int(slot)] = {
+                    "player_name": player_name,
+                    "position": position,
+                    "team_name": team_name,
+                }
+        ordered = sorted(users.values(), key=lambda item: item["user_uid"])
+        return ordered
+    except Exception as exc:
+        print(f"[NBA] Unable to load aggregated picks: {exc}")
+        return []
+    finally:
+        pool.putconn(conn)
 
 def _store_frame_key(cur, entry_id: int, frame_key: str) -> None:
     key = _normalize_frame_key(frame_key)
@@ -1154,6 +1697,10 @@ def startup_db():
     try:
         _ensure_schema(conn)
         _seed_hall_of_hate_defaults(conn)
+        global NBA_CURRENT_SEASON_ID
+        NBA_CURRENT_SEASON_ID = _ensure_nba_season(conn, year=NBA_TARGET_SEASON_YEAR)
+        if NBA_CURRENT_SEASON_ID is None:
+            print("[NBA] Warning: could not initialize NBA season record.")
     finally:
         pool.putconn(conn)
 
@@ -1188,6 +1735,216 @@ def dashboard(request: Request):
 def test_download_page(request: Request):
     """Test page for debugging card download functionality without authentication"""
     return templates.TemplateResponse("test_download.html", {"request": request})
+
+
+@app.get("/nba-playoffs", response_class=HTMLResponse)
+def nba_playoffs_page(request: Request, current_user: SessionUser = Depends(require_user)):
+    teams = _load_nba_teams_by_conference()
+    picks = _load_user_nba_picks(current_user["uid"])
+    player_suggestions = _load_nba_player_suggestions()
+    guard_suggestions = [item for item in player_suggestions if item.get("bucket") == "guard"]
+    forward_suggestions = [item for item in player_suggestions if item.get("bucket") != "guard"]
+    player_lookup = {
+        item["name"].lower(): {
+            "team": item.get("team"),
+            "position": item.get("position"),
+            "bucket": item.get("bucket"),
+        }
+        for item in player_suggestions
+    }
+    slot_entries = [
+        {"slot": slot, "label": data["label"], "bucket": data["bucket"]}
+        for slot, data in NBA_ALL_NBA_SLOT_DEFS.items()
+    ]
+    saved = request.query_params.get("saved")
+    status_message = "✅ Selecciones guardadas" if saved else None
+    context = {
+        "request": request,
+        "season_year": NBA_TARGET_SEASON_YEAR,
+        "teams": teams,
+        "picks": picks,
+        "player_suggestions": player_suggestions,
+        "guard_suggestions": guard_suggestions,
+        "forward_suggestions": forward_suggestions,
+        "player_lookup": player_lookup,
+        "slot_entries": slot_entries,
+        "honor_categories": NBA_HONOR_CATEGORIES,
+        "status_message": status_message,
+        "error_message": None,
+    }
+    return templates.TemplateResponse(
+        "nba_playoffs.html",
+        context,
+    )
+
+
+@app.post("/nba-playoffs", response_class=HTMLResponse)
+async def nba_playoffs_submit(request: Request, current_user: SessionUser = Depends(require_user)):
+    form = await request.form()
+    teams = _load_nba_teams_by_conference()
+    player_suggestions = _load_nba_player_suggestions()
+    guard_suggestions = [item for item in player_suggestions if item.get("bucket") == "guard"]
+    forward_suggestions = [item for item in player_suggestions if item.get("bucket") != "guard"]
+    player_lookup = {
+        item["name"].lower(): {
+            "team": item.get("team"),
+            "position": item.get("position"),
+            "bucket": item.get("bucket"),
+        }
+        for item in player_suggestions
+    }
+    slot_entries = [
+        {"slot": slot, "label": data["label"], "bucket": data["bucket"]}
+        for slot, data in NBA_ALL_NBA_SLOT_DEFS.items()
+    ]
+    teams_by_id_int = {team["id"]: team for bucket in teams.values() for team in bucket}
+    teams_by_id = {str(team_id): team for team_id, team in teams_by_id_int.items()}
+    teams_for_merge: dict[Any, dict[str, Any]] = {}
+    teams_for_merge.update(teams_by_id_int)
+    teams_for_merge.update(teams_by_id)
+
+    playoff_payload: dict[str, dict[int, int | None]] = {conf: {} for conf in NBA_CONFERENCES}
+    duplicates: list[str] = []
+    invalid_team_errors: list[str] = []
+    for conference in NBA_CONFERENCES:
+        seen: set[int] = set()
+        for seed in range(1, 9):
+            field = f"{conference.lower()}_seed_{seed}"
+            raw_value = form.get(field)
+            team_id: int | None = None
+            if raw_value:
+                team_entry = teams_by_id.get(raw_value)
+                if not team_entry:
+                    invalid_team_errors.append(f"{conference} #{seed}")
+                    playoff_payload[conference][seed] = None
+                    continue
+                team_id = int(team_entry["id"])
+                if team_id in seen:
+                    duplicates.append(f"{conference} #{seed}")
+                else:
+                    seen.add(team_id)
+            playoff_payload[conference][seed] = team_id
+
+    honors_payload: dict[str, dict[str, Any]] = {}
+    for category in NBA_HONOR_CATEGORIES:
+        if category == "best_record":
+            team_field = form.get("honor_best_record_team_id")
+            team_info = teams_by_id.get(team_field) if team_field else None
+            honors_payload[category] = {
+                "nominee": (team_info["name"] if team_info else ""),
+                "team_id": int(team_info["id"]) if team_info else None,
+                "team_name": team_info["name"] if team_info else None,
+            }
+        else:
+            nominee = (form.get(f"honor_{category}_name") or "").strip()
+            team_name = (form.get(f"honor_{category}_team") or "").strip() or None
+            if nominee and not team_name:
+                lookup = player_lookup.get(nominee.lower())
+                if lookup and lookup.get("team"):
+                    team_name = lookup["team"]
+            honors_payload[category] = {
+                "nominee": nominee,
+                "team_id": None,
+                "team_name": team_name,
+            }
+
+    all_nba_payload: dict[int, dict[str, str | None]] = {}
+    guard_count = 0
+    forward_count = 0
+    bucket_mismatches: list[int] = []
+    for slot_entry in slot_entries:
+        slot = slot_entry["slot"]
+        required_bucket = slot_entry["bucket"]
+        player = (form.get(f"all_nba_slot_{slot}_player") or "").strip()
+        team_name = (form.get(f"all_nba_slot_{slot}_team") or "").strip() or None
+        all_nba_payload[slot] = {
+            "player_name": player,
+            "team_name": team_name,
+            "position": required_bucket,
+        }
+        if player:
+            lookup_entry = player_lookup.get(player.lower())
+            bucket = _classify_player_position(lookup_entry.get("position") if lookup_entry else None)
+            if not team_name and lookup_entry and lookup_entry.get("team"):
+                team_name = lookup_entry["team"]
+                all_nba_payload[slot]["team_name"] = team_name
+            if bucket == "guard":
+                guard_count += 1
+            else:
+                forward_count += 1
+            if bucket != required_bucket:
+                all_nba_payload[slot]["position"] = bucket
+                bucket_mismatches.append(slot)
+        else:
+            all_nba_payload[slot]["position"] = required_bucket
+
+    error_messages: list[str] = []
+    if invalid_team_errors:
+        error_messages.append("Equipo inválido seleccionado en: " + ", ".join(invalid_team_errors))
+    if duplicates:
+        error_messages.append("Cada equipo solo puede elegirse una vez por conferencia. Revisa: " + ", ".join(duplicates))
+    if bucket_mismatches:
+        label_lookup = {entry["slot"]: entry["label"] for entry in slot_entries}
+        labels = [label_lookup.get(slot, f"Slot {slot}") for slot in bucket_mismatches]
+        error_messages.append("Revisa las posiciones: los slots tienen un rol fijo (Guard/Forward). Afectados: " + ", ".join(labels))
+    if guard_count > 2 or forward_count > 3:
+        error_messages.append("Debes elegir máximo 2 guards y máximo 3 forwards.")
+
+    if error_messages:
+        base_picks = _load_user_nba_picks(current_user["uid"])
+        attempt_picks = _merge_form_into_picks(
+            base_picks,
+            playoff_payload=playoff_payload,
+            honors_payload=honors_payload,
+            all_nba_payload=all_nba_payload,
+            teams_by_id=teams_for_merge,
+            player_lookup=player_lookup,
+        )
+        return templates.TemplateResponse(
+            "nba_playoffs.html",
+            {
+                "request": request,
+                "season_year": NBA_TARGET_SEASON_YEAR,
+                "teams": teams,
+                "picks": attempt_picks,
+                "player_suggestions": player_suggestions,
+                "guard_suggestions": guard_suggestions,
+                "forward_suggestions": forward_suggestions,
+                "player_lookup": player_lookup,
+                "slot_entries": slot_entries,
+                "honor_categories": NBA_HONOR_CATEGORIES,
+                "error_message": " ".join(error_messages),
+                "status_message": None,
+            },
+        )
+
+    _replace_user_nba_picks(
+        current_user["uid"],
+        playoff=playoff_payload,
+        honors=honors_payload,
+        all_nba=all_nba_payload,
+    )
+    return RedirectResponse(url="/nba-playoffs?saved=1", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.get("/nba-playoffs/all", response_class=HTMLResponse)
+def nba_playoffs_all_picks(request: Request, current_user: SessionUser = Depends(require_user)):
+    picks = _load_all_users_nba_picks()
+    slot_entries = [
+        {"slot": slot, "label": data["label"], "bucket": data["bucket"]}
+        for slot, data in NBA_ALL_NBA_SLOT_DEFS.items()
+    ]
+    return templates.TemplateResponse(
+        "nba_playoffs_overview.html",
+        {
+            "request": request,
+            "season_year": NBA_TARGET_SEASON_YEAR,
+            "picks": picks,
+            "conferences": NBA_CONFERENCES,
+            "slot_entries": slot_entries,
+            "honor_categories": NBA_HONOR_CATEGORIES,
+        },
+    )
 
 # Test routes removed - implementing proper v2 system
 

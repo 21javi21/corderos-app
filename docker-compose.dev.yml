@@ -45,6 +45,8 @@ services:
       - ./data/hall_of_hate_uploads:/app/app/images/hall_of_hate/uploads
       # Mount the config file so you can modify frame settings
       - ./app/config/hall_of_hate_frames.json:/app/app/config/hall_of_hate_frames.json:ro
+      # Mount scripts for utilities like NBA data sync
+      - ./scripts:/app/scripts:ro
     depends_on:
       postgres:
         condition: service_healthy

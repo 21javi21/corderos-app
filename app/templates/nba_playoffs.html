@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>NBA Regular Season 2026 - Picks</title>
+    <link rel="icon" href="{{ request.url_for('static', path='favicon.ico') }}" type="image/x-icon">
+    <link rel="shortcut icon" href="{{ request.url_for('static', path='favicon.ico') }}" type="image/x-icon">
+    <style>
+        :root {
+            color-scheme: dark;
+        }
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(circle at 12% 20%, rgba(24, 68, 150, 0.35), transparent 45%),
+                        radial-gradient(circle at 82% 78%, rgba(205, 132, 41, 0.24), transparent 52%),
+                        linear-gradient(180deg, #040a13, #02050b 60%, #010307);
+            color: #e6edf7;
+            min-height: 100vh;
+        }
+        .page {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 36px 24px 60px;
+            display: flex;
+            flex-direction: column;
+            gap: 26px;
+        }
+        .page-header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+        .page-title {
+            margin: 0;
+            font-size: clamp(1.8rem, 3vw, 2.4rem);
+            letter-spacing: 0.06em;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .page-title span {
+            background: linear-gradient(135deg, rgba(41, 110, 205, 0.85), rgba(205, 132, 41, 0.85));
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+        .actions {
+            display: flex;
+            gap: 12px;
+        }
+        .btn {
+            border: none;
+            border-radius: 12px;
+            padding: 12px 18px;
+            font-weight: 600;
+            cursor: pointer;
+            color: #e6edf7;
+            background: rgba(255, 255, 255, 0.12);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .btn.primary {
+            background: linear-gradient(135deg, rgba(41, 110, 205, 0.92), rgba(28, 66, 140, 0.92));
+        }
+        .btn.secondary {
+            background: rgba(255, 255, 255, 0.14);
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 16px 28px rgba(3, 10, 22, 0.40);
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+        }
+        .section {
+            background: rgba(9, 20, 35, 0.86);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 22px 40px rgba(2, 6, 12, 0.55);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .section h2 {
+            margin: 0 0 18px;
+            font-size: 1.35rem;
+            letter-spacing: 0.06em;
+            color: #f1f6ff;
+        }
+        .grid {
+            display: grid;
+            gap: 20px;
+        }
+        .playoff-grid {
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        }
+        .seed-row {
+            display: grid;
+            grid-template-columns: 80px 1fr;
+            gap: 12px;
+            align-items: center;
+            padding: 8px 0;
+        }
+        label {
+            font-size: 0.9rem;
+            color: #8fa4c0;
+            letter-spacing: 0.04em;
+        }
+        select, input[type="text"] {
+            width: 100%;
+            padding: 11px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(7, 14, 24, 0.9);
+            color: #e6edf7;
+            font-size: 0.95rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        select:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: rgba(58, 123, 213, 0.6);
+            box-shadow: 0 0 0 3px rgba(58, 123, 213, 0.25);
+        }
+        .honors-grid {
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            align-items: stretch;
+        }
+        .honor-card {
+            background: rgba(13, 27, 45, 0.9);
+            padding: 18px;
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            height: 100%;
+        }
+        .honor-card h3 {
+            margin: 0;
+            font-size: 1.05rem;
+            letter-spacing: 0.05em;
+            color: #f1f6ff;
+        }
+        .honor-fields {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .all-nba-grid {
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            align-items: stretch;
+        }
+        .slot-card {
+            background: rgba(13, 27, 45, 0.92);
+            padding: 16px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            height: 100%;
+        }
+        .slot-card h4 {
+            margin: 0;
+            font-size: 0.95rem;
+            letter-spacing: 0.04em;
+            color: #ced8eb;
+        }
+        .team-input {
+            color: #d5e1f5;
+        }
+        .team-input[readonly] {
+            opacity: 0.72;
+            cursor: not-allowed;
+        }
+        .invalid-entry {
+            border-color: rgba(255, 99, 132, 0.65) !important;
+            box-shadow: 0 0 0 3px rgba(255, 99, 132, 0.18);
+        }
+        .inline-counter {
+            margin-top: -4px;
+            font-size: 0.82rem;
+            letter-spacing: 0.03em;
+            color: #9eb1cd;
+        }
+        .inline-counter.invalid {
+            color: #ffb6ab;
+        }
+        .client-error {
+            margin-top: 8px;
+            font-size: 0.85rem;
+            color: #ffb6ab;
+        }
+        .messages {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .status, .error {
+            padding: 14px 16px;
+            border-radius: 14px;
+            font-weight: 600;
+        }
+        .status {
+            background: rgba(46, 204, 113, 0.18);
+            color: #c8f7dc;
+            border: 1px solid rgba(46, 204, 113, 0.35);
+        }
+        .error {
+            background: rgba(231, 76, 60, 0.18);
+            color: #ffded9;
+            border: 1px solid rgba(231, 76, 60, 0.35);
+        }
+        .submit-row {
+            display: flex;
+            justify-content: flex-end;
+        }
+        .note {
+            font-size: 0.85rem;
+            color: #9eb1cd;
+        }
+        @media (max-width: 720px) {
+            .page {
+                padding: 24px 16px 48px;
+            }
+            .seed-row {
+                grid-template-columns: 64px 1fr;
+            }
+            .honors-grid {
+                grid-template-columns: 1fr;
+            }
+            .all-nba-grid {
+                grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="page">
+        <header class="page-header">
+            <h1 class="page-title">
+                🏀 <span>NBA Regular Season {{ season_year }}</span>
+            </h1>
+            <div class="actions">
+                <a class="btn secondary" href="/bets">⬅️ Volver a Corderos League</a>
+                <a class="btn secondary" href="/nba-playoffs/all">👥 Ver picks de todos</a>
+            </div>
+        </header>
+
+        <div class="messages">
+            {% if status_message %}
+                <div class="status">{{ status_message }}</div>
+            {% endif %}
+            {% if error_message %}
+                <div class="error">{{ error_message }}</div>
+            {% endif %}
+        </div>
+
+        <form method="post">
+            <section class="section">
+                <h2>Clasificados por conferencia</h2>
+                <p class="note">Elige los 8 equipos que terminarán en puestos de Playoff por conferencia. Cada equipo solo puede aparecer una vez.</p>
+                <div class="grid playoff-grid">
+                    {% for conference in ["West", "East"] %}
+                        <div>
+                            <h3 style="margin:0 0 12px; letter-spacing:0.05em; color:#9ec5ff;">{{ "Oeste" if conference == "West" else "Este" }}</h3>
+                            {% set selections = picks.playoff.get(conference, {}) %}
+                            {% for seed in range(1, 9) %}
+                                {% set selection = selections.get(seed) %}
+                                <div class="seed-row">
+                                    <label for="{{ conference.lower() }}_seed_{{ seed }}">#{{ seed }}</label>
+                                    <select id="{{ conference.lower() }}_seed_{{ seed }}" name="{{ conference.lower() }}_seed_{{ seed }}">
+                                        <option value="">Seleccionar equipo</option>
+                                        {% for team in teams.get(conference, []) %}
+                                            <option value="{{ team.id }}"
+                                                {% if selection and selection.team_id == team.id %}selected{% endif %}>
+                                                {{ team.name }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Premios individuales</h2>
+                <div class="grid honors-grid">
+                    {% for category in honor_categories %}
+                        {% set data = picks.honors.get(category, {}) %}
+                        <div class="honor-card">
+                            {% if category == "best_record" %}
+                                <h3>Mejor récord (liga completa)</h3>
+                                <select name="honor_best_record_team_id">
+                                    <option value="">Seleccionar equipo</option>
+                                    {% for conference in ["West", "East"] %}
+                                        {% for team in teams.get(conference, []) %}
+                                            {% set selected = data.team_id == team.id %}
+                                            <option value="{{ team.id }}" {% if selected %}selected{% endif %}>
+                                                {{ team.name }}
+                                            </option>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </select>
+                            {% else %}
+                                <h3>
+                                    {% if category == "mvp" %}
+                                        MVP de la regular season
+                                    {% else %}
+                                        Rookie del año
+                                    {% endif %}
+                                </h3>
+                                <div class="honor-fields">
+                                    <input type="text"
+                                        name="honor_{{ category }}_name"
+                                        id="honor_{{ category }}_name"
+                                        list="nba-player-options"
+                                        placeholder="Jugador"
+                                        value="{{ data.nominee or '' }}"
+                                        data-player-input
+                                        data-team-target="honor_{{ category }}_team">
+                                    <input type="text"
+                                        name="honor_{{ category }}_team"
+                                        id="honor_{{ category }}_team"
+                                        class="team-input"
+                                        placeholder="Equipo"
+                                        readonly
+                                        value="{{ data.team_name or '' }}">
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>All NBA Team (5 mejores)</h2>
+                <p class="note">Selecciona libremente tus cinco jugadores favoritos. Usa las sugerencias o escribe cualquier nombre.</p>
+                <div id="all-nba-counter" class="inline-counter"></div>
+                <div id="all-nba-client-error" class="client-error" style="display:none;"></div>
+                <div class="grid all-nba-grid">
+                    {% for entry in slot_entries|default([]) %}
+                        {% set slot = entry.slot %}
+                        {% set label = entry.label %}
+                        {% set required_bucket = entry.bucket %}
+                        {% set selection = picks.all_nba.get(slot, {}) %}
+                        <div class="slot-card">
+                            <h4>{{ label }}</h4>
+                            <input type="text"
+                                name="all_nba_slot_{{ slot }}_player"
+                                list="{% if required_bucket == 'guard' %}nba-guard-options{% else %}nba-forward-options{% endif %}"
+                                placeholder="Jugador"
+                                value="{{ selection.player_name or '' }}"
+                                data-player-input
+                                data-team-target="all_nba_slot_{{ slot }}_team"
+                                data-position-target="all_nba_slot_{{ slot }}_position"
+                                data-slot-role="player"
+                                data-required-bucket="{{ required_bucket }}">
+                            <input type="text"
+                                name="all_nba_slot_{{ slot }}_team"
+                                placeholder="Equipo (opcional)"
+                                value="{{ selection.team_name or '' }}"
+                                id="all_nba_slot_{{ slot }}_team"
+                                class="team-input">
+                            <input type="hidden" name="all_nba_slot_{{ slot }}_position" id="all_nba_slot_{{ slot }}_position" value="{{ selection.position or required_bucket }}">
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <div class="submit-row">
+                <button class="btn primary" type="submit">💾 Guardar selecciones</button>
+            </div>
+        </form>
+    </main>
+
+    <datalist id="nba-player-options">
+        {% for item in player_suggestions %}
+            <option value="{{ item.name }}"{% if item.team %} label="{{ item.team }}"{% endif %}></option>
+        {% endfor %}
+    </datalist>
+    <datalist id="nba-guard-options">
+        {% for item in guard_suggestions %}
+            <option value="{{ item.name }}"{% if item.team %} label="{{ item.team }}"{% endif %}></option>
+        {% endfor %}
+    </datalist>
+    <datalist id="nba-forward-options">
+        {% for item in forward_suggestions %}
+            <option value="{{ item.name }}"{% if item.team %} label="{{ item.team }}"{% endif %}></option>
+        {% endfor %}
+    </datalist>
+    <script>
+        (function () {
+            const lookup = {{ player_lookup | tojson | safe }};
+
+            function normalizeName(value) {
+                return (value || "").trim().toLowerCase();
+            }
+
+            function classifyPosition(raw) {
+                if (!raw) {
+                    return "forward";
+                }
+                const value = String(raw).toUpperCase();
+                if (value.startsWith("PG") || value.startsWith("SG") || value.startsWith("G")) {
+                    return "guard";
+                }
+                if (value.startsWith("SF") || value.startsWith("PF") || value.startsWith("F") || value.startsWith("C")) {
+                    return "forward";
+                }
+                if (value.includes("G") && !value.startsWith("F")) {
+                    return "guard";
+                }
+                return "forward";
+            }
+
+            function resolveBucket(data, fallback) {
+                if (data && data.bucket) {
+                    return data.bucket;
+                }
+                return classifyPosition(data ? data.position : fallback);
+            }
+
+            function fillFromLookup(input) {
+                const key = normalizeName(input.value);
+                const data = lookup[key];
+                const teamTargetId = input.getAttribute("data-team-target");
+                if (teamTargetId) {
+                    const teamField = document.getElementById(teamTargetId);
+                    if (teamField) {
+                        if (data && data.team) {
+                            teamField.value = data.team;
+                        } else if (!teamField.value) {
+                            teamField.value = "";
+                        }
+                    }
+                }
+                const positionTargetId = input.getAttribute("data-position-target");
+                if (positionTargetId) {
+                    const positionField = document.getElementById(positionTargetId);
+                    if (positionField) {
+                        const required = input.getAttribute("data-required-bucket") || "forward";
+                        positionField.value = resolveBucket(data, required);
+                    }
+                }
+            }
+
+            function updateAllNbaCounters() {
+                const counter = document.getElementById("all-nba-counter");
+                const errorBox = document.getElementById("all-nba-client-error");
+                let guardCount = 0;
+                let forwardCount = 0;
+                let invalidSlots = [];
+                document.querySelectorAll('[data-slot-role="player"]').forEach((input) => {
+                    const key = normalizeName(input.value);
+                    const required = input.getAttribute("data-required-bucket") || "forward";
+                    let bucket = required;
+                    if (!key) {
+                        input.classList.remove("invalid-entry");
+                        return;
+                    }
+                    const data = lookup[key];
+                    bucket = resolveBucket(data, required);
+                    if (bucket === "guard") {
+                        guardCount += 1;
+                    } else {
+                        forwardCount += 1;
+                    }
+                    const isValid = bucket === required;
+                    input.classList.toggle("invalid-entry", !isValid);
+                    if (!isValid) {
+                        invalidSlots.push({input, required, bucket});
+                    }
+                });
+                if (counter) {
+                    counter.textContent = `Guards: ${guardCount}/2 · Forwards: ${forwardCount}/3`;
+                    counter.classList.toggle("invalid", guardCount > 2 || forwardCount > 3 || invalidSlots.length > 0);
+                }
+                if (errorBox) {
+                    if (invalidSlots.length > 0) {
+                        errorBox.style.display = "block";
+                        errorBox.textContent = "Revisa las posiciones: los slots tienen un rol fijo (Guard/Forward).";
+                    } else if (guardCount > 2 || forwardCount > 3) {
+                        errorBox.style.display = "block";
+                        errorBox.textContent = "Debes elegir máximo 2 guards y máximo 3 forwards.";
+                    } else {
+                        errorBox.style.display = "none";
+                        errorBox.textContent = "";
+                    }
+                }
+                return { guardCount, forwardCount, invalidSlots };
+            }
+
+            document.querySelectorAll('[data-player-input]').forEach((input) => {
+                input.addEventListener('change', () => {
+                    fillFromLookup(input);
+                    updateAllNbaCounters();
+                });
+                input.addEventListener('blur', () => {
+                    fillFromLookup(input);
+                    updateAllNbaCounters();
+                });
+            });
+
+            const form = document.querySelector('form');
+            if (form) {
+                form.addEventListener('submit', (event) => {
+                    const { guardCount, forwardCount, invalidSlots } = updateAllNbaCounters();
+                    if (guardCount > 2 || forwardCount > 3 || invalidSlots.length > 0) {
+                        event.preventDefault();
+                        const errorBox = document.getElementById("all-nba-client-error");
+                        if (errorBox) {
+                            errorBox.style.display = "block";
+                            if (invalidSlots.length > 0) {
+                                errorBox.textContent = "Revisa las posiciones: los slots tienen un rol fijo (Guard/Forward).";
+                            } else {
+                                errorBox.textContent = "Debes elegir máximo 2 guards y máximo 3 forwards.";
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Initialize counters and auto-fill existing entries on load.
+            document.querySelectorAll('[data-player-input]').forEach((input) => {
+                fillFromLookup(input);
+            });
+            updateAllNbaCounters();
+        })();
+    </script>
+</body>
+</html>

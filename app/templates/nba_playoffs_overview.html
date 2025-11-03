@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>NBA Regular Season 2026 - Picks globales</title>
+    <link rel="icon" href="{{ request.url_for('static', path='favicon.ico') }}" type="image/x-icon">
+    <link rel="shortcut icon" href="{{ request.url_for('static', path='favicon.ico') }}" type="image/x-icon">
+    <style>
+        :root { color-scheme: dark; }
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(180deg, #03070f, #010409 60%, #000307);
+            color: #e6edf7;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 36px 24px 60px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+        header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+        header h1 {
+            margin: 0;
+            font-size: clamp(1.8rem, 3vw, 2.4rem);
+            letter-spacing: 0.06em;
+        }
+        header h1 span {
+            background: linear-gradient(135deg, rgba(41, 110, 205, 0.85), rgba(205, 132, 41, 0.85));
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+        .btn {
+            border: none;
+            border-radius: 12px;
+            padding: 10px 16px;
+            cursor: pointer;
+            color: #e6edf7;
+            background: rgba(255, 255, 255, 0.12);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 16px 30px rgba(3, 9, 18, 0.45);
+        }
+        .grid {
+            display: grid;
+            gap: 22px;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        }
+        .card {
+            background: rgba(9, 20, 35, 0.88);
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 20px 36px rgba(2, 6, 12, 0.55);
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+        .card h2 {
+            margin: 0;
+            font-size: 1.4rem;
+            letter-spacing: 0.05em;
+            color: #9ec5ff;
+        }
+        .subsection h3 {
+            margin: 0 0 8px;
+            font-size: 1rem;
+            letter-spacing: 0.05em;
+            color: #d4e5ff;
+        }
+        ul {
+            padding-left: 18px;
+            margin: 0;
+            list-style: none;
+            display: grid;
+            gap: 4px;
+        }
+        .pairs {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px 16px;
+        }
+        .pairs li {
+            background: rgba(14, 28, 48, 0.92);
+            padding: 8px 10px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            font-size: 0.9rem;
+        }
+        .list {
+            display: grid;
+            gap: 6px;
+        }
+        .list li {
+            background: rgba(14, 28, 48, 0.92);
+            padding: 8px 10px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            font-size: 0.92rem;
+        }
+        .tag {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>👥 Picks globales <span>{{ season_year }}</span></h1>
+            <div class="actions">
+                <a class="btn" href="/nba-playoffs">✍️ Editar mis picks</a>
+            </div>
+        </header>
+
+        {% if not picks %}
+            <p>No hay picks guardados todavía. Anima a los corderos a completar sus pronósticos.</p>
+        {% else %}
+            <section class="grid">
+                {% for entry in picks %}
+                    <article class="card">
+                        <h2>{{ entry.user_uid|upper }}</h2>
+                        <div class="subsection">
+                            <h3>Playoffs</h3>
+                            <div class="pairs">
+                                {% for conference in conferences %}
+                                    {% set data = entry.playoff.get(conference, {}) %}
+                                    <div>
+                                        <span class="tag">{{ "Oeste" if conference == "West" else "Este" }}</span>
+                                        <ul class="list">
+                                            {% for seed in range(1, 9) %}
+                                                {% set slot = data.get(seed) %}
+                                                <li>
+                                                    #{{ seed }} –
+                                                    {% if slot and slot.team_name %}
+                                                        {{ slot.team_name }}
+                                                        {% if slot.abbreviation %}
+                                                            <span style="opacity:0.6;">({{ slot.abbreviation }})</span>
+                                                        {% endif %}
+                                                    {% else %}
+                                                        <span style="opacity:0.5;">Sin selección</span>
+                                                    {% endif %}
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="subsection">
+                            <h3>Premios</h3>
+                            <ul class="list">
+                                {% for category in honor_categories %}
+                                    {% set data = entry.honors.get(category) %}
+                                    <li>
+                                        {% if category == "best_record" %}
+                                            Mejor récord:
+                                        {% elif category == "mvp" %}
+                                            MVP:
+                                        {% else %}
+                                            Rookie del año:
+                                        {% endif %}
+                                        {% if data and data.nominee %}
+                                            <strong>{{ data.nominee }}</strong>
+                                            {% if data.team_name %}
+                                                <span style="opacity:0.6;">({{ data.team_name }})</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span style="opacity:0.5;">Sin selección</span>
+                                        {% endif %}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+
+                        <div class="subsection">
+                            <h3>All NBA Team</h3>
+                            <ul class="list">
+                                {% for entry_slot in slot_entries|default([]) %}
+                                    {% set slot = entry_slot.slot %}
+                                    {% set label = entry_slot.label %}
+                                    {% set pick = entry.all_nba.get(slot) %}
+                                    <li>
+                                        {{ label }}:
+                                        {% if pick and pick.player_name %}
+                                            <strong>{{ pick.player_name }}</strong>
+                                            {% if pick.team_name %}
+                                                <span style="opacity:0.6;">({{ pick.team_name }})</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span style="opacity:0.5;">Sin selección</span>
+                                        {% endif %}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </article>
+                {% endfor %}
+            </section>
+        {% endif %}
+    </div>
+</body>
+</html>
