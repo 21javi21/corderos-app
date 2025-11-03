@@ -9,6 +9,9 @@
         :root {
             color-scheme: dark;
         }
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
         body {
             margin: 0;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -97,7 +100,7 @@
             gap: 20px;
         }
         .playoff-grid {
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
         }
         .seed-row {
             display: grid;
@@ -127,7 +130,7 @@
             box-shadow: 0 0 0 3px rgba(58, 123, 213, 0.25);
         }
         .honors-grid {
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
             align-items: stretch;
         }
         .honor-card {
@@ -152,7 +155,7 @@
             gap: 10px;
         }
         .all-nba-grid {
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
             align-items: stretch;
         }
         .slot-card {
@@ -223,6 +226,48 @@
         .note {
             font-size: 0.85rem;
             color: #9eb1cd;
+        }
+        .typeahead-wrapper {
+            position: relative;
+        }
+        .typeahead-list {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            right: 0;
+            background: rgba(9, 20, 35, 0.94);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            box-shadow: 0 18px 32px rgba(3, 9, 18, 0.55);
+            padding: 6px 0;
+            max-height: 260px;
+            overflow-y: auto;
+            z-index: 40;
+        }
+        .typeahead-item {
+            padding: 10px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        .typeahead-item span {
+            font-size: 0.92rem;
+            letter-spacing: 0.03em;
+        }
+        .typeahead-item .typeahead-team {
+            font-size: 0.78rem;
+            color: #8fa4c0;
+            letter-spacing: 0.04em;
+        }
+        .typeahead-item:hover,
+        .typeahead-item.active {
+            background: rgba(46, 115, 203, 0.18);
+        }
+        .typeahead-wrapper.typeahead-open input {
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
         }
         @media (max-width: 720px) {
             .page {
@@ -321,11 +366,11 @@
                                     <input type="text"
                                         name="honor_{{ category }}_name"
                                         id="honor_{{ category }}_name"
-                                        list="nba-player-options"
                                         placeholder="Jugador"
                                         value="{{ data.nominee or '' }}"
                                         data-player-input
-                                        data-team-target="honor_{{ category }}_team">
+                                        data-team-target="honor_{{ category }}_team"
+                                        data-suggestion-source="players">
                                     <input type="text"
                                         name="honor_{{ category }}_team"
                                         id="honor_{{ category }}_team"
@@ -355,20 +400,21 @@
                             <h4>{{ label }}</h4>
                             <input type="text"
                                 name="all_nba_slot_{{ slot }}_player"
-                                list="{% if required_bucket == 'guard' %}nba-guard-options{% else %}nba-forward-options{% endif %}"
                                 placeholder="Jugador"
                                 value="{{ selection.player_name or '' }}"
                                 data-player-input
                                 data-team-target="all_nba_slot_{{ slot }}_team"
                                 data-position-target="all_nba_slot_{{ slot }}_position"
                                 data-slot-role="player"
-                                data-required-bucket="{{ required_bucket }}">
+                                data-required-bucket="{{ required_bucket }}"
+                                data-suggestion-source="{% if required_bucket == 'guard' %}guards{% else %}forwards{% endif %}">
                             <input type="text"
                                 name="all_nba_slot_{{ slot }}_team"
-                                placeholder="Equipo (opcional)"
+                                placeholder="Equipo"
                                 value="{{ selection.team_name or '' }}"
                                 id="all_nba_slot_{{ slot }}_team"
-                                class="team-input">
+                                class="team-input"
+                                readonly>
                             <input type="hidden" name="all_nba_slot_{{ slot }}_position" id="all_nba_slot_{{ slot }}_position" value="{{ selection.position or required_bucket }}">
                         </div>
                     {% endfor %}
@@ -381,24 +427,15 @@
         </form>
     </main>
 
-    <datalist id="nba-player-options">
-        {% for item in player_suggestions %}
-            <option value="{{ item.name }}"{% if item.team %} label="{{ item.team }}"{% endif %}></option>
-        {% endfor %}
-    </datalist>
-    <datalist id="nba-guard-options">
-        {% for item in guard_suggestions %}
-            <option value="{{ item.name }}"{% if item.team %} label="{{ item.team }}"{% endif %}></option>
-        {% endfor %}
-    </datalist>
-    <datalist id="nba-forward-options">
-        {% for item in forward_suggestions %}
-            <option value="{{ item.name }}"{% if item.team %} label="{{ item.team }}"{% endif %}></option>
-        {% endfor %}
-    </datalist>
     <script>
         (function () {
             const lookup = {{ player_lookup | tojson | safe }};
+            const suggestionSources = {
+                players: {{ player_suggestions | tojson | safe }},
+                guards: {{ guard_suggestions | tojson | safe }},
+                forwards: {{ forward_suggestions | tojson | safe }}
+            };
+            const searchCache = new Map();
 
             function normalizeName(value) {
                 return (value || "").trim().toLowerCase();
@@ -426,6 +463,19 @@
                     return data.bucket;
                 }
                 return classifyPosition(data ? data.position : fallback);
+            }
+
+            function rememberLookup(item) {
+                if (!item || !item.name) {
+                    return;
+                }
+                const key = normalizeName(item.name);
+                const existing = lookup[key] || {};
+                lookup[key] = {
+                    team: item.team || existing.team || "",
+                    position: item.position || existing.position || "",
+                    bucket: item.bucket || existing.bucket || resolveBucket(existing, "forward"),
+                };
             }
 
             function fillFromLookup(input) {
@@ -498,7 +548,185 @@
                 return { guardCount, forwardCount, invalidSlots };
             }
 
+            function setupTypeahead(input) {
+                const sourceKey = input.getAttribute('data-suggestion-source') || 'players';
+                const baseSuggestions = suggestionSources[sourceKey] || [];
+                const bucketParam = sourceKey === 'guards' ? 'guard' : (sourceKey === 'forwards' ? 'forward' : null);
+                const wrapper = document.createElement('div');
+                wrapper.className = 'typeahead-wrapper';
+                input.parentNode.insertBefore(wrapper, input);
+                wrapper.appendChild(input);
+
+                const list = document.createElement('div');
+                list.className = 'typeahead-list';
+                list.setAttribute('hidden', 'hidden');
+                wrapper.appendChild(list);
+
+                let currentMatches = [];
+                let activeIndex = -1;
+                let pendingController = null;
+
+                function closeList() {
+                    list.setAttribute('hidden', 'hidden');
+                    wrapper.classList.remove('typeahead-open');
+                    activeIndex = -1;
+                    currentMatches = [];
+                }
+
+                function applySelection(item) {
+                    if (!item) {
+                        return;
+                    }
+                    input.value = item.name;
+                    fillFromLookup(input);
+                    updateAllNbaCounters();
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                    closeList();
+                }
+
+                function renderMatches(matches) {
+                    list.innerHTML = '';
+                    currentMatches = matches;
+                    if (!matches.length) {
+                        closeList();
+                        return;
+                    }
+                    matches.forEach(rememberLookup);
+                    matches.forEach((item, index) => {
+                        const option = document.createElement('div');
+                        option.className = 'typeahead-item';
+                        option.dataset.index = String(index);
+                        const nameSpan = document.createElement('span');
+                        nameSpan.textContent = item.name;
+                        option.appendChild(nameSpan);
+                        if (item.team) {
+                            const teamSpan = document.createElement('span');
+                            teamSpan.textContent = item.team;
+                            teamSpan.className = 'typeahead-team';
+                            option.appendChild(teamSpan);
+                        }
+                        option.addEventListener('mousedown', (event) => {
+                            event.preventDefault();
+                            applySelection(item);
+                        });
+                        list.appendChild(option);
+                    });
+                    list.removeAttribute('hidden');
+                    wrapper.classList.add('typeahead-open');
+                }
+
+                function highlight(index) {
+                    const items = list.querySelectorAll('.typeahead-item');
+                    items.forEach((node) => node.classList.remove('active'));
+                    if (index >= 0 && index < items.length) {
+                        items[index].classList.add('active');
+                    }
+                }
+
+                function filterMatches(value) {
+                    const term = (value || "").trim();
+                    const normalized = normalizeName(term);
+                    if (!normalized) {
+                        const initial = baseSuggestions.slice(0, 12);
+                        renderMatches(initial);
+                        activeIndex = initial.length ? 0 : -1;
+                        highlight(activeIndex);
+                        return;
+                    }
+                    if (normalized.length < 2) {
+                        const localMatches = baseSuggestions.filter((item) => normalizeName(item.name).includes(normalized)).slice(0, 20);
+                        renderMatches(localMatches);
+                        activeIndex = localMatches.length ? 0 : -1;
+                        highlight(activeIndex);
+                        return;
+                    }
+                    const cacheKey = `${bucketParam || 'any'}::${normalized}`;
+                    if (searchCache.has(cacheKey)) {
+                        const cached = searchCache.get(cacheKey);
+                        renderMatches(cached);
+                        activeIndex = cached.length ? 0 : -1;
+                        highlight(activeIndex);
+                        return;
+                    }
+                    if (pendingController) {
+                        pendingController.abort();
+                    }
+                    pendingController = new AbortController();
+                    const params = new URLSearchParams({ q: term, limit: "25" });
+                    if (bucketParam) {
+                        params.set("bucket", bucketParam);
+                    }
+                    fetch(`/api/nba/players/search?${params.toString()}`, { signal: pendingController.signal })
+                        .then((response) => {
+                            if (!response.ok) {
+                                throw new Error(`HTTP ${response.status}`);
+                            }
+                            return response.json();
+                        })
+                        .then((payload) => {
+                            const items = Array.isArray(payload.items) ? payload.items : [];
+                            items.forEach(rememberLookup);
+                            searchCache.set(cacheKey, items);
+                            renderMatches(items);
+                            activeIndex = items.length ? 0 : -1;
+                            highlight(activeIndex);
+                        })
+                        .catch((error) => {
+                            if (error.name === 'AbortError') {
+                                return;
+                            }
+                            const fallback = baseSuggestions.filter((item) => normalizeName(item.name).includes(normalized)).slice(0, 20);
+                            renderMatches(fallback);
+                            activeIndex = fallback.length ? 0 : -1;
+                            highlight(activeIndex);
+                        })
+                        .finally(() => {
+                            pendingController = null;
+                        });
+                }
+
+                input.addEventListener('input', () => {
+                    filterMatches(input.value);
+                });
+
+                input.addEventListener('focus', () => {
+                    filterMatches(input.value);
+                });
+
+                input.addEventListener('keydown', (event) => {
+                    if (list.hasAttribute('hidden')) {
+                        return;
+                    }
+                    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                        event.preventDefault();
+                        if (!currentMatches.length) {
+                            return;
+                        }
+                        if (event.key === 'ArrowDown') {
+                            activeIndex = (activeIndex + 1) % currentMatches.length;
+                        } else if (event.key === 'ArrowUp') {
+                            activeIndex = (activeIndex - 1 + currentMatches.length) % currentMatches.length;
+                        }
+                        highlight(activeIndex);
+                    } else if (event.key === 'Enter') {
+                        if (activeIndex >= 0 && activeIndex < currentMatches.length) {
+                            event.preventDefault();
+                            applySelection(currentMatches[activeIndex]);
+                        }
+                    } else if (event.key === 'Escape') {
+                        closeList();
+                    }
+                });
+
+                input.addEventListener('blur', () => {
+                    setTimeout(() => {
+                        closeList();
+                    }, 120);
+                });
+            }
+
             document.querySelectorAll('[data-player-input]').forEach((input) => {
+                setupTypeahead(input);
                 input.addEventListener('change', () => {
                     fillFromLookup(input);
                     updateAllNbaCounters();

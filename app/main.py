@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-from fastapi import FastAPI, Depends, HTTPException, Request, Form, File, UploadFile, Path, status
+from fastapi import FastAPI, Depends, HTTPException, Request, Form, File, UploadFile, Path, Query, status
 from fastapi.responses import Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -755,23 +755,26 @@ def _load_nba_teams_by_conference() -> dict[str, list[dict[str, Any]]]:
     return teams
 
 
-def _load_nba_player_suggestions(limit: int = 400) -> list[dict[str, str]]:
+def _load_nba_player_suggestions(limit: int | None = None) -> list[dict[str, str]]:
     suggestions: list[dict[str, str]] = []
     if not pool:
         return suggestions
     conn = pool.getconn()
     try:
         with conn.cursor() as cur:
-            cur.execute(
-                """
+            query = """
                 SELECT p.full_name, COALESCE(p.position, ''), COALESCE(t.full_name, '')
                 FROM nba_players p
                 LEFT JOIN nba_teams t ON t.id = p.team_id
                 ORDER BY p.full_name
-                LIMIT %s
-                """,
-                (limit,),
-            )
+            """
+            params: tuple[Any, ...] = ()
+            if limit is not None:
+                query += " LIMIT %s"
+                params = (limit,)
+                cur.execute(query, params)
+            else:
+                cur.execute(query)
             for full_name, raw_position, team_name in cur.fetchall():
                 bucket = _classify_player_position(raw_position)
                 suggestions.append(
@@ -787,6 +790,61 @@ def _load_nba_player_suggestions(limit: int = 400) -> list[dict[str, str]]:
     finally:
         pool.putconn(conn)
     return suggestions
+
+
+@app.get("/api/nba/players/search")
+def nba_player_search(
+    q: str = Query("", min_length=1),
+    bucket: str | None = Query(None),
+    limit: int = Query(25, ge=1, le=50),
+):
+    term = (q or "").strip()
+    if not term:
+        return {"items": []}
+    normalized_bucket: str | None = None
+    if bucket:
+        candidate = bucket.lower()
+        if candidate in {"guard", "forward"}:
+            normalized_bucket = candidate
+
+    if not pool:
+        return {"items": []}
+
+    search_cap = limit * 4 if normalized_bucket else limit
+    items: list[dict[str, str]] = []
+    conn = pool.getconn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT p.full_name, COALESCE(p.position, ''), COALESCE(t.full_name, '')
+                FROM nba_players p
+                LEFT JOIN nba_teams t ON t.id = p.team_id
+                WHERE p.full_name ILIKE %s
+                ORDER BY p.full_name
+                LIMIT %s
+                """,
+                (f"%{term}%", search_cap),
+            )
+            for full_name, raw_position, team_name in cur.fetchall():
+                bucket_value = _classify_player_position(raw_position)
+                if normalized_bucket and bucket_value != normalized_bucket:
+                    continue
+                items.append(
+                    {
+                        "name": full_name,
+                        "position": (raw_position or "").strip().upper(),
+                        "team": team_name,
+                        "bucket": bucket_value,
+                    }
+                )
+                if len(items) >= limit:
+                    break
+    except Exception as exc:
+        print(f"[NBA] player search failed: {exc}")
+    finally:
+        pool.putconn(conn)
+    return {"items": items}
 
 
 def _load_user_nba_picks(user_uid: str) -> dict[str, Any]:
