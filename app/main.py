@@ -76,10 +76,12 @@ def _classify_player_position(raw: str | None) -> str:
         return "forward"
     if normalized.startswith(("PG", "SG", "G")):
         return "guard"
+    if "G" in normalized:
+        return "guard"
     if normalized.startswith(("SF", "PF", "F", "C")):
         return "forward"
-    if "G" in normalized and not normalized.startswith("F"):
-        return "guard"
+    if "F" in normalized or "C" in normalized:
+        return "forward"
     return "forward"
 
 _BASE_FRAME_DEFINITIONS: dict[str, dict[str, str]] = {
