@@ -812,6 +812,7 @@ def nba_player_search(
 
     search_cap = limit * 4 if normalized_bucket else limit
     items: list[dict[str, str]] = []
+    overflow: list[dict[str, str]] = []
     conn = pool.getconn()
     try:
         with conn.cursor() as cur:
@@ -828,22 +829,26 @@ def nba_player_search(
             )
             for full_name, raw_position, team_name in cur.fetchall():
                 bucket_value = _classify_player_position(raw_position)
+                record = {
+                    "name": full_name,
+                    "position": (raw_position or "").strip().upper(),
+                    "team": team_name,
+                    "bucket": bucket_value,
+                }
                 if normalized_bucket and bucket_value != normalized_bucket:
+                    if len(overflow) < limit:
+                        overflow.append(record)
                     continue
-                items.append(
-                    {
-                        "name": full_name,
-                        "position": (raw_position or "").strip().upper(),
-                        "team": team_name,
-                        "bucket": bucket_value,
-                    }
-                )
+                items.append(record)
                 if len(items) >= limit:
                     break
     except Exception as exc:
         print(f"[NBA] player search failed: {exc}")
     finally:
         pool.putconn(conn)
+    if normalized_bucket and len(items) < limit:
+        remaining = max(0, limit - len(items))
+        items.extend(overflow[:remaining])
     return {"items": items}
 
 

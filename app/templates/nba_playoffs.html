@@ -407,7 +407,8 @@
                                 data-position-target="all_nba_slot_{{ slot }}_position"
                                 data-slot-role="player"
                                 data-required-bucket="{{ required_bucket }}"
-                                data-suggestion-source="{% if required_bucket == 'guard' %}guards{% else %}forwards{% endif %}">
+                                data-suggestion-source="players"
+                                data-preferred-bucket="{{ required_bucket }}">
                             <input type="text"
                                 name="all_nba_slot_{{ slot }}_team"
                                 placeholder="Equipo"
@@ -465,6 +466,23 @@
                 return classifyPosition(data ? data.position : fallback);
             }
 
+            function determineBucket(item, fallback) {
+                if (!item) {
+                    return fallback || "forward";
+                }
+                if (item.bucket) {
+                    return item.bucket;
+                }
+                if (item.position) {
+                    return classifyPosition(item.position);
+                }
+                const existing = lookup[normalizeName(item.name)];
+                if (existing && existing.bucket) {
+                    return existing.bucket;
+                }
+                return fallback || "forward";
+            }
+
             function rememberLookup(item) {
                 if (!item || !item.name) {
                     return;
@@ -474,7 +492,7 @@
                 lookup[key] = {
                     team: item.team || existing.team || "",
                     position: item.position || existing.position || "",
-                    bucket: item.bucket || existing.bucket || resolveBucket(existing, "forward"),
+                    bucket: determineBucket(item, existing.bucket || "forward"),
                 };
             }
 
@@ -550,8 +568,8 @@
 
             function setupTypeahead(input) {
                 const sourceKey = input.getAttribute('data-suggestion-source') || 'players';
+                const preferredBucket = input.getAttribute('data-preferred-bucket') || null;
                 const baseSuggestions = suggestionSources[sourceKey] || [];
-                const bucketParam = sourceKey === 'guards' ? 'guard' : (sourceKey === 'forwards' ? 'forward' : null);
                 const wrapper = document.createElement('div');
                 wrapper.className = 'typeahead-wrapper';
                 input.parentNode.insertBefore(wrapper, input);
@@ -627,20 +645,32 @@
                     const term = (value || "").trim();
                     const normalized = normalizeName(term);
                     if (!normalized) {
-                        const initial = baseSuggestions.slice(0, 12);
+                        const initial = preferredBucket
+                            ? baseSuggestions.filter((item) => determineBucket(item, preferredBucket) === preferredBucket).slice(0, 12)
+                            : baseSuggestions.slice(0, 12);
                         renderMatches(initial);
                         activeIndex = initial.length ? 0 : -1;
                         highlight(activeIndex);
                         return;
                     }
                     if (normalized.length < 2) {
-                        const localMatches = baseSuggestions.filter((item) => normalizeName(item.name).includes(normalized)).slice(0, 20);
+                        const localMatches = baseSuggestions
+                            .filter((item) => normalizeName(item.name).includes(normalized))
+                            .sort((a, b) => {
+                                const aPreferred = preferredBucket && determineBucket(a, preferredBucket) === preferredBucket;
+                                const bPreferred = preferredBucket && determineBucket(b, preferredBucket) === preferredBucket;
+                                if (aPreferred === bPreferred) {
+                                    return normalizeName(a.name).localeCompare(normalizeName(b.name));
+                                }
+                                return aPreferred ? -1 : 1;
+                            })
+                            .slice(0, 20);
                         renderMatches(localMatches);
                         activeIndex = localMatches.length ? 0 : -1;
                         highlight(activeIndex);
                         return;
                     }
-                    const cacheKey = `${bucketParam || 'any'}::${normalized}`;
+                    const cacheKey = `${preferredBucket || 'any'}::${normalized}`;
                     if (searchCache.has(cacheKey)) {
                         const cached = searchCache.get(cacheKey);
                         renderMatches(cached);
@@ -653,8 +683,8 @@
                     }
                     pendingController = new AbortController();
                     const params = new URLSearchParams({ q: term, limit: "25" });
-                    if (bucketParam) {
-                        params.set("bucket", bucketParam);
+                    if (preferredBucket) {
+                        params.set("bucket", preferredBucket);
                     }
                     fetch(`/api/nba/players/search?${params.toString()}`, { signal: pendingController.signal })
                         .then((response) => {
@@ -666,16 +696,32 @@
                         .then((payload) => {
                             const items = Array.isArray(payload.items) ? payload.items : [];
                             items.forEach(rememberLookup);
-                            searchCache.set(cacheKey, items);
-                            renderMatches(items);
-                            activeIndex = items.length ? 0 : -1;
+                            const ordered = preferredBucket
+                                ? [
+                                    ...items.filter((item) => determineBucket(item, preferredBucket) === preferredBucket),
+                                    ...items.filter((item) => determineBucket(item, preferredBucket) !== preferredBucket),
+                                ].filter((item, index, arr) => index === arr.findIndex((other) => normalizeName(other.name) === normalizeName(item.name)))
+                                : items;
+                            searchCache.set(cacheKey, ordered);
+                            renderMatches(ordered);
+                            activeIndex = ordered.length ? 0 : -1;
                             highlight(activeIndex);
                         })
                         .catch((error) => {
                             if (error.name === 'AbortError') {
                                 return;
                             }
-                            const fallback = baseSuggestions.filter((item) => normalizeName(item.name).includes(normalized)).slice(0, 20);
+                            const fallback = baseSuggestions
+                                .filter((item) => normalizeName(item.name).includes(normalized))
+                                .sort((a, b) => {
+                                    const aPreferred = preferredBucket && determineBucket(a, preferredBucket) === preferredBucket;
+                                    const bPreferred = preferredBucket && determineBucket(b, preferredBucket) === preferredBucket;
+                                    if (aPreferred === bPreferred) {
+                                        return normalizeName(a.name).localeCompare(normalizeName(b.name));
+                                    }
+                                    return aPreferred ? -1 : 1;
+                                })
+                                .slice(0, 20);
                             renderMatches(fallback);
                             activeIndex = fallback.length ? 0 : -1;
                             highlight(activeIndex);
