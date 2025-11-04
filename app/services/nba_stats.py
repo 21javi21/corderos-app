@@ -53,12 +53,16 @@ def get_team_advanced() -> List[Dict]:
             season=SEASON,
             measure_type_detailed_defense="Advanced",
             per_mode_detailed="PerGame",
+            season_type_all_star="Regular Season",
+            league_id_nullable="00",
             headers=session.headers,
             timeout=HTTP_TIMEOUT
         ).get_data_frames()[0]
     except Exception as exc:
         print(f"[NBA] team_advanced fetch failed: {exc}")
         return cached if cached is not None else []
+
+    df = df[df["TEAM_ID"].astype(str).str.startswith("161061")]  # solo franquicias NBA
 
     cols = [
         "TEAM_ID",
@@ -118,6 +122,8 @@ def get_mvp_ladder() -> List[Dict]:
             season=SEASON,
             per_mode_detailed="PerGame",
             measure_type_detailed_defense="Base",
+            season_type_all_star="Regular Season",
+            league_id_nullable="00",
             headers=session.headers,
             timeout=HTTP_TIMEOUT
         ).get_data_frames()[0][["PLAYER_ID", "PTS", "AST", "REB"]]
@@ -129,6 +135,8 @@ def get_mvp_ladder() -> List[Dict]:
     # Win% del equipo
     st_raw = leaguestandingsv3.LeagueStandingsV3(
         season=SEASON,
+        league_id="00",
+        season_type="Regular Season",
         headers=session.headers,
         timeout=HTTP_TIMEOUT
     ).get_data_frames()[0]
@@ -174,6 +182,8 @@ def get_roy_ladder() -> List[Dict]:
             per_mode_detailed="PerGame",
             measure_type_detailed_defense="Advanced",
             player_experience_nullable="Rookie",
+            season_type_all_star="Regular Season",
+            league_id_nullable="00",
             headers=session.headers,
             timeout=HTTP_TIMEOUT
         ).get_data_frames()[0]
@@ -193,6 +203,8 @@ def get_roy_ladder() -> List[Dict]:
             per_mode_detailed="PerGame",
             measure_type_detailed_defense="Base",
             player_experience_nullable="Rookie",
+            season_type_all_star="Regular Season",
+            league_id_nullable="00",
             headers=session.headers,
             timeout=HTTP_TIMEOUT
         ).get_data_frames()[0][["PLAYER_ID", "PTS", "AST", "REB"]]
