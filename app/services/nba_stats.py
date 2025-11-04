@@ -9,18 +9,16 @@ from nba_api.stats.endpoints import (
 )
 import requests
 import os
+from app.services.nba_headers import attach_to_session, ensure_nba_api_headers
 
 SEASON = os.getenv("NBA_SEASON", "2025-26")  # formato 'YYYY-YY', p.e. '2025-26'
 CACHE_TTL = int(os.getenv("NBA_CACHE_TTL_SECONDS", "900"))  # 15 min
 
-# Sesión con headers para evitar bloqueos de stats.nba.com
+# Sesión con headers realistas para evitar bloqueos de nba.com/stats
+ensure_nba_api_headers()
 session = requests.Session()
-session.headers.update({
-    "User-Agent": "Mozilla/5.0",
-    "Referer": "https://www.nba.com/",
-    "Accept-Language": "en-US,en;q=0.9",
-})
-HTTP_TIMEOUT = 6
+attach_to_session(session)
+HTTP_TIMEOUT = 15
 
 _cache: Dict[str, Dict] = {}
 
@@ -62,8 +60,25 @@ def get_team_advanced() -> List[Dict]:
         print(f"[NBA] team_advanced fetch failed: {exc}")
         return cached if cached is not None else []
 
-    cols = ["TEAM_ID","TEAM_NAME","GP","W","L","W_PCT","OFF_RATING","DEF_RATING","NET_RATING","PACE","TS_PCT","EFG_PCT","OREB_PCT","DREB_PCT","TOV_PCT","FTA_RATE"]
-    df = df[cols].sort_values("NET_RATING", ascending=False)
+    cols = [
+        "TEAM_ID",
+        "TEAM_NAME",
+        "GP",
+        "W",
+        "L",
+        "W_PCT",
+        "OFF_RATING",
+        "DEF_RATING",
+        "NET_RATING",
+        "PACE",
+        "TS_PCT",
+        "EFG_PCT",
+        "OREB_PCT",
+        "DREB_PCT",
+        "TM_TOV_PCT",
+    ]
+    available = [c for c in cols if c in df.columns]
+    df = df[available].sort_values("NET_RATING", ascending=False)
     top10 = df.head(10).to_dict(orient="records")
     _set_cache(cache_key, top10)
     return top10
@@ -81,23 +96,49 @@ def get_mvp_ladder() -> List[Dict]:
 
     # Producción individual (Advanced para TS%)
     try:
-        p = leaguedashplayerstats.LeagueDashPlayerStats(
+        advanced_raw = leaguedashplayerstats.LeagueDashPlayerStats(
             season=SEASON,
             per_mode_detailed="PerGame",
             measure_type_detailed_defense="Advanced",
             headers=session.headers,
             timeout=HTTP_TIMEOUT
         ).get_data_frames()[0]
+        advanced = advanced_raw[[
+            "TEAM_ID",
+            "PLAYER_ID",
+            "PLAYER_NAME",
+            "TEAM_ABBREVIATION",
+            "GP",
+            "W",
+            "L",
+            "W_PCT",
+            "TS_PCT",
+        ]]
+        base = leaguedashplayerstats.LeagueDashPlayerStats(
+            season=SEASON,
+            per_mode_detailed="PerGame",
+            measure_type_detailed_defense="Base",
+            headers=session.headers,
+            timeout=HTTP_TIMEOUT
+        ).get_data_frames()[0][["PLAYER_ID", "PTS", "AST", "REB"]]
+        p = advanced.merge(base, on="PLAYER_ID", how="left")
     except Exception as exc:
         print(f"[NBA] mvp ladder fetch failed: {exc}")
         return cached if cached is not None else []
 
     # Win% del equipo
-    st = leaguestandingsv3.LeagueStandingsV3(
+    st_raw = leaguestandingsv3.LeagueStandingsV3(
         season=SEASON,
         headers=session.headers,
         timeout=HTTP_TIMEOUT
-    ).get_data_frames()[0][["TeamID","W","L","WinPCT"]].rename(columns={"TeamID":"TEAM_ID","WinPCT":"TEAM_WPCT"})
+    ).get_data_frames()[0]
+    if {"W", "L"}.issubset(st_raw.columns):
+        standings_cols = {"TeamID": "TEAM_ID", "W": "W", "L": "L", "WinPCT": "TEAM_WPCT"}
+    else:
+        standings_cols = {"TeamID": "TEAM_ID", "WINS": "W", "LOSSES": "L", "WinPCT": "TEAM_WPCT"}
+    available_cols = [c for c in standings_cols if c in st_raw.columns]
+    st = st_raw[available_cols].rename(columns=standings_cols)
+    st = st[["TEAM_ID", "TEAM_WPCT"]]
 
     df = p.merge(st, on="TEAM_ID", how="left")
     safe = df.fillna({"TEAM_WPCT": 0.5})
@@ -128,7 +169,7 @@ def get_roy_ladder() -> List[Dict]:
         return cached
 
     try:
-        rook = leaguedashplayerstats.LeagueDashPlayerStats(
+        rook_adv_raw = leaguedashplayerstats.LeagueDashPlayerStats(
             season=SEASON,
             per_mode_detailed="PerGame",
             measure_type_detailed_defense="Advanced",
@@ -136,6 +177,26 @@ def get_roy_ladder() -> List[Dict]:
             headers=session.headers,
             timeout=HTTP_TIMEOUT
         ).get_data_frames()[0]
+        rook_adv = rook_adv_raw[[
+            "TEAM_ID",
+            "PLAYER_ID",
+            "PLAYER_NAME",
+            "TEAM_ABBREVIATION",
+            "GP",
+            "W",
+            "L",
+            "W_PCT",
+            "TS_PCT",
+        ]]
+        rook_base = leaguedashplayerstats.LeagueDashPlayerStats(
+            season=SEASON,
+            per_mode_detailed="PerGame",
+            measure_type_detailed_defense="Base",
+            player_experience_nullable="Rookie",
+            headers=session.headers,
+            timeout=HTTP_TIMEOUT
+        ).get_data_frames()[0][["PLAYER_ID", "PTS", "AST", "REB"]]
+        rook = rook_adv.merge(rook_base, on="PLAYER_ID", how="left")
     except Exception as exc:
         print(f"[NBA] roy ladder fetch failed: {exc}")
         return cached if cached is not None else []

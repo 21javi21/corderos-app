@@ -31,6 +31,10 @@ from app import auth_ldap
 from app.core.config import settings
 from app.security import SessionUser, optional_user, require_user, require_admin
 from app.routers import nba as nba_router
+from app.services.nba_headers import ensure_nba_api_headers
+
+# Ensure nba_api uses hardened headers before any endpoint instantiation.
+ensure_nba_api_headers()
 
 # The actual app is defined later in this file
 MULTIPLICA_OPCIONES = [1, 2, 3, 4, 5]

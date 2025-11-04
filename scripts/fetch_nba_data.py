@@ -18,6 +18,9 @@ from psycopg2.extras import execute_values
 from nba_api.stats.static import teams as nba_teams_static
 from nba_api.stats.static import players as nba_players_static
 from nba_api.stats.endpoints import commonteamroster
+from app.services.nba_headers import ensure_nba_api_headers
+
+ensure_nba_api_headers()
 
 
 WEST_ABBREVIATIONS = {
