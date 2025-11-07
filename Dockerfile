@@ -25,8 +25,9 @@ COPY requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir --root-user-action=ignore -r requirements.txt
 
-# Copy the app source code
+# Copy the app source code and scripts
 COPY app/ ./app/
+COPY scripts/ ./scripts/
 
 # Expose port
 EXPOSE 8000
