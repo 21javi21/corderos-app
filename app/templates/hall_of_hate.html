@@ -528,10 +528,16 @@
                     if (config.image_left !== undefined) {
                         card.style.setProperty('--image-left', config.image_left);
                     }
-                    if (config.image_right !== undefined) {
+                    if (config.image_width !== undefined) {
+                        const leftValue = config.image_left !== undefined ? config.image_left : '5%';
+                        card.style.setProperty('--image-right', `calc(100% - ${leftValue} - ${config.image_width})`);
+                    } else if (config.image_right !== undefined) {
                         card.style.setProperty('--image-right', config.image_right);
                     }
-                    if (config.image_bottom !== undefined) {
+                    if (config.image_height !== undefined) {
+                        const topValue = config.image_top !== undefined ? config.image_top : '5%';
+                        card.style.setProperty('--image-bottom', `calc(100% - ${topValue} - ${config.image_height})`);
+                    } else if (config.image_bottom !== undefined) {
                         card.style.setProperty('--image-bottom', config.image_bottom);
                     }
                     

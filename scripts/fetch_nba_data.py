@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Dict, Tuple
+from typing import Any, Dict, Tuple
 
 from dotenv import load_dotenv
 import psycopg2
@@ -96,8 +96,9 @@ def upsert_teams(conn) -> Dict[int, int]:
     return team_map
 
 
-def _fetch_player_metadata(team_map: Dict[int, int]) -> Dict[int, Tuple[str, int | None]]:
-    metadata: Dict[int, Tuple[str, int | None]] = {}
+def _fetch_player_metadata(team_map: Dict[int, int]) -> Dict[int, Dict[str, Any]]:
+    """Return roster metadata keyed by nba_player_id."""
+    metadata: Dict[int, Dict[str, Any]] = {}
     for nba_team_id, internal_team_id in team_map.items():
         try:
             roster = commonteamroster.CommonTeamRoster(team_id=nba_team_id)
@@ -111,10 +112,16 @@ def _fetch_player_metadata(team_map: Dict[int, int]) -> Dict[int, Tuple[str, int
             except (ValueError, TypeError):
                 continue
             position = row[7]  # POSITION column
+            full_name = row[3]  # PLAYER column
+            payload = metadata.setdefault(
+                player_id,
+                {"position": "", "team_id": internal_team_id, "full_name": ""},
+            )
             if position:
-                metadata[player_id] = (position, internal_team_id)
-            elif player_id not in metadata:
-                metadata[player_id] = ("", internal_team_id)
+                payload["position"] = position
+            payload["team_id"] = internal_team_id
+            if full_name:
+                payload["full_name"] = full_name
     return metadata
 
 
@@ -128,23 +135,51 @@ def upsert_players(conn, team_map: Dict[int, int]) -> Tuple[int, int]:
     player_metadata = _fetch_player_metadata(team_map)
 
     active_records = []
+    seen_player_ids: set[int] = set()
     for entry in payload:
-        if not entry.get("is_active"):
-            continue
         nba_player_id = entry.get("id")
         if nba_player_id is None:
             continue
-        full_name = entry.get("full_name") or ""
-        meta = player_metadata.get(int(nba_player_id))
-        roster_position = meta[0] if meta else ""
-        internal_team_id = meta[1] if meta else None
-        position = roster_position or entry.get("position") or ""
+        player_id_int = int(nba_player_id)
+        meta = player_metadata.get(player_id_int)
+        is_roster_player = meta is not None
+        if not entry.get("is_active") and not is_roster_player:
+            continue
+        full_name = next(
+            (value for value in (entry.get("full_name"), meta.get("full_name") if meta else None) if value),
+            "",
+        ).strip()
+        if not full_name:
+            continue
+        position = ""
+        if meta and meta.get("position"):
+            position = meta["position"]
+        elif entry.get("position"):
+            position = entry["position"]
+        internal_team_id = meta.get("team_id") if meta else None
         active_records.append(
             (
-                nba_player_id,
+                player_id_int,
                 full_name,
                 internal_team_id,
                 position,
+            )
+        )
+        seen_player_ids.add(player_id_int)
+
+    # Add players that only exist on the live roster payload (typically fresh rookies).
+    for player_id_int, meta in player_metadata.items():
+        if player_id_int in seen_player_ids:
+            continue
+        full_name = (meta.get("full_name") or "").strip()
+        if not full_name:
+            continue
+        active_records.append(
+            (
+                player_id_int,
+                full_name,
+                meta.get("team_id"),
+                meta.get("position") or "",
             )
         )
 
