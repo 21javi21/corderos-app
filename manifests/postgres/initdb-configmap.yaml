@@ -27,34 +27,10 @@ data:
         ganador1 VARCHAR(100),                -- Quién ganó
         ganador2 VARCHAR(100),
         perdedor1 VARCHAR(100),               -- Quién perdió
-        perdedor2 VARCHAR(100),
-        locked BOOLEAN NOT NULL DEFAULT FALSE, -- Controla bloqueos manuales
-        resultado_registrado DATE,             -- Fecha en la que se guardó el resultado
-        auto_lock_released BOOLEAN NOT NULL DEFAULT FALSE -- Los admins pueden reabrir una apuesta auto-bloqueada
-    );
-
-    -- Hall of Hate v2 Tables
-    CREATE TABLE hall_of_hate_v2 (
-        id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL UNIQUE,
-        image_filename TEXT NOT NULL,
-        frame_type TEXT DEFAULT 'default',
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-    );
-
-    CREATE TABLE hall_of_hate_v2_ratings (
-        id SERIAL PRIMARY KEY,
-        villain_id INTEGER NOT NULL,
-        user_name TEXT NOT NULL,
-        rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 99),
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        UNIQUE(villain_id, user_name),
-        FOREIGN KEY (villain_id) REFERENCES hall_of_hate_v2(id) ON DELETE CASCADE
+        perdedor2 VARCHAR(100)
     );
 
     -- Usuario de la app
     CREATE USER corderos_app WITH ENCRYPTED PASSWORD 'corderos_pass';
     GRANT ALL PRIVILEGES ON DATABASE corderos TO corderos_app;
     GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO corderos_app;
-    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO corderos_app;

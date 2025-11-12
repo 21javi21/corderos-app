@@ -4,10 +4,9 @@ metadata:
   name: postgres
   namespace: corderos
 spec:
-  type: ClusterIP
-  selector:
-    app: pgpool
   ports:
-  - name: postgres
-    port: 5432
+  - port: 5432
     targetPort: 5432
+  clusterIP: None  # Para que funcione bien con StatefulSet
+  selector:
+    app: postgres
