@@ -4,7 +4,7 @@ metadata:
   name: corderos-app
   namespace: corderos
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: corderos-app
@@ -13,6 +13,22 @@ spec:
       labels:
         app: corderos-app
     spec:
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: corderos-app
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: corderos-app
+              topologyKey: kubernetes.io/hostname
       imagePullSecrets:
       - name: regcred
       containers:

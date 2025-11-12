@@ -243,6 +243,7 @@ _HALL_SLUG_PATTERN = re.compile(r"[^a-z0-9]+")
 
 FRAME_STORAGE_MODE = "column"
 RATINGS_ENABLED = True
+ALLOW_HALL_OF_HATE_PREVIEW = os.environ.get("ALLOW_HALL_OF_HATE_PREVIEW", "false").lower() in {"1", "true", "yes"}
 
 
 def _disable_frame_storage(reason: str) -> None:
@@ -2018,6 +2019,23 @@ def nba_playoffs_all_picks(request: Request, current_user: SessionUser = Depends
     )
 
 # Test routes removed - implementing proper v2 system
+
+if ALLOW_HALL_OF_HATE_PREVIEW:
+    @app.get("/hall-of-hate/preview", response_class=HTMLResponse)
+    def hall_of_hate_preview(request: Request):
+        """Developer preview route that skips authentication when enabled via env var."""
+        villains = _get_hall_of_hate_entries(None)
+        return templates.TemplateResponse(
+            "hall_of_hate.html",
+            {
+                "request": request,
+                "villains": villains,
+                "current_user": None,
+                "preview_mode": True,
+                "frame_configs": HALL_OF_HATE_V2_FRAMES,
+                "v2_frames": HALL_OF_HATE_V2_FRAMES,
+            },
+        )
 
 @app.get("/hall-of-hate", response_class=HTMLResponse)
 def hall_of_hate_view(request: Request, current_user: SessionUser | None = Depends(optional_user)):

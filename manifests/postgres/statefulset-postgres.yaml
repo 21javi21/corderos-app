@@ -4,8 +4,9 @@ metadata:
   name: postgres
   namespace: corderos
 spec:
-  serviceName: postgres
-  replicas: 1
+  serviceName: postgres-hl
+  replicas: 2
+  podManagementPolicy: Parallel
   selector:
     matchLabels:
       app: postgres
@@ -14,39 +15,95 @@ spec:
       labels:
         app: postgres
     spec:
+      securityContext:
+        fsGroup: 1001
       containers:
-        - name: postgres
-          image: postgres:16
-          env:
-            - name: POSTGRES_USER
-              value: postgres
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: password
-            - name: PGDATA
-              value: /var/lib/postgresql/data/pgdata
-          ports:
-            - containerPort: 5432
-          volumeMounts:
-            - name: initdb
-              mountPath: /docker-entrypoint-initdb.d
-              readOnly: true
-            - name: postgres-data
-              mountPath: /var/lib/postgresql/data
-      volumes:
+      - name: postgres
+        image: bitnami/postgresql-repmgr:16.3.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5432
+          name: postgres
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: REPMGR_PRIMARY_HOST
+          value: postgres-0.postgres-hl.corderos.svc.cluster.local
+        - name: REPMGR_PRIMARY_PORT
+          value: "5432"
+        - name: REPMGR_PARTNER_NODES
+          value: postgres-0.postgres-hl.corderos.svc.cluster.local,postgres-1.postgres-hl.corderos.svc.cluster.local
+        - name: REPMGR_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: REPMGR_USERNAME
+          value: repmgr
+        - name: REPMGR_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: REPMGR_NODE_NETWORK_NAME
+          value: $(POD_NAME).postgres-hl.corderos.svc.cluster.local
+        - name: REPMGR_LOG_LEVEL
+          value: NOTICE
+        - name: REPMGR_CONNECT_TIMEOUT
+          value: "5"
+        - name: POSTGRESQL_POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: BITNAMI_DEBUG
+          value: "false"
+        volumeMounts:
         - name: initdb
-          configMap:
-            name: postgres-initdb
-            items:
-              - key: init.sql
-                path: init.sql
-  volumeClaimTemplates:
-    - metadata:
-        name: postgres-data
-      spec:
-        accessModes: ["ReadWriteOnce"]
+          mountPath: /docker-entrypoint-initdb.d
+          readOnly: true
+        - name: postgres-data
+          mountPath: /bitnami/postgresql
+        livenessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -c
+            - pg_isready -U postgres -d corderos
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 6
+        readinessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -c
+            - pg_isready -U postgres -d corderos
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 6
         resources:
           requests:
-            storage: 5Gi
+            cpu: "250m"
+            memory: 512Mi
+          limits:
+            cpu: "1"
+            memory: 1Gi
+      volumes:
+      - name: initdb
+        configMap:
+          name: postgres-initdb
+          items:
+          - key: init.sql
+            path: init.sql
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 5Gi

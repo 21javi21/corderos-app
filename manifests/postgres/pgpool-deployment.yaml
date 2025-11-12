@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgpool
+  namespace: corderos
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pgpool
+  template:
+    metadata:
+      labels:
+        app: pgpool
+    spec:
+      containers:
+      - name: pgpool
+        image: bitnami/pgpool:4.5.4-debian-12-r0
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: PGPOOL_BACKEND_NODES
+          value: "0:postgres-0.postgres-hl.corderos.svc.cluster.local:5432,1:postgres-1.postgres-hl.corderos.svc.cluster.local:5432"
+        - name: PGPOOL_ENABLE_LOAD_BALANCING
+          value: "yes"
+        - name: PGPOOL_SR_CHECK_PERIOD
+          value: "10"
+        - name: PGPOOL_SR_CHECK_USER
+          value: repmgr
+        - name: PGPOOL_SR_CHECK_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: PGPOOL_ADMIN_USERNAME
+          value: admin
+        - name: PGPOOL_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: PGPOOL_POSTGRES_USERNAME
+          value: postgres
+        - name: PGPOOL_POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: PGPOOL_POSTGRES_CUSTOM_USERS
+          value: postgres
+        - name: PGPOOL_POSTGRES_CUSTOM_PASSWORDS
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: PGPOOL_ENABLE_TLS
+          value: "no"
+        ports:
+        - containerPort: 5432
+          name: postgres
+        livenessProbe:
+          tcpSocket:
+            port: 5432
+          initialDelaySeconds: 30
+          periodSeconds: 15
+        readinessProbe:
+          tcpSocket:
+            port: 5432
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        resources:
+          requests:
+            cpu: "100m"
+            memory: 128Mi
+          limits:
+            cpu: "500m"
+            memory: 512Mi

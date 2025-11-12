@@ -5,6 +5,8 @@ resources:
   - initdb-configmap.yaml
   - secret-postgres.yaml
   - statefulset-postgres.yaml
+  - service-postgres-headless.yaml
   - service-postgres.yaml
   - service-postgres-external.yaml
   - postgres-certificate.yaml
+  - pgpool-deployment.yaml

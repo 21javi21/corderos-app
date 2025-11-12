@@ -132,6 +132,7 @@
             z-index: 1;
             overflow: hidden;
             border: none;
+            pointer-events: none; /* keep frame decorative so clicks reach the card */
         }
 
         /* Image Container - Configurable positioning via JSON */
@@ -241,6 +242,17 @@
         .nav-links a:hover {
             background: #66b3ff;
             color: #0c1425;
+        }
+
+        .preview-banner {
+            background: rgba(102, 179, 255, 0.12);
+            border: 1px dashed rgba(102, 179, 255, 0.6);
+            color: #9ecbff;
+            padding: 12px 18px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 24px;
+            font-size: 0.95rem;
         }
 
         /* Interactive Card Styles */
@@ -374,6 +386,46 @@
             }
         }
     </style>
+    {% if v2_frames %}
+    <style>
+        {% for frame_key, config in v2_frames.items() %}
+        .frame-{{ frame_key }} .image-container {
+            top: {{ config.image_top if config.image_top is defined else '5%' }};
+            left: {{ config.image_left if config.image_left is defined else '5%' }};
+            {% if config.image_right is defined %}
+            right: {{ config.image_right }};
+            {% elif config.image_width is defined %}
+            right: calc(100% - {{ config.image_left if config.image_left is defined else '0%' }} - {{ config.image_width }});
+            {% else %}
+            right: 5%;
+            {% endif %}
+            {% if config.image_bottom is defined %}
+            bottom: {{ config.image_bottom }};
+            {% elif config.image_height is defined %}
+            bottom: calc(100% - {{ config.image_top if config.image_top is defined else '5%' }} - {{ config.image_height }});
+            {% else %}
+            bottom: 20%;
+            {% endif %}
+        }
+        .frame-{{ frame_key }} .villain-name {
+            bottom: {{ config.name_bottom if config.name_bottom is defined else '12%' }};
+            left: {{ config.name_left if config.name_left is defined else '10%' }};
+            right: {{ config.name_right if config.name_right is defined else '10%' }};
+            background: {{ config.name_background if config.name_background is defined else 'transparent' }};
+            color: {{ config.name_color if config.name_color is defined else '#ffffff' }};
+            font-size: {{ config.name_font_size if config.name_font_size is defined else '1.3rem' }};
+        }
+        .frame-{{ frame_key }} .hate-score {
+            bottom: {{ config.score_bottom if config.score_bottom is defined else '3%' }};
+            left: {{ config.score_left if config.score_left is defined else '50%' }};
+            transform: {{ config.score_transform if config.score_transform is defined else 'translateX(-50%)' }};
+            background: {{ config.score_background if config.score_background is defined else 'transparent' }};
+            color: {{ config.score_color if config.score_color is defined else '#ffffff' }};
+            font-size: {{ config.score_font_size if config.score_font_size is defined else '1.4rem' }};
+        }
+        {% endfor %}
+    </style>
+    {% endif %}
 </head>
 <body>
     <div class="container">
@@ -405,9 +457,16 @@
             <a href="/hall-of-hate/nuevo">Add New Villain</a>
         </div>
 
+        {% if preview_mode %}
+        <div class="preview-banner">
+            Preview mode active: authentication is skipped so you can verify frames locally.
+        </div>
+        {% endif %}
+
         <div class="cards-grid">
             {% for villain in villains %}
-            <div class="villain-card frame-{{ villain.frame_type }}" 
+            {% set frame_key = (villain.frame_type or 'default')|replace(' ', '-')|lower %}
+            <div class="villain-card frame-{{ frame_key }}" 
                  data-villain-id="{{ villain.id }}"
                  data-villain-name="{{ villain.name }}"
                  data-villain-score="{{ villain.hate_score }}">
@@ -426,9 +485,7 @@
                 <div class="villain-name">{{ villain.name|upper }}</div>
                 
                 <!-- Hate Score -->
-                <div class="hate-score">
-                    {{ villain.hate_score }}
-                </div>
+                <div class="hate-score">{{ villain.hate_score }}</div>
                 
                 <!-- Modern Action Buttons -->
                 <div class="card-actions">
