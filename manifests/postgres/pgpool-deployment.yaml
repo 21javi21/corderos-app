@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: pgpool
-        image: bitnami/pgpool:4.5.4-debian-12-r0
+        image: bitnami/pgpool:4.5.4
         imagePullPolicy: IfNotPresent
         env:
         - name: PGPOOL_BACKEND_NODES
